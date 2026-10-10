@@ -1,0 +1,542 @@
+{%- comment -%}
+  Heading
+
+  - Heading block; a thin wrapper over snippets/heading.liquid so every heading
+    in the theme renders identical typography.
+  - The heading tag is semantics/SEO only; size comes from the Size setting,
+    resolved with every other typographic property by
+    snippets/typography-resolver.liquid.
+  - Supports the theme's animated accent treatment on bold and italic runs.
+  - Accent settings are not resolved here: this block hands its settings object
+    to snippets/accent-typography.liquid, which inherits the global Typography
+    settings unless "Use Custom Accent Typography" is checked. The schema
+    fragment for those settings is copy-pasted from that snippet's contract.
+{%- endcomment -%}
+
+{%- liquid
+  # Lets a host section (e.g. Dynamic Hero on the collection template) drive
+  # this heading from the resolved collection's title instead of static text,
+  # via its own "Show collection title" checkbox. Both settings are section-
+  # scoped, so this is a no-op wherever a section doesn't define them.
+  assign effective_heading_text = block.settings.heading_text
+  if section.settings.use_collection_data and section.settings.show_collection_title
+    assign title_collection = blank
+    if section.settings.use_picked_collection and section.settings.selected_collection != blank
+      assign title_collection = section.settings.selected_collection
+    elsif collection != blank
+      assign title_collection = collection
+    endif
+    if title_collection != blank
+      assign effective_heading_text = title_collection.title
+    endif
+  endif
+
+  assign heading_has_count_up = false
+  if effective_heading_text contains '[_'
+    assign heading_has_count_up = true
+    assign effective_heading_text = effective_heading_text | replace: '[_', '<span data-stat-value>' | replace: '_]', '</span>'
+  endif
+-%}
+
+{% if heading_has_count_up %}
+  <script src="{{ 'stats-counter.js' | asset_url }}" type="module"></script>
+{% endif %}
+
+<div style="{% render 'accent-resolver', source: block.settings %}" {{ block.shopify_attributes }}>
+  {% if heading_has_count_up %}<stats-counter data-animate="true" style="display: block;">{% endif %}
+  {% render 'heading',
+    id: block.id,
+    heading_text: effective_heading_text,
+    heading_tag: block.settings.heading_tag,
+    orientation: block.settings.heading_orientation,
+    vertical_direction: block.settings.vertical_direction,
+    source: block.settings
+  %}
+  {% if heading_has_count_up %}</stats-counter>{% endif %}
+</div>
+
+{% schema %}
+{
+  "name": "Heading",
+  "settings": [
+    {
+      "type": "header",
+      "content": "Text",
+      "info": "To animate a number, wrap it with [_ and _]. Example: [_ 10,000+ _]."
+    },
+    {
+      "type": "inline_richtext",
+      "id": "heading_text",
+      "label": "Heading text",
+      "info": "Count-up pattern: [_ number _]. Example: Trusted by [_ 10,000+ _] customers.",
+      "default": "Your Default Heading"
+    },
+    {
+      "type": "select",
+      "id": "heading_tag",
+      "label": "Heading tag",
+      "options": [
+        {
+          "value": "h1",
+          "label": "H1"
+        },
+        {
+          "value": "h2",
+          "label": "H2"
+        },
+        {
+          "value": "h3",
+          "label": "H3"
+        },
+        {
+          "value": "h4",
+          "label": "H4"
+        },
+        {
+          "value": "h5",
+          "label": "H5"
+        },
+        {
+          "value": "h6",
+          "label": "H6"
+        },
+        {
+          "value": "p",
+          "label": "Paragraph"
+        }
+      ],
+      "default": "h2",
+      "info": "Controls semantics and SEO only. It does not change the size — set that under Typography."
+    },
+    {
+      "type": "select",
+      "id": "heading_orientation",
+      "label": "Text Orientation",
+      "options": [
+        {
+          "value": "horizontal",
+          "label": "Horizontal"
+        },
+        {
+          "value": "vertical",
+          "label": "Vertical"
+        }
+      ],
+      "default": "horizontal"
+    },
+    {
+      "type": "select",
+      "id": "vertical_direction",
+      "label": "Vertical Direction",
+      "info": "Only applies when Text Orientation is Vertical.",
+      "options": [
+        {
+          "value": "straight",
+          "label": "Straight"
+        },
+        {
+          "value": "inverted",
+          "label": "Inverted"
+        }
+      ],
+      "default": "straight"
+    },
+    {
+      "type": "select",
+      "id": "text_color",
+      "label": "Color",
+      "info": "Automatic follows this block's own role, so a card set to Accent recolors it.",
+      "options": [
+        {
+          "value": "auto",
+          "label": "Automatic"
+        },
+        {
+          "value": "heading",
+          "label": "Heading"
+        },
+        {
+          "value": "text",
+          "label": "Text"
+        },
+        {
+          "value": "soft",
+          "label": "Soft Text"
+        },
+        {
+          "value": "accent",
+          "label": "Accent"
+        },
+        {
+          "value": "parent",
+          "label": "Inherit From Parent"
+        }
+      ],
+      "default": "auto"
+    },
+    {
+      "type": "header",
+      "content": "Typography"
+    },
+    {
+      "type": "select",
+      "id": "font_size",
+      "label": "Size",
+      "info": "Approximate sizes are shown at Size Factor 1.",
+      "options": [
+        {
+          "value": "xxs",
+          "label": "XXS (~16px)"
+        },
+        {
+          "value": "xs",
+          "label": "XS (~18px)"
+        },
+        {
+          "value": "sm",
+          "label": "SM (~22px)"
+        },
+        {
+          "value": "md",
+          "label": "MD (~28px)"
+        },
+        {
+          "value": "lg",
+          "label": "LG (~36px)"
+        },
+        {
+          "value": "xl",
+          "label": "XL (~48px)"
+        },
+        {
+          "value": "xxl",
+          "label": "XXL (~64px)"
+        }
+      ],
+      "default": "md"
+    },
+    {
+      "type": "select",
+      "id": "font_weight",
+      "label": "Font Weight",
+      "options": [
+        {
+          "value": "normal",
+          "label": "Normal"
+        },
+        {
+          "value": "medium",
+          "label": "Medium"
+        },
+        {
+          "value": "semibold",
+          "label": "Semi-bold"
+        },
+        {
+          "value": "bold",
+          "label": "Bold"
+        }
+      ],
+      "default": "normal"
+    },
+    {
+      "type": "checkbox",
+      "id": "override_line_height",
+      "label": "Override Theme Line Height",
+      "default": false
+    },
+    {
+      "type": "range",
+      "id": "line_height",
+      "label": "Line Height",
+      "min": 0.8,
+      "max": 2.4,
+      "step": 0.1,
+      "default": 1.2,
+      "visible_if": "{{ block.settings.override_line_height }}"
+    },
+    {
+      "type": "select",
+      "id": "text_casing",
+      "label": "Text Casing",
+      "info": "On None, the text renders exactly as typed.",
+      "options": [
+        {
+          "value": "theme",
+          "label": "Theme"
+        },
+        {
+          "value": "none",
+          "label": "None"
+        }
+      ],
+      "default": "theme"
+    },
+    {
+      "type": "header",
+      "content": "Accent Typography",
+      "info": "Bold and italic words inherit Theme settings > Typography > Accent Typography and use the resolved Accent selection below. Accents are not applied when Text Orientation is Vertical."
+    },
+    {
+      "type": "select",
+      "id": "accent_selected",
+      "label": "Accent",
+      "options": [
+        {
+          "value": "neutral",
+          "label": "Neutral"
+        },
+        {
+          "value": "soft",
+          "label": "Soft"
+        },
+        {
+          "value": "strong",
+          "label": "Strong"
+        }
+      ],
+      "default": "neutral"
+    },
+    {
+      "type": "checkbox",
+      "id": "use_custom_accent_typography",
+      "label": "Use Custom Accent Typography",
+      "default": false
+    },
+    {
+      "type": "header",
+      "content": "Custom Accent Typography",
+      "visible_if": "{{ block.settings.use_custom_accent_typography }}"
+    },
+    {
+      "type": "checkbox",
+      "id": "accent_use_font",
+      "label": "Use Accent Font",
+      "info": "Renders bold and italic text in the Accent Font. Set it in Theme settings > Accent Typography > Accent Font.",
+      "default": false,
+      "visible_if": "{{ block.settings.use_custom_accent_typography }}"
+    },
+    {
+      "type": "select",
+      "id": "accent_bold_style",
+      "label": "Bold text accent",
+      "default": "none",
+      "visible_if": "{{ block.settings.use_custom_accent_typography }}",
+      "options": [
+        {
+          "value": "none",
+          "label": "None"
+        },
+        {
+          "value": "color",
+          "label": "Bold color"
+        },
+        {
+          "value": "italic",
+          "label": "Italic"
+        },
+        {
+          "value": "highlight",
+          "label": "Highlight"
+        },
+        {
+          "value": "highlight_marker",
+          "label": "Highlight (marker)"
+        },
+        {
+          "value": "underline",
+          "label": "Underline"
+        },
+        {
+          "value": "underline_sketch",
+          "label": "Underline (hand-drawn)"
+        },
+        {
+          "value": "underline_wavy",
+          "label": "Underline (wavy)"
+        },
+        {
+          "value": "circle",
+          "label": "Circle"
+        },
+        {
+          "value": "circle_sketch",
+          "label": "Circle (hand-drawn)"
+        },
+        {
+          "value": "oval",
+          "label": "Oval"
+        },
+        {
+          "value": "oval_sketch",
+          "label": "Oval (hand-drawn)"
+        }
+      ]
+    },
+    {
+      "type": "select",
+      "id": "accent_italic_style",
+      "label": "Italic text accent",
+      "default": "none",
+      "visible_if": "{{ block.settings.use_custom_accent_typography }}",
+      "options": [
+        {
+          "value": "none",
+          "label": "None"
+        },
+        {
+          "value": "color",
+          "label": "Bold color"
+        },
+        {
+          "value": "italic",
+          "label": "Italic"
+        },
+        {
+          "value": "highlight",
+          "label": "Highlight"
+        },
+        {
+          "value": "highlight_marker",
+          "label": "Highlight (marker)"
+        },
+        {
+          "value": "underline",
+          "label": "Underline"
+        },
+        {
+          "value": "underline_sketch",
+          "label": "Underline (hand-drawn)"
+        },
+        {
+          "value": "underline_wavy",
+          "label": "Underline (wavy)"
+        },
+        {
+          "value": "circle",
+          "label": "Circle"
+        },
+        {
+          "value": "circle_sketch",
+          "label": "Circle (hand-drawn)"
+        },
+        {
+          "value": "oval",
+          "label": "Oval"
+        },
+        {
+          "value": "oval_sketch",
+          "label": "Oval (hand-drawn)"
+        }
+      ]
+    },
+    {
+      "type": "select",
+      "id": "accent_trigger",
+      "label": "Animation trigger",
+      "default": "in_view",
+      "visible_if": "{{ block.settings.use_custom_accent_typography }}",
+      "options": [
+        {
+          "value": "in_view",
+          "label": "Play once in view"
+        },
+        {
+          "value": "scrub",
+          "label": "Scrub with scroll"
+        }
+      ]
+    },
+    {
+      "type": "range",
+      "id": "accent_threshold",
+      "label": "Scroll threshold",
+      "info": "0 = draws across the whole scroll; higher tightens the draw toward the viewport center.",
+      "min": 0,
+      "max": 1,
+      "step": 0.1,
+      "default": 0.8,
+      "visible_if": "{{ block.settings.use_custom_accent_typography and block.settings.accent_trigger == 'scrub' }}"
+    },
+    {
+      "type": "range",
+      "id": "accent_stroke_width",
+      "label": "Stroke width",
+      "info": "For underline / circle / oval accents.",
+      "min": 1,
+      "max": 12,
+      "step": 1,
+      "unit": "px",
+      "default": 3,
+      "visible_if": "{{ block.settings.use_custom_accent_typography }}"
+    },
+    {
+      "type": "range",
+      "id": "accent_duration",
+      "label": "Animation duration",
+      "min": 100,
+      "max": 2000,
+      "step": 50,
+      "unit": "ms",
+      "default": 700,
+      "visible_if": "{{ block.settings.use_custom_accent_typography }}"
+    },
+    {
+      "type": "select",
+      "id": "accent_reverse",
+      "label": "Accent direction",
+      "default": "normal",
+      "visible_if": "{{ block.settings.use_custom_accent_typography }}",
+      "options": [
+        {
+          "value": "normal",
+          "label": "Forward"
+        },
+        {
+          "value": "opposite",
+          "label": "From opposite end"
+        },
+        {
+          "value": "erase",
+          "label": "Backward (erase)"
+        }
+      ]
+    },
+    {
+      "type": "checkbox",
+      "id": "accent_loop",
+      "label": "Loop accent",
+      "default": false,
+      "visible_if": "{{ block.settings.use_custom_accent_typography and block.settings.accent_trigger == 'in_view' }}"
+    },
+    {
+      "type": "select",
+      "id": "accent_loop_mode",
+      "label": "Loop mode",
+      "default": "yoyo",
+      "options": [
+        {
+          "value": "yoyo",
+          "label": "Yoyo (draw & undraw)"
+        },
+        {
+          "value": "restart",
+          "label": "Restart"
+        }
+      ],
+      "visible_if": "{{ block.settings.use_custom_accent_typography and block.settings.accent_loop and block.settings.accent_trigger == 'in_view' }}"
+    }
+  ],
+  "presets": [
+    {
+      "name": "Heading"
+    },
+    {
+      "name": "Heading with Count Up",
+      "settings": {
+        "heading_text": "Trusted by [_ 10,000+ _] customers"
+      }
+    }
+  ]
+}
+{% endschema %}

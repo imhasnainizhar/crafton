@@ -1,0 +1,596 @@
+{%- comment -%}
+  Newsletter — a full-width section that owns the color scheme, vertical
+  spacing, and centers its content column. Any theme block can be nested
+  inside (heading, email signup, icon, …). The wrapper always spans the
+  section; individual blocks control their own readable width and alignment.
+{%- endcomment -%}
+
+{% style %}
+  .newsletter--{{ section.id }} {
+    {% render 'section-design-mode', section_settings: section.settings %}
+    display: block;
+    width: 100%;
+    padding-block: var(--ds-section-padding-mobile);
+    background-color: var(--color-base);
+    color: var(--color-text);
+  }
+
+  .newsletter--{{ section.id }} .newsletter__inner {
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: var(--ds-layout-gap-mobile);
+    width: 100%;
+    margin-inline: auto;
+    padding-inline: var(--ds-layout-gutter-mobile);
+    /* Content is always centered — no merchant alignment option. */
+    --align-x: center;
+    --text-align: center;
+  }
+
+  @media screen and (min-width: 768px) {
+    .newsletter--{{ section.id }} {
+      padding-block: var(--ds-section-padding-desktop);
+    }
+
+    .newsletter--{{ section.id }} .newsletter__inner {
+      gap: var(--ds-layout-gap-desktop);
+      padding-inline: var(--ds-layout-gutter-desktop);
+    }
+  }
+{% endstyle %}
+
+<section class="newsletter--{{ section.id }} color-{{ section.settings.color_scheme }}">
+  <div class="newsletter__inner">
+    {% content_for 'blocks' %}
+  </div>
+</section>
+
+{% schema %}
+{
+  "name": "Newsletter",
+  "disabled_on": {
+    "templates": [
+      "page",
+      "blog"
+    ]
+  },
+  "settings": [
+    {
+      "type": "header",
+      "content": "Section",
+      "info": "An email signup banner with heading and text."
+    },
+    {
+      "type": "color_scheme",
+      "id": "color_scheme",
+      "label": "Color Scheme",
+      "default": "scheme_1"
+    },
+    {
+      "type": "header",
+      "content": "Design Mode"
+    },
+    {
+      "type": "select",
+      "id": "section_design_mode",
+      "label": "Section Design Mode",
+      "info": "Auto: inherit all theme settings. Blend: use this section's values with the theme's responsive Design Mode. Custom: use this section's Design Mode and Design System values.",
+      "options": [
+        {
+          "value": "auto",
+          "label": "Auto"
+        },
+        {
+          "value": "blend",
+          "label": "Blend"
+        },
+        {
+          "value": "custom",
+          "label": "Custom"
+        }
+      ],
+      "default": "auto"
+    },
+    {
+      "type": "select",
+      "id": "design_mode_desktop",
+      "label": "Desktop Design Mode",
+      "options": [
+        {
+          "value": "modern",
+          "label": "Modern"
+        },
+        {
+          "value": "minimal",
+          "label": "Minimal"
+        }
+      ],
+      "default": "modern",
+      "visible_if": "{{ section.settings.section_design_mode == 'custom' }}"
+    },
+    {
+      "type": "select",
+      "id": "design_mode_mobile",
+      "label": "Mobile Design Mode",
+      "options": [
+        {
+          "value": "modern",
+          "label": "Modern"
+        },
+        {
+          "value": "minimal",
+          "label": "Minimal"
+        }
+      ],
+      "default": "modern",
+      "visible_if": "{{ section.settings.section_design_mode == 'custom' }}"
+    },
+    {
+      "type": "header",
+      "content": "Spacing",
+      "visible_if": "{{ section.settings.section_design_mode == 'custom' or section.settings.section_design_mode == 'blend' }}"
+    },
+    {
+      "type": "select",
+      "id": "design_section_padding_desktop",
+      "label": "Section padding (desktop)",
+      "options": [
+        {
+          "value": "none",
+          "label": "None"
+        },
+        {
+          "value": "xs",
+          "label": "Extra small"
+        },
+        {
+          "value": "sm",
+          "label": "Small"
+        },
+        {
+          "value": "md",
+          "label": "Medium"
+        },
+        {
+          "value": "lg",
+          "label": "Large"
+        },
+        {
+          "value": "xl",
+          "label": "Extra large"
+        },
+        {
+          "value": "2xl",
+          "label": "Maximum"
+        }
+      ],
+      "default": "xl",
+      "visible_if": "{{ section.settings.section_design_mode == 'custom' or section.settings.section_design_mode == 'blend' }}"
+    },
+    {
+      "type": "select",
+      "id": "design_section_padding_mobile",
+      "label": "Section padding (mobile)",
+      "options": [
+        {
+          "value": "none",
+          "label": "None"
+        },
+        {
+          "value": "xs",
+          "label": "Extra small"
+        },
+        {
+          "value": "sm",
+          "label": "Small"
+        },
+        {
+          "value": "md",
+          "label": "Medium"
+        },
+        {
+          "value": "lg",
+          "label": "Large"
+        },
+        {
+          "value": "xl",
+          "label": "Extra large"
+        },
+        {
+          "value": "2xl",
+          "label": "Maximum"
+        }
+      ],
+      "default": "lg",
+      "visible_if": "{{ section.settings.section_design_mode == 'custom' or section.settings.section_design_mode == 'blend' }}"
+    },
+    {
+      "type": "select",
+      "id": "design_layout_gap_desktop",
+      "label": "Layout Gap (Desktop)",
+      "options": [
+        {
+          "value": "none",
+          "label": "None"
+        },
+        {
+          "value": "xs",
+          "label": "Extra small"
+        },
+        {
+          "value": "sm",
+          "label": "Small"
+        },
+        {
+          "value": "md",
+          "label": "Medium"
+        },
+        {
+          "value": "lg",
+          "label": "Large"
+        },
+        {
+          "value": "xl",
+          "label": "Extra large"
+        }
+      ],
+      "default": "md",
+      "visible_if": "{{ section.settings.section_design_mode == 'custom' or section.settings.section_design_mode == 'blend' }}"
+    },
+    {
+      "type": "select",
+      "id": "design_layout_gap_mobile",
+      "label": "Layout Gap (Mobile)",
+      "options": [
+        {
+          "value": "none",
+          "label": "None"
+        },
+        {
+          "value": "xs",
+          "label": "Extra small"
+        },
+        {
+          "value": "sm",
+          "label": "Small"
+        },
+        {
+          "value": "md",
+          "label": "Medium"
+        },
+        {
+          "value": "lg",
+          "label": "Large"
+        },
+        {
+          "value": "xl",
+          "label": "Extra large"
+        }
+      ],
+      "default": "sm",
+      "visible_if": "{{ section.settings.section_design_mode == 'custom' or section.settings.section_design_mode == 'blend' }}"
+    },
+
+    {
+      "type": "header",
+      "content": "Layout",
+      "visible_if": "{{ section.settings.section_design_mode == 'custom' or section.settings.section_design_mode == 'blend' }}"
+    },
+    {
+      "type": "checkbox",
+      "id": "design_enable_minimal_gutter",
+      "label": "Enable gutter in Minimal mode",
+      "default": false,
+      "visible_if": "{{ section.settings.section_design_mode == 'custom' or section.settings.section_design_mode == 'blend' }}"
+    },
+    {
+      "type": "select",
+      "id": "design_gutter_desktop",
+      "label": "Gutter (desktop)",
+      "options": [
+        {
+          "value": "none",
+          "label": "None"
+        },
+        {
+          "value": "xs",
+          "label": "Extra small"
+        },
+        {
+          "value": "sm",
+          "label": "Small"
+        },
+        {
+          "value": "md",
+          "label": "Medium"
+        },
+        {
+          "value": "lg",
+          "label": "Large"
+        },
+        {
+          "value": "xl",
+          "label": "Extra large"
+        }
+      ],
+      "default": "lg",
+      "visible_if": "{{ section.settings.section_design_mode == 'custom' or section.settings.section_design_mode == 'blend' }}"
+    },
+    {
+      "type": "select",
+      "id": "design_gutter_mobile",
+      "label": "Gutter (mobile)",
+      "options": [
+        {
+          "value": "none",
+          "label": "None"
+        },
+        {
+          "value": "sm",
+          "label": "Small"
+        },
+        {
+          "value": "md",
+          "label": "Medium"
+        },
+        {
+          "value": "lg",
+          "label": "Large"
+        }
+      ],
+      "default": "md",
+      "visible_if": "{{ section.settings.section_design_mode == 'custom' or section.settings.section_design_mode == 'blend' }}"
+    },
+    {
+      "type": "range",
+      "id": "design_layout_radius_desktop",
+      "label": "Layout radius (desktop)",
+      "info": "Blend: this section's radius always applies, even when the theme is Minimal. Custom: Minimal Design Mode removes it.",
+      "min": 0,
+      "max": 80,
+      "step": 2,
+      "unit": "px",
+      "default": 24,
+      "visible_if": "{{ section.settings.section_design_mode == 'custom' or section.settings.section_design_mode == 'blend' }}"
+    },
+    {
+      "type": "range",
+      "id": "design_layout_radius_mobile",
+      "label": "Layout radius (mobile)",
+      "info": "Blend: this section's radius always applies, even when the theme is Minimal. Custom: Minimal Design Mode removes it.",
+      "min": 0,
+      "max": 60,
+      "step": 2,
+      "unit": "px",
+      "default": 16,
+      "visible_if": "{{ section.settings.section_design_mode == 'custom' or section.settings.section_design_mode == 'blend' }}"
+    },
+    {
+      "type": "header",
+      "content": "Section Width",
+      "info": "Independent of Design Mode — the width cap applies in both Modern and Minimal, in Blend as well as Custom, and only when enabled below."
+    },
+    {
+      "type": "checkbox",
+      "id": "design_enable_section_width",
+      "label": "Enable Section Width",
+      "default": false
+    },
+    {
+      "type": "select",
+      "id": "design_section_width_desktop",
+      "label": "Section Width (Desktop)",
+      "options": [
+        {
+          "value": "none",
+          "label": "None"
+        },
+        {
+          "value": "wide",
+          "label": "Wide"
+        },
+        {
+          "value": "max",
+          "label": "Maximum"
+        },
+        {
+          "value": "tv",
+          "label": "TV"
+        }
+      ],
+      "default": "tv",
+      "visible_if": "{{ section.settings.design_enable_section_width }}"
+    },
+    {
+      "type": "select",
+      "id": "design_section_width_mobile",
+      "label": "Section Width (Mobile)",
+      "options": [
+        {
+          "value": "none",
+          "label": "None"
+        },
+        {
+          "value": "wide",
+          "label": "Wide"
+        },
+        {
+          "value": "max",
+          "label": "Maximum"
+        }
+      ],
+      "default": "none",
+      "visible_if": "{{ section.settings.design_enable_section_width }}"
+    },
+    {
+      "type": "header",
+      "content": "Items Styling",
+      "visible_if": "{{ section.settings.section_design_mode == 'custom' or section.settings.section_design_mode == 'blend' }}"
+    },
+    {
+      "type": "checkbox",
+      "id": "design_enable_minimal_items_gap",
+      "label": "Enable Items Gap in Minimal Mode",
+      "default": false,
+      "visible_if": "{{ section.settings.section_design_mode == 'custom' or section.settings.section_design_mode == 'blend' }}"
+    },
+    {
+      "type": "range",
+      "id": "design_items_gap_desktop",
+      "label": "Items Gap (Desktop)",
+      "min": 0,
+      "max": 60,
+      "step": 2,
+      "unit": "px",
+      "default": 24,
+      "visible_if": "{{ section.settings.section_design_mode == 'custom' or section.settings.section_design_mode == 'blend' }}"
+    },
+    {
+      "type": "range",
+      "id": "design_items_gap_mobile",
+      "label": "Items Gap (Mobile)",
+      "min": 0,
+      "max": 40,
+      "step": 2,
+      "unit": "px",
+      "default": 16,
+      "visible_if": "{{ section.settings.section_design_mode == 'custom' or section.settings.section_design_mode == 'blend' }}"
+    },
+    {
+      "type": "range",
+      "id": "design_item_radius_desktop",
+      "label": "Item radius (desktop)",
+      "info": "Blend: this section's radius always applies, even when the theme is Minimal. Custom: Minimal Design Mode removes it.",
+      "min": 0,
+      "max": 50,
+      "step": 2,
+      "unit": "px",
+      "default": 12,
+      "visible_if": "{{ section.settings.section_design_mode == 'custom' or section.settings.section_design_mode == 'blend' }}"
+    },
+    {
+      "type": "range",
+      "id": "design_item_radius_mobile",
+      "label": "Item radius (mobile)",
+      "info": "Blend: this section's radius always applies, even when the theme is Minimal. Custom: Minimal Design Mode removes it.",
+      "min": 0,
+      "max": 50,
+      "step": 2,
+      "unit": "px",
+      "default": 12,
+      "visible_if": "{{ section.settings.section_design_mode == 'custom' or section.settings.section_design_mode == 'blend' }}"
+    },
+    {
+      "type": "select",
+      "id": "design_item_shadow",
+      "label": "Item shadow",
+      "options": [
+        {
+          "value": "none",
+          "label": "None"
+        },
+        {
+          "value": "sm",
+          "label": "Small"
+        },
+        {
+          "value": "md",
+          "label": "Medium"
+        },
+        {
+          "value": "lg",
+          "label": "Large"
+        }
+      ],
+      "default": "md",
+      "visible_if": "{{ section.settings.section_design_mode == 'custom' or section.settings.section_design_mode == 'blend' }}"
+    },
+    {
+      "type": "range",
+      "id": "design_item_border_width",
+      "label": "Item border width",
+      "min": 0,
+      "max": 10,
+      "step": 1,
+      "unit": "px",
+      "default": 1,
+      "visible_if": "{{ section.settings.section_design_mode == 'custom' or section.settings.section_design_mode == 'blend' }}"
+    },
+    {
+      "type": "range",
+      "id": "design_layout_border_width",
+      "label": "Layout border width",
+      "min": 0,
+      "max": 10,
+      "step": 1,
+      "unit": "px",
+      "default": 1,
+      "visible_if": "{{ section.settings.section_design_mode == 'custom' or section.settings.section_design_mode == 'blend' }}"
+    },
+    {
+      "type": "header",
+      "content": "Layout options",
+      "visible_if": "{{ section.settings.section_design_mode == 'custom' or section.settings.section_design_mode == 'blend' }}"
+    },
+    {
+      "type": "header",
+      "content": "Gutter",
+      "info": "Controls the section's horizontal padding on each side.",
+      "visible_if": "{{ section.settings.section_design_mode == 'custom' or section.settings.section_design_mode == 'blend' }}"
+    }
+  ],
+  "blocks": [
+    {
+      "type": "rich_content"
+    },
+    {
+      "type": "email_signup"
+    }
+  ],
+  "presets": [
+    {
+      "name": "Newsletter",
+      "category": "Social & newsletter",
+      "blocks": [
+        {
+          "type": "rich_content",
+          "settings": {
+            "align_x_mobile": "center",
+            "align_x_desktop": "center",
+            "content_width": "760",
+            "gap": "sm",
+            "padding_horizontal": "none"
+          },
+          "blocks": [
+            {
+              "type": "subtitle",
+              "settings": {
+                "text": "STAY IN THE LOOP"
+              }
+            },
+            {
+              "type": "heading",
+              "settings": {
+                "heading_text": "Join our newsletter",
+                "heading_tag": "h2"
+              }
+            },
+            {
+              "type": "text",
+              "settings": {
+                "paragraph_text": "<p>Sign up for updates, inspiration, and exclusive offers delivered straight to your inbox.</p>"
+              }
+            }
+          ]
+        },
+        {
+          "type": "email_signup"
+        }
+      ]
+    }
+  ]
+}
+{% endschema %}

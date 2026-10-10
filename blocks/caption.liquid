@@ -1,0 +1,95 @@
+{%- comment -%}
+  Caption — small supporting text for cards: an eyebrow over a title, a handle
+  under a name, a one-line description. Deliberately minimal: only the small
+  steps of the Text ladder, weight, capitals and colour. Type comes from
+  snippets/typography-resolver.liquid, colour from color-role-resolver.
+{%- endcomment -%}
+
+{% style %}
+  .cap--{{ block.id }} {
+    margin: 0;
+    {% render 'typography-resolver', role: 'text', source: block.settings %}
+    {% render 'color-role-resolver', mode: 'color', role: 'soft', source: block.settings %}
+    text-align: var(--text-align, left);
+    overflow-wrap: anywhere;
+    {%- if block.settings.uppercase %}
+    {%- comment -%} Same small-caps tracking the Button's Uppercase uses. {%- endcomment -%}
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    {%- endif %}
+  }
+{% endstyle %}
+
+<p class="cap cap--{{ block.id }}" {{ block.shopify_attributes }}>
+  {{- block.settings.caption_text -}}
+</p>
+
+{% schema %}
+{
+  "name": "Caption",
+  "tag": null,
+  "settings": [
+    {
+      "type": "header",
+      "content": "Caption",
+      "info": "Small supporting text for cards, like a category above a title or a short description below it."
+    },
+    {
+      "type": "inline_richtext",
+      "id": "caption_text",
+      "label": "Text",
+      "default": "Collection"
+    },
+    {
+      "type": "select",
+      "id": "font_size",
+      "label": "Size",
+      "options": [
+        { "value": "xxs", "label": "Extra small" },
+        { "value": "xs", "label": "Small" },
+        { "value": "sm", "label": "Medium" },
+        { "value": "md", "label": "Body" }
+      ],
+      "default": "xs"
+    },
+    {
+      "type": "select",
+      "id": "font_weight",
+      "label": "Font Weight",
+      "options": [
+        { "value": "normal", "label": "Normal" },
+        { "value": "medium", "label": "Medium" },
+        { "value": "semibold", "label": "Semi-bold" },
+        { "value": "bold", "label": "Bold" }
+      ],
+      "default": "normal"
+    },
+    {
+      "type": "checkbox",
+      "id": "uppercase",
+      "label": "Capital letters",
+      "info": "Spaced-out capitals, as used for a small category line.",
+      "default": false
+    },
+    {
+      "type": "select",
+      "id": "text_color",
+      "label": "Color",
+      "options": [
+        { "value": "auto", "label": "Automatic" },
+        { "value": "heading", "label": "Heading" },
+        { "value": "text", "label": "Text" },
+        { "value": "soft", "label": "Soft Text" },
+        { "value": "accent", "label": "Accent" },
+        { "value": "parent", "label": "Inherit From Parent" }
+      ],
+      "default": "auto"
+    }
+  ],
+  "presets": [
+    {
+      "name": "Caption"
+    }
+  ]
+}
+{% endschema %}

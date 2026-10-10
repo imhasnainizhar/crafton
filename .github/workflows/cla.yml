@@ -9,12 +9,16 @@ on:
 jobs:
   cla:
     runs-on: ubuntu-latest
+    # Shopify's CLA service needs a CLA_TOKEN secret that only exists in
+    # Shopify's repositories; elsewhere the job is skipped instead of failing.
     if: |
+      github.repository_owner == 'Shopify' && (
       (github.event.issue.pull_request
         && !github.event.issue.pull_request.merged_at
         && contains(github.event.comment.body, 'signed')
       )
       || (github.event.pull_request && !github.event.pull_request.merged)
+      )
     steps:
       - uses: Shopify/shopify-cla-action@v1
         with:

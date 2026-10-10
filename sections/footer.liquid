@@ -1,0 +1,122 @@
+{%- comment -%}
+  Footer — footer menu, copyright line and optional payment icons. Lives in
+  the footer group (sections/footer-group.json).
+{%- endcomment -%}
+<footer class="site-footer color-{{ section.settings.color_scheme }}">
+  <div class="site-footer__inner">
+    {%- if section.settings.menu.links.size > 0 -%}
+      <nav class="site-footer__menu" aria-label="{{ 'general.footer.menu' | t }}">
+        <ul role="list">
+          {%- for link in section.settings.menu.links -%}
+            <li><a href="{{ link.url }}">{{ link.title | escape }}</a></li>
+          {%- endfor -%}
+        </ul>
+      </nav>
+    {%- endif -%}
+
+    <p class="site-footer__copyright">
+      &copy; {{ 'now' | date: '%Y' }}
+      {{ shop.name | link_to: routes.root_url }} · {{ powered_by_link }}
+    </p>
+
+    {%- if section.settings.show_payment_icons -%}
+      <ul class="site-footer__payment" role="list">
+        {%- for type in shop.enabled_payment_types -%}
+          <li>{{ type | payment_type_svg_tag: class: 'site-footer__payment-icon' }}</li>
+        {%- endfor -%}
+      </ul>
+    {%- endif -%}
+  </div>
+</footer>
+
+{% stylesheet %}
+  .site-footer {
+    background-color: var(--color-base);
+    color: var(--color-soft-text);
+    border-block-start: 1px solid var(--color-border);
+  }
+
+  .site-footer__inner {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+    max-width: var(--ds-section-width-mobile);
+    margin-inline: auto;
+    padding: 2.5rem var(--ds-layout-gutter-mobile);
+    font-size: var(--fs-text-sm);
+  }
+
+  .site-footer a {
+    color: var(--color-text);
+    text-decoration: none;
+  }
+
+  .site-footer a:hover {
+    text-decoration: underline;
+  }
+
+  .site-footer__menu ul,
+  .site-footer__payment {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem 1.25rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .site-footer__payment {
+    gap: 0.5rem;
+  }
+
+  .site-footer__payment-icon {
+    width: 2.375rem;
+    height: auto;
+  }
+
+  @media (min-width: 768px) {
+    .site-footer__inner {
+      flex-direction: row;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      max-width: var(--ds-section-width-desktop);
+      padding-inline: var(--ds-layout-gutter-desktop);
+    }
+
+    .site-footer__menu {
+      flex: 1 0 100%;
+    }
+  }
+{% endstylesheet %}
+
+{% schema %}
+{
+  "name": "Footer",
+  "tag": "div",
+  "class": "shopify-section--footer",
+  "enabled_on": {
+    "groups": ["footer"]
+  },
+  "settings": [
+    {
+      "type": "link_list",
+      "id": "menu",
+      "label": "Menu",
+      "default": "footer"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_payment_icons",
+      "label": "Show payment icons",
+      "default": true
+    },
+    {
+      "type": "color_scheme",
+      "id": "color_scheme",
+      "label": "Color scheme",
+      "default": "scheme_1"
+    }
+  ]
+}
+{% endschema %}

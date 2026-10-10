@@ -1,0 +1,104 @@
+{%- comment -%}
+  Collection — the collection title and description over its products as
+  Collection Product Cards (snippets/collection-product-card.liquid) in a
+  paginated grid, inside the shared page shell (assets/base.css).
+{%- endcomment -%}
+{% style %}
+  .main-collection--{{ section.id }} {
+    --opc-ratio: {{ section.settings.card_ratio | default: '4/5' }};
+  }
+{% endstyle %}
+
+<div class="page-shell color-{{ section.settings.color_scheme }}">
+  <div class="page-shell__inner main-collection main-collection--{{ section.id }}">
+    <h1 class="page-shell__title">{{ collection.title | escape }}</h1>
+    {%- if collection.description != blank -%}
+      <div class="page-shell__rte">{{ collection.description }}</div>
+    {%- endif -%}
+
+    {%- paginate collection.products by section.settings.products_per_page -%}
+      <ul class="main-collection__grid" role="list" data-opc-cart="slide">
+        {%- for product in collection.products -%}
+          <li>{% render 'collection-product-card', product: product, index: forloop.index %}</li>
+        {%- else -%}
+          <li class="main-collection__empty">{{ 'collections.empty' | t }}</li>
+        {%- endfor -%}
+      </ul>
+
+      {%- if paginate.pages > 1 -%}
+        <nav class="page-shell__pagination" aria-label="{{ 'general.pagination.label' | t }}">
+          {{- paginate | default_pagination -}}
+        </nav>
+      {%- endif -%}
+    {%- endpaginate -%}
+  </div>
+</div>
+
+{% stylesheet %}
+  .main-collection {
+    display: flex;
+    flex-direction: column;
+    gap: var(--ds-layout-gap-mobile);
+  }
+
+  .main-collection__grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--ds-item-gap-mobile);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .main-collection__empty {
+    grid-column: 1 / -1;
+  }
+
+  @media (min-width: 768px) {
+    .main-collection {
+      gap: var(--ds-layout-gap-desktop);
+    }
+
+    .main-collection__grid {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: var(--ds-item-gap-desktop);
+    }
+  }
+{% endstylesheet %}
+
+{% schema %}
+{
+  "name": "Collection",
+  "tag": "section",
+  "class": "shopify-section--main",
+  "settings": [
+    {
+      "type": "range",
+      "id": "products_per_page",
+      "label": "Products per page",
+      "min": 8,
+      "max": 48,
+      "step": 4,
+      "default": 24
+    },
+    {
+      "type": "select",
+      "id": "card_ratio",
+      "label": "Card shape",
+      "options": [
+        { "value": "1/1", "label": "Square (1:1)" },
+        { "value": "4/5", "label": "Portrait (4:5)" },
+        { "value": "3/4", "label": "Portrait (3:4)" },
+        { "value": "4/3", "label": "Landscape (4:3)" }
+      ],
+      "default": "4/5"
+    },
+    {
+      "type": "color_scheme",
+      "id": "color_scheme",
+      "label": "Color scheme",
+      "default": "scheme_1"
+    }
+  ]
+}
+{% endschema %}

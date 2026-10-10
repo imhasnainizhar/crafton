@@ -1,0 +1,356 @@
+{%- comment -%}
+  Image — a static image block for use in sections. Supports aspect ratio,
+  object fit, and optional link. Can be set to half width or full width.
+{%- endcomment -%}
+
+{%- liquid
+  assign aspect_ratio = block.settings.aspect_ratio | default: 'auto'
+  assign object_fit = block.settings.object_fit | default: 'cover'
+
+  # Height: Auto sizes from the aspect ratio (or the file's own height);
+  # Stretch fills the parent's height instead, ignoring the ratio.
+  assign height_mode = block.settings.height_mode | default: 'auto'
+  assign fills_height = false
+  if height_mode == 'stretch'
+    assign fills_height = true
+  endif
+  assign clipped_image_clip_path = 'none'
+  case block.settings.clipped_image_shape
+    when 'circle'
+      assign clipped_image_clip_path = 'circle(50% at 50% 50%)'
+    when 'diamond'
+      assign clipped_image_clip_path = 'polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%)'
+    when 'hexagon'
+      assign clipped_image_clip_path = 'polygon(25% 6%, 75% 6%, 100% 50%, 75% 94%, 25% 94%, 0% 50%)'
+    when 'blob'
+      assign clipped_image_clip_path = 'polygon(50% 0%, 86% 12%, 100% 50%, 84% 88%, 48% 100%, 12% 86%, 0% 48%, 16% 14%)'
+  endcase
+-%}
+
+{% style %}
+  .image-block--{{ block.id }} {
+    position: relative;
+    display: block;
+    width: 100%;
+    {% if fills_height %}
+      height: 100%;
+      align-self: stretch;
+    {% elsif aspect_ratio != 'auto' %}
+      aspect-ratio: {{ aspect_ratio }};
+    {% endif %}
+    border-radius: var(--ds-item-radius-mobile);
+    overflow: hidden;
+    box-sizing: border-box;
+    background-color: var(--color-border);
+  }
+
+  @media (min-width: 768px) {
+    .image-block--{{ block.id }} {
+      border-radius: var(--ds-item-radius-desktop);
+    }
+  }
+
+  .image-block--{{ block.id }} img,
+  .image-block--{{ block.id }} .placeholder-svg {
+    width: 100%;
+    {% if fills_height or aspect_ratio != 'auto' %}
+      height: 100%;
+    {% else %}
+      height: auto;
+    {% endif %}
+    display: block;
+    object-fit: {{ object_fit }};
+  }
+
+  .image-block--{{ block.id }} .placeholder-svg {
+    fill: var(--color-soft-text);
+  }
+
+  .image-block--{{ block.id }} .image-link {
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    text-decoration: none;
+  }
+
+  .image-block--{{ block.id }} .image-block__overlay {
+    position: absolute;
+    z-index: 1;
+    top: {{ block.settings.clipped_image_position_y | default: 50 }}%;
+    left: {{ block.settings.clipped_image_position_x | default: 50 }}%;
+    width: {{ block.settings.clipped_image_width | default: 35 }}%;
+    max-width: none;
+    height: auto;
+    aspect-ratio: 1;
+    object-fit: cover;
+    opacity: {{ block.settings.clipped_image_opacity | default: 100 | divided_by: 100.0 }};
+    border-radius: {{ block.settings.clipped_image_radius | default: 0 }}%;
+    clip-path: {{ clipped_image_clip_path }};
+    transform: translate(-50%, -50%) rotate({{ block.settings.clipped_image_rotation | default: 0 }}deg);
+    pointer-events: none;
+  }
+{% endstyle %}
+
+<div class="image-block--{{ block.id }}" {{ block.shopify_attributes }}>
+  {%- if block.settings.image != blank -%}
+    {{
+      block.settings.image
+      | image_url: width: 2000
+      | image_tag:
+        loading: 'lazy',
+        sizes: '100vw',
+        widths: '550, 750, 1100, 1500, 1780, 2000',
+        alt: block.settings.image.alt
+    }}
+  {%- else -%}
+    {{ 'lifestyle-1' | placeholder_svg_tag: 'placeholder-svg' }}
+  {%- endif -%}
+
+  {%- if block.settings.enable_clipped_image and block.settings.clipped_image != blank -%}
+    {{
+      block.settings.clipped_image
+      | image_url: width: 1600
+      | image_tag:
+        loading: 'lazy',
+        sizes: '50vw',
+        widths: '320, 550, 750, 1100, 1600',
+        class: 'image-block__overlay',
+        alt: block.settings.clipped_image.alt
+    }}
+  {%- endif -%}
+
+  {%- if block.settings.link != blank -%}
+    <a
+      href="{{ block.settings.link }}"
+      class="image-link"
+      aria-label="{{ block.settings.link_label | default: 'View' | escape }}"
+      {%- if block.settings.open_new_tab %} target="_blank" rel="noopener"{% endif %}
+    ></a>
+  {%- endif -%}
+</div>
+
+{% schema %}
+{
+  "name": "Image",
+  "tag": null,
+  "settings": [
+    {
+      "type": "header",
+      "content": "Image",
+      "info": "A static image block with aspect ratio and fit controls."
+    },
+    {
+      "type": "image_picker",
+      "id": "image",
+      "label": "Image"
+    },
+    {
+      "type": "url",
+      "id": "link",
+      "label": "Link",
+      "info": "Optional link to make the image clickable."
+    },
+    {
+      "type": "text",
+      "id": "link_label",
+      "label": "Link Accessible Label",
+      "info": "Screen-reader label for the clickable image.",
+      "default": "View"
+    },
+    {
+      "type": "checkbox",
+      "id": "open_new_tab",
+      "label": "Open Link in New Tab",
+      "default": false
+    },
+    {
+      "type": "header",
+      "content": "Layout"
+    },
+    {
+      "type": "select",
+      "id": "height_mode",
+      "label": "Image Height",
+      "info": "Auto follows the aspect ratio. Stretch fills the height of the space around it.",
+      "options": [
+        {
+          "value": "auto",
+          "label": "Auto"
+        },
+        {
+          "value": "stretch",
+          "label": "Stretch"
+        }
+      ],
+      "default": "auto"
+    },
+    {
+      "type": "select",
+      "id": "aspect_ratio",
+      "label": "Aspect Ratio",
+      "visible_if": "{{ block.settings.height_mode == 'auto' }}",
+      "options": [
+        {
+          "value": "auto",
+          "label": "Auto (media's natural height)"
+        },
+        {
+          "value": "21 / 9",
+          "label": "Ultrawide (21:9)"
+        },
+        {
+          "value": "16 / 9",
+          "label": "Landscape (16:9)"
+        },
+        {
+          "value": "3 / 2",
+          "label": "Landscape (3:2)"
+        },
+        {
+          "value": "4 / 3",
+          "label": "Landscape (4:3)"
+        },
+        {
+          "value": "1 / 1",
+          "label": "Square (1:1)"
+        },
+        {
+          "value": "4 / 5",
+          "label": "Portrait (4:5)"
+        },
+        {
+          "value": "3 / 4",
+          "label": "Portrait (3:4)"
+        },
+        {
+          "value": "9 / 16",
+          "label": "Tall (9:16)"
+        }
+      ],
+      "default": "1 / 1"
+    },
+    {
+      "type": "select",
+      "id": "object_fit",
+      "label": "Image Fit",
+      "options": [
+        {
+          "value": "cover",
+          "label": "Cover (Crop to fill)"
+        },
+        {
+          "value": "contain",
+          "label": "Contain (No cropping)"
+        },
+        {
+          "value": "fill",
+          "label": "Fill (Stretch to fit)"
+        }
+      ],
+      "default": "cover"
+    },
+    {
+      "type": "header",
+      "content": "Clipped Image Overlay",
+      "info": "Place a decorative image over the image."
+    },
+    {
+      "type": "checkbox",
+      "id": "enable_clipped_image",
+      "label": "Enable Clipped Image",
+      "default": false
+    },
+    {
+      "type": "image_picker",
+      "id": "clipped_image",
+      "label": "Overlay Image",
+      "visible_if": "{{ block.settings.enable_clipped_image }}"
+    },
+    {
+      "type": "select",
+      "id": "clipped_image_shape",
+      "label": "Clip Shape",
+      "options": [
+        { "value": "none", "label": "None" },
+        { "value": "circle", "label": "Circle" },
+        { "value": "diamond", "label": "Diamond" },
+        { "value": "hexagon", "label": "Hexagon" },
+        { "value": "blob", "label": "Blob" }
+      ],
+      "default": "circle",
+      "visible_if": "{{ block.settings.enable_clipped_image }}"
+    },
+    {
+      "type": "range",
+      "id": "clipped_image_width",
+      "label": "Overlay Size",
+      "min": 10,
+      "max": 100,
+      "step": 1,
+      "unit": "%",
+      "default": 35,
+      "visible_if": "{{ block.settings.enable_clipped_image }}"
+    },
+    {
+      "type": "range",
+      "id": "clipped_image_position_x",
+      "label": "Horizontal Position",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "%",
+      "default": 50,
+      "visible_if": "{{ block.settings.enable_clipped_image }}"
+    },
+    {
+      "type": "range",
+      "id": "clipped_image_position_y",
+      "label": "Vertical Position",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "%",
+      "default": 50,
+      "visible_if": "{{ block.settings.enable_clipped_image }}"
+    },
+    {
+      "type": "range",
+      "id": "clipped_image_rotation",
+      "label": "Rotation",
+      "min": -180,
+      "max": 180,
+      "step": 4,
+      "unit": "deg",
+      "default": 0,
+      "visible_if": "{{ block.settings.enable_clipped_image }}"
+    },
+    {
+      "type": "range",
+      "id": "clipped_image_opacity",
+      "label": "Opacity",
+      "min": 10,
+      "max": 100,
+      "step": 1,
+      "unit": "%",
+      "default": 100,
+      "visible_if": "{{ block.settings.enable_clipped_image }}"
+    },
+    {
+      "type": "range",
+      "id": "clipped_image_radius",
+      "label": "Corner Radius",
+      "min": 0,
+      "max": 50,
+      "step": 1,
+      "unit": "%",
+      "default": 0,
+      "visible_if": "{{ block.settings.enable_clipped_image }}"
+    }
+  ],
+  "presets": [
+    {
+      "name": "Image"
+    }
+  ]
+}
+{% endschema %}

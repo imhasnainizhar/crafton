@@ -1,0 +1,122 @@
+{%- comment -%}
+  Article Meta Row — lays its article field children (author, date, minutes
+  read) out on one wrapping line with an optional separator between them.
+  Pure layout: a flex row whose separator is a ::before on every child after
+  the first, so it needs no extra markup. Its children read `closest.article`,
+  which Shopify resolves through this row to the nearest article above it.
+{%- endcomment -%}
+
+{% stylesheet %}
+  .art-meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: var(--art-meta-justify);
+    column-gap: var(--art-meta-gap);
+    row-gap: 0.35rem;
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .art-meta > * {
+    min-width: 0;
+  }
+
+  .art-meta--sep-dot > * + *::before,
+  .art-meta--sep-bar > * + *::before {
+    display: inline-block;
+    margin-inline-end: var(--art-meta-gap);
+    color: var(--color-soft-text);
+    opacity: 0.8;
+  }
+
+  .art-meta--sep-dot > * + *::before { content: '\00B7'; }
+  .art-meta--sep-bar > * + *::before { content: '|'; }
+{% endstylesheet %}
+
+{%- liquid
+  case block.settings.justify
+    when 'center'
+      assign justify = 'center'
+    when 'end'
+      assign justify = 'flex-end'
+    when 'between'
+      assign justify = 'space-between'
+    else
+      assign justify = 'flex-start'
+  endcase
+-%}
+
+{% style %}
+  .art-meta--{{ block.id }} {
+    --art-meta-justify: {{ justify }};
+    --art-meta-gap: {{ block.settings.gap }}px;
+  }
+{% endstyle %}
+
+<div class="art-meta art-meta--{{ block.id }}{% if block.settings.separator != 'none' %}{% if block.settings.separator == 'dot' %} art-meta--sep-dot{% else %} art-meta--sep-bar{% endif %}{% endif %}" {{ block.shopify_attributes }}>
+  {%- comment -%} closest.article resolves through ancestors on its own. {%- endcomment -%}
+  {% content_for 'blocks' %}
+</div>
+
+{% schema %}
+{
+  "name": "Meta Row",
+  "tag": null,
+  "settings": [
+    {
+      "type": "header",
+      "content": "Meta Row",
+      "info": "Puts the author, date and minutes read side by side."
+    },
+    {
+      "type": "select",
+      "id": "separator",
+      "label": "Separator",
+      "options": [
+        { "value": "dot", "label": "Dot" },
+        { "value": "line", "label": "Line" },
+        { "value": "none", "label": "None" }
+      ],
+      "default": "dot"
+    },
+    {
+      "type": "range",
+      "id": "gap",
+      "label": "Space between items",
+      "min": 4,
+      "max": 32,
+      "step": 2,
+      "unit": "px",
+      "default": 10
+    },
+    {
+      "type": "select",
+      "id": "justify",
+      "label": "Placement",
+      "options": [
+        { "value": "start", "label": "Start" },
+        { "value": "center", "label": "Center" },
+        { "value": "end", "label": "End" },
+        { "value": "between", "label": "Spread out" }
+      ],
+      "default": "start"
+    }
+  ],
+  "blocks": [
+    { "type": "_article_author" },
+    { "type": "_article_date" },
+    { "type": "_article_read_time" }
+  ],
+  "presets": [
+    {
+      "name": "Meta Row",
+      "blocks": {
+        "author": { "type": "_article_author" },
+        "read_time": { "type": "_article_read_time" }
+      },
+      "block_order": ["author", "read_time"]
+    }
+  ]
+}
+{% endschema %}

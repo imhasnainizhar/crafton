@@ -1,0 +1,309 @@
+{%- comment -%}
+  Marquee Item — one repeating unit inside the Marquee section's scrolling
+  track. An inline-flex row that nests Marquee Icon and Marquee Text blocks
+  (e.g. "icon + text" or "text alone"). Brand Icon is not a child here — it is
+  added directly to the Marquee section. The section (sections/marquee.liquid)
+  controls the gap BETWEEN items; this block only controls the gap WITHIN one
+  item, between its own children.
+{%- endcomment -%}
+
+{%- liquid
+  # Two independent axes: style (base|accent) picks the colour family in BOTH
+  # modes; cookie_mode decides whether there is a surface. Classic emits no
+  # background, border or padding and never resolves accent contrast.
+  assign mi_style = block.settings.style | default: 'base'
+  assign mi_cookie = false
+  if block.settings.cookie_mode == 'cookie'
+    assign mi_cookie = true
+  endif
+
+  assign mi_accent_surface = false
+  if mi_cookie and mi_style == 'accent'
+    assign mi_accent_surface = true
+  endif
+
+  assign mi_has_bg = false
+  if mi_cookie
+    if mi_accent_surface and block.settings.accent_contrast == 'filled'
+      assign mi_has_bg = true
+    elsif block.settings.cookie_bg
+      assign mi_has_bg = true
+    endif
+  endif
+
+  assign mi_has_border = false
+  if mi_cookie and block.settings.cookie_border
+    assign mi_has_border = true
+  endif
+
+  capture mi_base_bg
+    render 'background-role-token', key: block.settings.background_role
+  endcapture
+-%}
+
+{% style %}
+  .marquee-item--{{ block.id }} {
+    {%- if mi_style == 'accent' %}
+    {% render 'accent-resolver', source: block.settings %}
+    {%- endif %}
+    display: inline-flex;
+    flex-shrink: 0;
+    align-items: center;
+    {% if block.settings.height == 'stretch' %}
+      align-self: stretch
+    {% else %}
+      align-self: unset
+    {% endif %};
+    gap: {{ block.settings.internal_gap }}rem;
+
+    {%- if mi_accent_surface %}
+    {% render 'accent-contrast-resolver', source: block.settings %}
+    {%- elsif mi_style == 'accent' %}
+    color: var(--color-accent);
+    {%- else %}
+    color: var(--color-text);
+    {%- endif %}
+
+    {%- if mi_has_bg and mi_accent_surface == false %}
+    background-color: {{ mi_base_bg }};
+    {%- endif %}
+
+    {%- if mi_cookie %}
+    padding: {{ block.settings.padding_vertical }}rem {{ block.settings.padding_horizontal }}rem;
+    {% if block.settings.cookie_radius_style == 'custom' %}
+      border-radius: {{ block.settings.cookie_border_radius }}px;
+    {% else %}
+      border-radius: 9999px;
+    {% endif %}
+    {%- endif %}
+
+    {%- if mi_has_border %}
+    border: {{ block.settings.border_width }}px solid {% if mi_accent_surface %}var(--color-accent-border){% else %}var(--color-border){% endif %};
+    {%- endif %}
+  }
+{% endstyle %}
+
+<div class="marquee-item marquee-item--{{ block.id }}" {{ block.shopify_attributes }}>
+  {% content_for 'blocks' %}
+</div>
+
+{% schema %}
+{
+  "name": "Marquee Item",
+  "tag": null,
+  "settings": [
+    {
+      "type": "header",
+      "content": "Marquee Item",
+      "info": "One repeating unit of the marquee. Nest a Marquee Icon and/or Marquee Text block inside it. Brand Icon is available directly in the Marquee section."
+    },
+    {
+      "type": "select",
+      "id": "height",
+      "label": "Height",
+      "options": [
+        {
+          "value": "stretch",
+          "label": "Stretch"
+        },
+        {
+          "value": "auto",
+          "label": "Auto"
+        }
+      ],
+      "default": "stretch"
+    },
+    {
+      "type": "select",
+      "id": "style",
+      "label": "Style",
+      "options": [
+        {
+          "value": "base",
+          "label": "Base"
+        },
+        {
+          "value": "accent",
+          "label": "Accent"
+        }
+      ],
+      "default": "base"
+    },
+    {
+      "type": "select",
+      "id": "accent_selected",
+      "label": "Accent",
+      "info": "Which accent this item uses. Independent of Mode.",
+      "options": [
+        {
+          "value": "neutral",
+          "label": "Neutral"
+        },
+        {
+          "value": "soft",
+          "label": "Soft"
+        },
+        {
+          "value": "strong",
+          "label": "Strong"
+        }
+      ],
+      "default": "neutral",
+      "visible_if": "{{ block.settings.style == 'accent' }}"
+    },
+    {
+      "type": "select",
+      "id": "cookie_mode",
+      "label": "Mode",
+      "options": [
+        {
+          "value": "classic",
+          "label": "Classic"
+        },
+        {
+          "value": "cookie",
+          "label": "Cookie"
+        }
+      ],
+      "default": "classic"
+    },
+    {
+      "type": "select",
+      "id": "background_role",
+      "label": "Background",
+      "options": [
+        {
+          "value": "base",
+          "label": "Base"
+        },
+        {
+          "value": "surface",
+          "label": "Surface"
+        }
+      ],
+      "default": "surface",
+      "visible_if": "{{ block.settings.cookie_mode == 'cookie' and block.settings.style == 'base' }}"
+    },
+    {
+      "type": "select",
+      "id": "accent_contrast",
+      "label": "Accent Contrast",
+      "options": [
+        {
+          "value": "subtle",
+          "label": "Subtle"
+        },
+        {
+          "value": "filled",
+          "label": "Filled"
+        }
+      ],
+      "default": "filled",
+      "visible_if": "{{ block.settings.cookie_mode == 'cookie' and block.settings.style == 'accent' }}"
+    },
+    {
+      "type": "checkbox",
+      "id": "cookie_bg",
+      "label": "Show Background",
+      "default": true,
+      "visible_if": "{{ block.settings.cookie_mode == 'cookie' and block.settings.style == 'base' }}"
+    },
+    {
+      "type": "checkbox",
+      "id": "cookie_border",
+      "label": "Show Border",
+      "default": true,
+      "visible_if": "{{ block.settings.cookie_mode == 'cookie' }}"
+    },
+    {
+      "type": "select",
+      "id": "cookie_radius_style",
+      "label": "Border Radius",
+      "options": [
+        {
+          "value": "rounded",
+          "label": "Rounded"
+        },
+        {
+          "value": "custom",
+          "label": "Custom"
+        }
+      ],
+      "default": "rounded",
+      "visible_if": "{{ block.settings.cookie_mode == 'cookie' }}"
+    },
+    {
+      "type": "range",
+      "id": "cookie_border_radius",
+      "label": "Corner Radius",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "px",
+      "default": 20,
+      "visible_if": "{{ block.settings.cookie_mode == 'cookie' and block.settings.cookie_radius_style == 'custom' }}"
+    },
+    {
+      "type": "range",
+      "id": "internal_gap",
+      "label": "Gap between items",
+      "min": 0,
+      "max": 2,
+      "step": 0.1,
+      "unit": "rem",
+      "default": 0.6
+    },
+    {
+      "type": "header",
+      "content": "Cookie Mode",
+      "visible_if": "{{ block.settings.cookie_mode == 'cookie' }}"
+    },
+    {
+      "type": "range",
+      "id": "padding_vertical",
+      "label": "Vertical Padding",
+      "min": 0,
+      "max": 2,
+      "step": 0.1,
+      "unit": "rem",
+      "default": 0.5,
+      "visible_if": "{{ block.settings.cookie_mode == 'cookie' }}"
+    },
+    {
+      "type": "range",
+      "id": "padding_horizontal",
+      "label": "Horizontal Padding",
+      "min": 0,
+      "max": 4,
+      "step": 0.1,
+      "unit": "rem",
+      "default": 1.5,
+      "visible_if": "{{ block.settings.cookie_mode == 'cookie' }}"
+    },
+    {
+      "type": "range",
+      "id": "border_width",
+      "label": "Border Width",
+      "min": 1,
+      "max": 5,
+      "step": 1,
+      "unit": "px",
+      "default": 1,
+      "visible_if": "{{ block.settings.cookie_mode == 'cookie' }}"
+    }
+  ],
+  "blocks": [
+    {
+      "type": "_marquee_icon"
+    },
+    {
+      "type": "_marquee_text"
+    }
+  ],
+  "presets": [
+    {
+      "name": "Marquee Item"
+    }
+  ]
+}
+{% endschema %}

@@ -1,0 +1,195 @@
+{%- comment -%}
+  Marquee Icon — a compact, single-line icon designed only for Marquee Item.
+  It intentionally keeps the shared Icon block's drawing controls out of the
+  ticker so the nested block remains focused on a small decorative glyph.
+{%- endcomment -%}
+
+{%- liquid
+  # Style is the only colour axis. Marquee Icon has no Cookie mode: it is a
+  # bare glyph in a ticker, with no backing surface to configure.
+  assign icon_color = 'inherit'
+  if block.settings.style == 'accent'
+    assign icon_color = 'var(--color-accent)'
+  endif
+
+  assign icon_size_min_mobile = block.settings.icon_size_min_mobile | default: 18
+  assign icon_size_max_mobile = block.settings.icon_size_max_mobile | default: 26
+  assign icon_size_min_desktop = block.settings.icon_size_min_desktop | default: 22
+  assign icon_size_max_desktop = block.settings.icon_size_max_desktop | default: 32
+-%}
+
+{% style %}
+  {% if block.settings.style == 'accent' %}
+    .marquee-icon--{{ block.id }} {
+      {% render 'accent-resolver', source: block.settings %}
+    }
+  {% endif %}
+
+  .marquee-icon--{{ block.id }} {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    box-sizing: content-box;
+    flex: 0 0 auto;
+    --marquee-icon-size: {% render 'fluid-clamp', min: icon_size_min_mobile, max: icon_size_max_mobile %};
+    width: var(--marquee-icon-size);
+    height: var(--marquee-icon-size);
+    color: {{ icon_color }};
+  }
+
+  .marquee-icon--{{ block.id }} svg,
+  .marquee-icon--{{ block.id }} img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+  }
+
+  @media (min-width: 768px) {
+    .marquee-icon--{{ block.id }} {
+      --marquee-icon-size: {% render 'fluid-clamp', min: icon_size_min_desktop, max: icon_size_max_desktop %};
+      width: var(--marquee-icon-size);
+      height: var(--marquee-icon-size);
+    }
+  }
+{% endstyle %}
+
+<span class="marquee-icon marquee-icon--{{ block.id }}" {{ block.shopify_attributes }}>
+  {% if block.settings.icon_source == 'upload' and block.settings.icon_image != blank %}
+    {{ block.settings.icon_image | image_url: width: 200 | image_tag: alt: '', loading: 'lazy' }}
+  {% elsif block.settings.icon_source == 'text' and block.settings.icon_svg != blank %}
+    {{ block.settings.icon_svg }}
+  {% else %}
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <circle cx="12" cy="12" r="9" />
+      <path d="M3 12h18" />
+      <path d="M12 3c2.6 2.5 4 5.5 4 9s-1.4 6.5-4 9c-2.6-2.5-4-5.5-4-9s1.4-6.5 4-9Z" />
+    </svg>
+  {% endif %}
+</span>
+
+{% schema %}
+{
+  "name": "Marquee Icon",
+  "tag": null,
+  "settings": [
+    {
+      "type": "header",
+      "content": "Icon",
+      "info": "A compact decorative icon for a Marquee Item."
+    },
+    {
+      "type": "select",
+      "id": "icon_source",
+      "label": "Icon Source",
+      "options": [
+        {
+          "value": "upload",
+          "label": "Upload"
+        },
+        {
+          "value": "text",
+          "label": "Text"
+        }
+      ],
+      "default": "text"
+    },
+    {
+      "type": "image_picker",
+      "id": "icon_image",
+      "label": "Icon image",
+      "visible_if": "{{ block.settings.icon_source == 'upload' }}"
+    },
+    {
+      "type": "html",
+      "id": "icon_svg",
+      "label": "Icon (SVG code)",
+      "info": "Use currentColor in the SVG so it follows the color scheme.",
+      "visible_if": "{{ block.settings.icon_source == 'text' }}"
+    },
+    {
+      "type": "select",
+      "id": "style",
+      "label": "Style",
+      "info": "Base inherits the surrounding text colour; Accent uses the selected accent colour.",
+      "options": [
+        {
+          "value": "base",
+          "label": "Base"
+        },
+        {
+          "value": "accent",
+          "label": "Accent"
+        }
+      ],
+      "default": "base"
+    },
+    {
+      "type": "select",
+      "id": "accent_selected",
+      "label": "Choose Accent",
+      "options": [
+        {
+          "value": "neutral",
+          "label": "Neutral"
+        },
+        {
+          "value": "soft",
+          "label": "Soft"
+        },
+        {
+          "value": "strong",
+          "label": "Strong"
+        }
+      ],
+      "default": "neutral",
+      "visible_if": "{{ block.settings.style == 'accent' }}"
+    },
+    {
+      "type": "range",
+      "id": "icon_size_min_mobile",
+      "label": "Mobile Size Minimum",
+      "min": 12,
+      "max": 64,
+      "step": 2,
+      "unit": "px",
+      "default": 18
+    },
+    {
+      "type": "range",
+      "id": "icon_size_max_mobile",
+      "label": "Mobile Size Maximum",
+      "min": 12,
+      "max": 64,
+      "step": 2,
+      "unit": "px",
+      "default": 26
+    },
+    {
+      "type": "range",
+      "id": "icon_size_min_desktop",
+      "label": "Desktop Size Minimum",
+      "min": 12,
+      "max": 80,
+      "step": 2,
+      "unit": "px",
+      "default": 22
+    },
+    {
+      "type": "range",
+      "id": "icon_size_max_desktop",
+      "label": "Desktop Size Maximum",
+      "min": 12,
+      "max": 80,
+      "step": 2,
+      "unit": "px",
+      "default": 32
+    }
+  ],
+  "presets": [
+    {
+      "name": "Marquee Icon"
+    }
+  ]
+}
+{% endschema %}

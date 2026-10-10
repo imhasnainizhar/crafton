@@ -1,0 +1,1154 @@
+{%- comment -%}
+  Image — a full-bleed image stage, height driven by aspect ratio per
+  breakpoint (or the viewport in Full Height Mode), with an optional Heading
+  block floating on top. No other text blocks are allowed. Overlay treatment
+  (tint / shadow) comes from snippets/media-overlay-tint.liquid, shared with
+  the Video section.
+{%- endcomment -%}
+
+{%- liquid
+  assign ar_mobile = section.settings.aspect_mobile | default: '4 / 5'
+  assign ar_desktop = section.settings.aspect_desktop | default: '16 / 9'
+
+  assign has_mobile_image = false
+  if section.settings.mobile_image != blank
+    assign has_mobile_image = true
+  endif
+
+  assign desktop_classes = 'media-element'
+  if has_mobile_image
+    assign desktop_classes = 'media-element hide-mobile'
+  endif
+
+  assign media_zoom_on = false
+  if section.settings.media_zoom_enabled and settings.disable_all_animations == false
+    assign media_zoom_on = true
+  endif
+
+  assign full_height_mode = section.settings.full_height_mode
+  assign design_mode_mobile = section.settings.design_mode_mobile
+  assign design_mode_desktop = section.settings.design_mode_desktop
+-%}
+
+{% style %}
+  /* Mobile-first base + single 768px desktop override. */
+  .image-section--{{ section.id }} {
+    {% render 'section-design-mode', section_settings: section.settings %}
+    --image-media-radius: var(--ds-layout-radius-mobile);
+    background-color: var(--color-base);
+    color: var(--color-text);
+    overflow-x: clip;
+    overflow-y: visible;
+  }
+
+  .image-section--{{ section.id }} .image-section__rail {
+    padding-inline: var(--ds-layout-gutter-mobile);
+    padding-block: var(--ds-section-padding-mobile);
+
+    {% if section.settings.design_mode_mobile == 'modern' %}
+      box-sizing: border-box;
+    {% else %}
+      {% if section.settings.full_height_mode %}
+        box-sizing: content-box;
+      {% endif %}
+    {% endif %}
+
+    {% if full_height_mode %}
+      height: var(--viewport-height, 100vh);
+    {% endif %}
+  }
+
+  .image-section--{{ section.id }} .image-section__stage {
+    position: relative;
+    width: 100%;
+    border-radius: var(--image-media-radius);
+    overflow: hidden;
+
+    {% if full_height_mode %}
+      height: 100%;
+    {% elsif ar_mobile != 'auto' %}
+      aspect-ratio: {{ ar_mobile }};
+    {% endif %}
+  }
+
+  .image-section--{{ section.id }} .image-section__media {
+    z-index: 1;
+    {% if full_height_mode %}
+      position: absolute;
+      inset: 0;
+      overflow: hidden;
+    {% elsif ar_mobile == 'auto' %}
+      position: relative;
+    {% else %}
+      position: absolute;
+      inset: 0;
+      overflow: hidden;
+    {% endif %}
+  }
+
+  .image-section--{{ section.id }} .media-element {
+    object-fit: {{ section.settings.object_fit }};
+    {% if full_height_mode %}
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+    {% elsif ar_mobile == 'auto' %}
+      position: static;
+      display: block;
+      width: 100%;
+      height: auto;
+    {% else %}
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+    {% endif %}
+  }
+
+  .image-section--{{ section.id }} .image-section__motion {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    {%- if media_zoom_on %}
+      {% render 'motion-reveal', part: 'vars', from: section.settings, prefix: 'media_zoom', enabled: media_zoom_on %}
+    {%- endif %}
+  }
+
+  {% if ar_mobile == 'auto' and full_height_mode == false %}
+    .image-section--{{ section.id }} .image-section__motion {
+      height: auto;
+    }
+  {% endif %}
+
+  .image-section--{{ section.id }} .placeholder-svg {
+    background-color: var(--color-surface);
+    fill: var(--color-text);
+  }
+
+  .image-section--{{ section.id }} .hide-mobile {
+    display: none;
+  }
+
+  @media screen and (min-width: 768px) {
+    .image-section--{{ section.id }} {
+      --image-media-radius: var(--ds-layout-radius-desktop);
+    }
+
+    .image-section--{{ section.id }} .image-section__rail {
+      padding-inline: var(--ds-layout-gutter-desktop);
+      padding-block: var(--ds-section-padding-desktop);
+
+      {% if section.settings.design_mode_desktop == 'modern' %}
+        box-sizing: border-box;
+      {% else %}
+        {% if section.settings.full_height_mode %}
+          box-sizing: content-box;
+        {% endif %}
+      {% endif %}
+
+      {% if full_height_mode %}
+        height: var(--viewport-height, 100vh);
+      {% endif %}
+    }
+    .image-section--{{ section.id }} .hide-mobile {
+      display: block;
+    }
+
+    .image-section--{{ section.id }} .hide-desktop {
+      display: none;
+    }
+
+    .image-section--{{ section.id }} .image-section__stage {
+      border-radius: var(--image-media-radius);
+
+      {% if full_height_mode %}
+        height: 100%;
+      {% else %}
+        aspect-ratio: {{ ar_desktop }};
+      {% endif %}
+    }
+
+    {% unless full_height_mode %}
+      {% if ar_desktop == 'auto' and ar_mobile != 'auto' %}
+        .image-section--{{ section.id }} .image-section__media {
+          position: relative;
+          inset: auto;
+        }
+        .image-section--{{ section.id }} .media-element {
+          position: static;
+          inset: auto;
+          width: 100%;
+          height: auto;
+          display: block;
+        }
+      {% elsif ar_desktop != 'auto' and ar_mobile == 'auto' %}
+        .image-section--{{ section.id }} .image-section__media {
+          position: absolute;
+          inset: 0;
+          overflow: hidden;
+        }
+        .image-section--{{ section.id }} .media-element {
+          position: absolute;
+          inset: 0;
+          width: 100%;
+          height: 100%;
+        }
+      {% endif %}
+    {% endunless %}
+  }
+{% endstyle %}
+
+<div class="image-section--{{ section.id }} color-{{ section.settings.color_scheme }}">
+  <div class="image-section__rail">
+    <div class="image-section__stage">
+    <div
+      class="image-section__media"
+    >
+      <div
+        class="image-section__motion {% render 'motion-reveal', part: 'class', from: section.settings, prefix: 'media_zoom', enabled: media_zoom_on, effect: 'media-zoom-out' %}"
+      >
+        {%- if section.settings.image != blank -%}
+          {{
+            section.settings.image
+            | image_url: width: 2000
+            | image_tag:
+              loading: 'lazy',
+              sizes: '100vw',
+              widths: '550, 750, 1100, 1500, 1780, 2000',
+              class: desktop_classes,
+              alt: section.settings.image.alt
+          }}
+        {%- else -%}
+          {%- assign placeholder_class = desktop_classes | append: ' placeholder-svg' -%}
+          {{ 'lifestyle-2' | placeholder_svg_tag: placeholder_class }}
+        {%- endif -%}
+
+        {%- if has_mobile_image -%}
+          {{
+            section.settings.mobile_image
+            | image_url: width: 1100
+            | image_tag:
+              loading: 'lazy',
+              sizes: '100vw',
+              widths: '375, 550, 750, 1100',
+              class: 'media-element hide-desktop',
+              alt: section.settings.mobile_image.alt
+          }}
+        {%- endif -%}
+      </div>
+    </div>
+
+    {% render 'media-overlay-tint', id: section.id, s: section.settings %}
+
+    <div class="mc-content mc-content--{{ section.id }}">
+      {% content_for 'blocks' %}
+    </div>
+    </div>
+  </div>
+</div>
+
+{% schema %}
+{
+  "name": "Image",
+  "disabled_on": {
+    "templates": [
+      "page",
+      "blog"
+    ]
+  },
+  "settings": [
+    {
+      "type": "header",
+      "content": "Section",
+      "info": "A single image with an optional heading on top."
+    },
+    {
+      "type": "color_scheme",
+      "id": "color_scheme",
+      "label": "Color Scheme",
+      "default": "scheme_1"
+    },
+    {
+      "type": "header",
+      "content": "Design Mode"
+    },
+    {
+      "type": "select",
+      "id": "section_design_mode",
+      "label": "Section Design Mode",
+      "info": "Auto: inherit all theme settings. Blend: use this section's values with the theme's responsive Design Mode. Custom: use this section's Design Mode and Design System values.",
+      "options": [
+        {
+          "value": "auto",
+          "label": "Auto"
+        },
+        {
+          "value": "blend",
+          "label": "Blend"
+        },
+        {
+          "value": "custom",
+          "label": "Custom"
+        }
+      ],
+      "default": "auto"
+    },
+    {
+      "type": "select",
+      "id": "design_mode_desktop",
+      "label": "Desktop Design Mode",
+      "options": [
+        {
+          "value": "modern",
+          "label": "Modern"
+        },
+        {
+          "value": "minimal",
+          "label": "Minimal"
+        }
+      ],
+      "default": "modern",
+      "visible_if": "{{ section.settings.section_design_mode == 'custom' }}"
+    },
+    {
+      "type": "select",
+      "id": "design_mode_mobile",
+      "label": "Mobile Design Mode",
+      "options": [
+        {
+          "value": "modern",
+          "label": "Modern"
+        },
+        {
+          "value": "minimal",
+          "label": "Minimal"
+        }
+      ],
+      "default": "modern",
+      "visible_if": "{{ section.settings.section_design_mode == 'custom' }}"
+    },
+    {
+      "type": "header",
+      "content": "Spacing",
+      "visible_if": "{{ section.settings.section_design_mode == 'custom' or section.settings.section_design_mode == 'blend' }}"
+    },
+    {
+      "type": "select",
+      "id": "design_section_padding_desktop",
+      "label": "Section padding (desktop)",
+      "options": [
+        {
+          "value": "none",
+          "label": "None"
+        },
+        {
+          "value": "xs",
+          "label": "Extra small"
+        },
+        {
+          "value": "sm",
+          "label": "Small"
+        },
+        {
+          "value": "md",
+          "label": "Medium"
+        },
+        {
+          "value": "lg",
+          "label": "Large"
+        },
+        {
+          "value": "xl",
+          "label": "Extra large"
+        },
+        {
+          "value": "2xl",
+          "label": "Maximum"
+        }
+      ],
+      "default": "xl",
+      "visible_if": "{{ section.settings.section_design_mode == 'custom' or section.settings.section_design_mode == 'blend' }}"
+    },
+    {
+      "type": "select",
+      "id": "design_section_padding_mobile",
+      "label": "Section padding (mobile)",
+      "options": [
+        {
+          "value": "none",
+          "label": "None"
+        },
+        {
+          "value": "xs",
+          "label": "Extra small"
+        },
+        {
+          "value": "sm",
+          "label": "Small"
+        },
+        {
+          "value": "md",
+          "label": "Medium"
+        },
+        {
+          "value": "lg",
+          "label": "Large"
+        },
+        {
+          "value": "xl",
+          "label": "Extra large"
+        },
+        {
+          "value": "2xl",
+          "label": "Maximum"
+        }
+      ],
+      "default": "lg",
+      "visible_if": "{{ section.settings.section_design_mode == 'custom' or section.settings.section_design_mode == 'blend' }}"
+    },
+    {
+      "type": "select",
+      "id": "design_layout_gap_desktop",
+      "label": "Layout Gap (Desktop)",
+      "options": [
+        {
+          "value": "none",
+          "label": "None"
+        },
+        {
+          "value": "xs",
+          "label": "Extra small"
+        },
+        {
+          "value": "sm",
+          "label": "Small"
+        },
+        {
+          "value": "md",
+          "label": "Medium"
+        },
+        {
+          "value": "lg",
+          "label": "Large"
+        },
+        {
+          "value": "xl",
+          "label": "Extra large"
+        }
+      ],
+      "default": "md",
+      "visible_if": "{{ section.settings.section_design_mode == 'custom' or section.settings.section_design_mode == 'blend' }}"
+    },
+    {
+      "type": "select",
+      "id": "design_layout_gap_mobile",
+      "label": "Layout Gap (Mobile)",
+      "options": [
+        {
+          "value": "none",
+          "label": "None"
+        },
+        {
+          "value": "xs",
+          "label": "Extra small"
+        },
+        {
+          "value": "sm",
+          "label": "Small"
+        },
+        {
+          "value": "md",
+          "label": "Medium"
+        },
+        {
+          "value": "lg",
+          "label": "Large"
+        },
+        {
+          "value": "xl",
+          "label": "Extra large"
+        }
+      ],
+      "default": "sm",
+      "visible_if": "{{ section.settings.section_design_mode == 'custom' or section.settings.section_design_mode == 'blend' }}"
+    },
+    {
+      "type": "header",
+      "content": "Layout",
+      "visible_if": "{{ section.settings.section_design_mode == 'custom' or section.settings.section_design_mode == 'blend' }}"
+    },
+    {
+      "type": "checkbox",
+      "id": "design_enable_minimal_gutter",
+      "label": "Enable gutter in Minimal mode",
+      "default": false,
+      "visible_if": "{{ section.settings.section_design_mode == 'custom' or section.settings.section_design_mode == 'blend' }}"
+    },
+    {
+      "type": "select",
+      "id": "design_gutter_desktop",
+      "label": "Gutter (desktop)",
+      "options": [
+        {
+          "value": "none",
+          "label": "None"
+        },
+        {
+          "value": "xs",
+          "label": "Extra small"
+        },
+        {
+          "value": "sm",
+          "label": "Small"
+        },
+        {
+          "value": "md",
+          "label": "Medium"
+        },
+        {
+          "value": "lg",
+          "label": "Large"
+        },
+        {
+          "value": "xl",
+          "label": "Extra large"
+        }
+      ],
+      "default": "lg",
+      "visible_if": "{{ section.settings.section_design_mode == 'custom' or section.settings.section_design_mode == 'blend' }}"
+    },
+    {
+      "type": "select",
+      "id": "design_gutter_mobile",
+      "label": "Gutter (mobile)",
+      "options": [
+        {
+          "value": "none",
+          "label": "None"
+        },
+        {
+          "value": "sm",
+          "label": "Small"
+        },
+        {
+          "value": "md",
+          "label": "Medium"
+        },
+        {
+          "value": "lg",
+          "label": "Large"
+        }
+      ],
+      "default": "md",
+      "visible_if": "{{ section.settings.section_design_mode == 'custom' or section.settings.section_design_mode == 'blend' }}"
+    },
+    {
+      "type": "range",
+      "id": "design_layout_radius_desktop",
+      "label": "Layout radius (desktop)",
+      "info": "Blend: this section's radius always applies, even when the theme is Minimal. Custom: Minimal Design Mode removes it.",
+      "min": 0,
+      "max": 80,
+      "step": 2,
+      "unit": "px",
+      "default": 24,
+      "visible_if": "{{ section.settings.section_design_mode == 'custom' or section.settings.section_design_mode == 'blend' }}"
+    },
+    {
+      "type": "range",
+      "id": "design_layout_radius_mobile",
+      "label": "Layout radius (mobile)",
+      "info": "Blend: this section's radius always applies, even when the theme is Minimal. Custom: Minimal Design Mode removes it.",
+      "min": 0,
+      "max": 60,
+      "step": 2,
+      "unit": "px",
+      "default": 16,
+      "visible_if": "{{ section.settings.section_design_mode == 'custom' or section.settings.section_design_mode == 'blend' }}"
+    },
+    {
+      "type": "header",
+      "content": "Section Width",
+      "info": "Independent of Design Mode — the width cap applies in both Modern and Minimal, in Blend as well as Custom, and only when enabled below."
+    },
+    {
+      "type": "checkbox",
+      "id": "design_enable_section_width",
+      "label": "Enable Section Width",
+      "default": false
+    },
+    {
+      "type": "select",
+      "id": "design_section_width_desktop",
+      "label": "Section Width (Desktop)",
+      "options": [
+        {
+          "value": "none",
+          "label": "None"
+        },
+        {
+          "value": "wide",
+          "label": "Wide"
+        },
+        {
+          "value": "max",
+          "label": "Maximum"
+        },
+        {
+          "value": "tv",
+          "label": "TV"
+        }
+      ],
+      "default": "tv",
+      "visible_if": "{{ section.settings.design_enable_section_width }}"
+    },
+    {
+      "type": "select",
+      "id": "design_section_width_mobile",
+      "label": "Section Width (Mobile)",
+      "options": [
+        {
+          "value": "none",
+          "label": "None"
+        },
+        {
+          "value": "wide",
+          "label": "Wide"
+        },
+        {
+          "value": "max",
+          "label": "Maximum"
+        }
+      ],
+      "default": "none",
+      "visible_if": "{{ section.settings.design_enable_section_width }}"
+    },
+    {
+      "type": "header",
+      "content": "Items Styling",
+      "visible_if": "{{ section.settings.section_design_mode == 'custom' or section.settings.section_design_mode == 'blend' }}"
+    },
+    {
+      "type": "checkbox",
+      "id": "design_enable_minimal_items_gap",
+      "label": "Enable Items Gap in Minimal Mode",
+      "default": false,
+      "visible_if": "{{ section.settings.section_design_mode == 'custom' or section.settings.section_design_mode == 'blend' }}"
+    },
+    {
+      "type": "range",
+      "id": "design_items_gap_desktop",
+      "label": "Items Gap (Desktop)",
+      "min": 0,
+      "max": 60,
+      "step": 2,
+      "unit": "px",
+      "default": 24,
+      "visible_if": "{{ section.settings.section_design_mode == 'custom' or section.settings.section_design_mode == 'blend' }}"
+    },
+    {
+      "type": "range",
+      "id": "design_items_gap_mobile",
+      "label": "Items Gap (Mobile)",
+      "min": 0,
+      "max": 40,
+      "step": 2,
+      "unit": "px",
+      "default": 16,
+      "visible_if": "{{ section.settings.section_design_mode == 'custom' or section.settings.section_design_mode == 'blend' }}"
+    },
+    {
+      "type": "range",
+      "id": "design_item_radius_desktop",
+      "label": "Item radius (desktop)",
+      "info": "Blend: this section's radius always applies, even when the theme is Minimal. Custom: Minimal Design Mode removes it.",
+      "min": 0,
+      "max": 50,
+      "step": 2,
+      "unit": "px",
+      "default": 12,
+      "visible_if": "{{ section.settings.section_design_mode == 'custom' or section.settings.section_design_mode == 'blend' }}"
+    },
+    {
+      "type": "range",
+      "id": "design_item_radius_mobile",
+      "label": "Item radius (mobile)",
+      "info": "Blend: this section's radius always applies, even when the theme is Minimal. Custom: Minimal Design Mode removes it.",
+      "min": 0,
+      "max": 50,
+      "step": 2,
+      "unit": "px",
+      "default": 12,
+      "visible_if": "{{ section.settings.section_design_mode == 'custom' or section.settings.section_design_mode == 'blend' }}"
+    },
+    {
+      "type": "select",
+      "id": "design_item_shadow",
+      "label": "Item shadow",
+      "options": [
+        {
+          "value": "none",
+          "label": "None"
+        },
+        {
+          "value": "sm",
+          "label": "Small"
+        },
+        {
+          "value": "md",
+          "label": "Medium"
+        },
+        {
+          "value": "lg",
+          "label": "Large"
+        }
+      ],
+      "default": "md",
+      "visible_if": "{{ section.settings.section_design_mode == 'custom' or section.settings.section_design_mode == 'blend' }}"
+    },
+    {
+      "type": "range",
+      "id": "design_item_border_width",
+      "label": "Item border width",
+      "min": 0,
+      "max": 10,
+      "step": 1,
+      "unit": "px",
+      "default": 1,
+      "visible_if": "{{ section.settings.section_design_mode == 'custom' or section.settings.section_design_mode == 'blend' }}"
+    },
+    {
+      "type": "range",
+      "id": "design_layout_border_width",
+      "label": "Layout border width",
+      "min": 0,
+      "max": 10,
+      "step": 1,
+      "unit": "px",
+      "default": 1,
+      "visible_if": "{{ section.settings.section_design_mode == 'custom' or section.settings.section_design_mode == 'blend' }}"
+    },
+    {
+      "type": "header",
+      "content": "Layout options",
+      "visible_if": "{{ section.settings.section_design_mode == 'custom' or section.settings.section_design_mode == 'blend' }}"
+    },
+    {
+      "type": "header",
+      "content": "Media"
+    },
+    {
+      "type": "image_picker",
+      "id": "image",
+      "label": "Image"
+    },
+    {
+      "type": "image_picker",
+      "id": "mobile_image",
+      "label": "Mobile Image",
+      "info": "If left blank, mobile uses the desktop image."
+    },
+    {
+      "type": "select",
+      "id": "object_fit",
+      "label": "Image Fit",
+      "options": [
+        {
+          "value": "cover",
+          "label": "Cover (Crop to fill)"
+        },
+        {
+          "value": "contain",
+          "label": "Contain (No cropping)"
+        },
+        {
+          "value": "fill",
+          "label": "Fill (Stretch to fit)"
+        }
+      ],
+      "default": "cover"
+    },
+    {
+      "type": "header",
+      "content": "Animations",
+      "info": "Turned off everywhere by Theme settings > Animations > Disable all animations."
+    },
+    {
+      "type": "checkbox",
+      "id": "media_zoom_enabled",
+      "label": "Zoom From Enlarged State On View",
+      "default": true
+    },
+    {
+      "type": "range",
+      "id": "media_zoom_duration",
+      "label": "Duration",
+      "min": 0.2,
+      "max": 1.5,
+      "step": 0.1,
+      "unit": "s",
+      "default": 0.8,
+      "visible_if": "{{ section.settings.media_zoom_enabled }}"
+    },
+    {
+      "type": "range",
+      "id": "media_zoom_delay",
+      "label": "Initial delay",
+      "min": 0,
+      "max": 2,
+      "step": 0.1,
+      "unit": "s",
+      "default": 0,
+      "visible_if": "{{ section.settings.media_zoom_enabled }}"
+    },
+    {
+      "type": "select",
+      "id": "media_zoom_ease",
+      "label": "Easing",
+      "options": [
+        {
+          "value": "out",
+          "label": "Smooth (ease out)"
+        },
+        {
+          "value": "out-strong",
+          "label": "Strong ease out"
+        },
+        {
+          "value": "back",
+          "label": "Overshoot (back)"
+        },
+        {
+          "value": "in-out",
+          "label": "Ease in-out"
+        },
+        {
+          "value": "linear",
+          "label": "Linear"
+        }
+      ],
+      "default": "out",
+      "visible_if": "{{ section.settings.media_zoom_enabled }}"
+    },
+    {
+      "type": "checkbox",
+      "id": "media_zoom_once",
+      "label": "Play once",
+      "info": "Turn off to reverse when the media leaves the viewport and replay on re-entry.",
+      "default": true,
+      "visible_if": "{{ section.settings.media_zoom_enabled }}"
+    },
+    {
+      "type": "header",
+      "content": "Layout"
+    },
+    {
+      "type": "checkbox",
+      "id": "full_height_mode",
+      "label": "Full Height Mode",
+      "info": "Fills the viewport height instead of using an aspect ratio. Gutters and section padding are still respected in Modern mode; Minimal mode goes fully edge-to-edge.",
+      "default": true
+    },
+    {
+      "type": "select",
+      "id": "aspect_mobile",
+      "label": "Aspect Ratio (Mobile)",
+      "visible_if": "{{ section.settings.full_height_mode == false }}",
+      "options": [
+        {
+          "value": "auto",
+          "label": "Auto (media's natural height)"
+        },
+        {
+          "value": "21 / 9",
+          "label": "Ultrawide (21:9)"
+        },
+        {
+          "value": "16 / 9",
+          "label": "Landscape (16:9)"
+        },
+        {
+          "value": "3 / 2",
+          "label": "Landscape (3:2)"
+        },
+        {
+          "value": "4 / 3",
+          "label": "Landscape (4:3)"
+        },
+        {
+          "value": "1 / 1",
+          "label": "Square (1:1)"
+        },
+        {
+          "value": "4 / 5",
+          "label": "Portrait (4:5)"
+        },
+        {
+          "value": "3 / 4",
+          "label": "Portrait (3:4)"
+        },
+        {
+          "value": "9 / 16",
+          "label": "Tall (9:16)"
+        }
+      ],
+      "default": "4 / 5"
+    },
+    {
+      "type": "select",
+      "id": "aspect_desktop",
+      "label": "Aspect Ratio (Desktop)",
+      "visible_if": "{{ section.settings.full_height_mode == false }}",
+      "options": [
+        {
+          "value": "auto",
+          "label": "Auto (media's natural height)"
+        },
+        {
+          "value": "21 / 9",
+          "label": "Ultrawide (21:9)"
+        },
+        {
+          "value": "16 / 9",
+          "label": "Landscape (16:9)"
+        },
+        {
+          "value": "3 / 2",
+          "label": "Landscape (3:2)"
+        },
+        {
+          "value": "4 / 3",
+          "label": "Landscape (4:3)"
+        },
+        {
+          "value": "1 / 1",
+          "label": "Square (1:1)"
+        },
+        {
+          "value": "4 / 5",
+          "label": "Portrait (4:5)"
+        },
+        {
+          "value": "3 / 4",
+          "label": "Portrait (3:4)"
+        },
+        {
+          "value": "9 / 16",
+          "label": "Tall (9:16)"
+        }
+      ],
+      "default": "16 / 9"
+    },
+    {
+      "type": "header",
+      "content": "Overlay",
+      "info": "Overlay washes the whole image; Shadow renders behind the heading and follows it."
+    },
+    {
+      "type": "select",
+      "id": "overlay_mode",
+      "label": "Overlay Mode",
+      "options": [
+        {
+          "value": "none",
+          "label": "None"
+        },
+        {
+          "value": "tint",
+          "label": "Overlay"
+        },
+        {
+          "value": "shadow",
+          "label": "Shadow"
+        }
+      ],
+      "default": "none"
+    },
+    {
+      "type": "range",
+      "id": "overlay_opacity",
+      "min": 0,
+      "max": 100,
+      "step": 5,
+      "unit": "%",
+      "label": "Overlay Opacity",
+      "visible_if": "{{ section.settings.overlay_mode == 'tint' }}",
+      "default": 15
+    },
+    {
+      "type": "range",
+      "id": "shadow_offset_x",
+      "min": -100,
+      "max": 100,
+      "step": 5,
+      "unit": "px",
+      "label": "Shadow Offset X",
+      "visible_if": "{{ section.settings.overlay_mode == 'shadow' }}",
+      "default": 0
+    },
+    {
+      "type": "range",
+      "id": "shadow_offset_y",
+      "min": -100,
+      "max": 100,
+      "step": 5,
+      "unit": "px",
+      "label": "Shadow Offset Y",
+      "visible_if": "{{ section.settings.overlay_mode == 'shadow' }}",
+      "default": 0
+    },
+    {
+      "type": "range",
+      "id": "shadow_blur",
+      "min": 0,
+      "max": 200,
+      "step": 5,
+      "unit": "px",
+      "label": "Shadow Depth (Blur)",
+      "visible_if": "{{ section.settings.overlay_mode == 'shadow' }}",
+      "default": 60
+    },
+    {
+      "type": "range",
+      "id": "shadow_spread",
+      "min": 0,
+      "max": 150,
+      "step": 5,
+      "unit": "px",
+      "label": "Shadow Spread",
+      "visible_if": "{{ section.settings.overlay_mode == 'shadow' }}",
+      "default": 20
+    },
+    {
+      "type": "range",
+      "id": "shadow_opacity",
+      "min": 0,
+      "max": 100,
+      "step": 5,
+      "unit": "%",
+      "label": "Shadow Opacity",
+      "visible_if": "{{ section.settings.overlay_mode == 'shadow' }}",
+      "default": 40
+    },
+    {
+      "type": "range",
+      "id": "shadow_radius",
+      "min": 0,
+      "max": 50,
+      "step": 2,
+      "unit": "px",
+      "label": "Shadow Corner Radius",
+      "visible_if": "{{ section.settings.overlay_mode == 'shadow' }}",
+      "default": 0
+    },
+    {
+      "type": "header",
+      "content": "Content"
+    },
+    {
+      "type": "header",
+      "content": "Content Alignment",
+      "info": "Positions the heading over the image."
+    },
+    {
+      "type": "text_alignment",
+      "id": "align_x_mobile",
+      "label": "Horizontal alignment (mobile)",
+      "default": "left"
+    },
+    {
+      "type": "text_alignment",
+      "id": "align_x_desktop",
+      "label": "Horizontal alignment (desktop)",
+      "default": "left"
+    },
+    {
+      "type": "select",
+      "id": "align_y_mobile",
+      "label": "Vertical alignment (mobile)",
+      "options": [
+        {
+          "value": "top",
+          "label": "Top"
+        },
+        {
+          "value": "center",
+          "label": "Middle"
+        },
+        {
+          "value": "bottom",
+          "label": "Bottom"
+        }
+      ],
+      "default": "bottom"
+    },
+    {
+      "type": "select",
+      "id": "align_y_desktop",
+      "label": "Vertical alignment (desktop)",
+      "options": [
+        {
+          "value": "top",
+          "label": "Top"
+        },
+        {
+          "value": "center",
+          "label": "Middle"
+        },
+        {
+          "value": "bottom",
+          "label": "Bottom"
+        }
+      ],
+      "default": "bottom"
+    },
+    {
+      "type": "range",
+      "id": "content_padding_vertical",
+      "min": 0,
+      "max": 10,
+      "step": 0.5,
+      "unit": "rem",
+      "label": "Content Vertical Padding",
+      "default": 1.5
+    },
+    {
+      "type": "range",
+      "id": "content_padding_horizontal",
+      "min": 0,
+      "max": 10,
+      "step": 0.5,
+      "unit": "rem",
+      "label": "Content Horizontal Padding",
+      "default": 1.5
+    }
+  ],
+  "presets": [
+    {
+      "name": "Image",
+      "category": "Media",
+      "settings": {
+        "overlay_mode": "tint"
+      },
+      "blocks": {
+        "head": {
+          "type": "heading",
+          "settings": {
+            "heading_text": "A picture worth a thousand words",
+            "heading_tag": "h2"
+          }
+        }
+      },
+      "block_order": [
+        "head"
+      ]
+    }
+  ],
+  "blocks": [
+    {
+      "type": "heading"
+    }
+  ]
+}
+{% endschema %}

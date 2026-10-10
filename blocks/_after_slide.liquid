@@ -1,0 +1,284 @@
+{%- comment -%}
+  After Slide (private) — owns the After media and overlay composition inside
+  blocks/_before_after.liquid. Allows Rich Content and Badge children.
+{%- endcomment -%}
+
+{%- liquid
+  assign align_x = block.settings.align_x | default: 'right'
+  assign align_items = 'flex-end'
+  if align_x == 'left'
+    assign align_items = 'flex-start'
+  elsif align_x == 'center'
+    assign align_items = 'center'
+  endif
+  assign align_y = block.settings.align_y | default: 'top'
+  assign overlay_style = block.settings.overlay_style | default: 'none'
+  assign overlay_opacity = block.settings.overlay_opacity | default: 40
+  assign justify_content = 'flex-start'
+  if align_y == 'middle'
+    assign justify_content = 'center'
+  elsif align_y == 'bottom'
+    assign justify_content = 'flex-end'
+  endif
+-%}
+
+{% style %}
+  .ba-after-slide--{{ block.id }} .ba-slide__media {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    z-index: 0;
+    pointer-events: none;
+  }
+
+  .ba-after-slide--{{ block.id }} .ba-slide__overlay {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    pointer-events: none;
+    {% if overlay_style == 'gradient' %}
+      background: linear-gradient(
+        to top,
+        color-mix(in srgb, var(--color-shadow) {{ overlay_opacity }}%, transparent),
+        transparent
+      );
+    {% else %}
+      background: color-mix(in srgb, var(--color-shadow) {{ overlay_opacity }}%, transparent);
+    {% endif %}
+  }
+
+  .ba-after-slide--{{ block.id }} .ba-slide__content {
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    display: flex;
+    flex-direction: column;
+    align-items: {{ align_items }};
+    justify-content: {{ justify_content }};
+    text-align: {{ align_x }};
+    gap: {% render 'space-token', key: block.settings.content_gap %};
+    padding: {% render 'space-token', key: block.settings.content_padding %};
+    box-sizing: border-box;
+  }
+{% endstyle %}
+
+<div class="ba__slide ba__slide--after ba-after-slide--{{ block.id }}" {{ block.shopify_attributes }}>
+  {%- if block.settings.media_type == 'video' -%}
+    {%- if block.settings.video != blank -%}
+      {{ block.settings.video | video_tag: class: 'ba-slide__media', autoplay: true, muted: true, loop: block.settings.video_loop, playsinline: true, controls: false }}
+    {%- else -%}
+      {{ 'lifestyle-2' | placeholder_svg_tag: 'ba-slide__media' }}
+    {%- endif -%}
+  {%- elsif block.settings.image != blank -%}
+    {{ block.settings.image | image_url: width: 1600 | image_tag: class: 'ba-slide__media', loading: 'lazy' }}
+  {%- else -%}
+    {{ 'lifestyle-2' | placeholder_svg_tag: 'ba-slide__media' }}
+  {%- endif -%}
+
+  {%- unless overlay_style == 'none' -%}
+    <div class="ba-slide__overlay" aria-hidden="true"></div>
+  {%- endunless -%}
+
+  <div class="ba-slide__content">
+    {% content_for 'blocks' %}
+  </div>
+</div>
+
+{% schema %}
+{
+  "name": "After Slide",
+  "tag": null,
+  "settings": [
+    {
+      "type": "header",
+      "content": "After Media"
+    },
+    {
+      "type": "select",
+      "id": "media_type",
+      "label": "Media type",
+      "options": [
+        {
+          "value": "image",
+          "label": "Image"
+        },
+        {
+          "value": "video",
+          "label": "Video"
+        }
+      ],
+      "default": "image"
+    },
+    {
+      "type": "image_picker",
+      "id": "image",
+      "label": "After image",
+      "visible_if": "{{ block.settings.media_type == 'image' }}"
+    },
+    {
+      "type": "video",
+      "id": "video",
+      "label": "After video",
+      "visible_if": "{{ block.settings.media_type == 'video' }}"
+    },
+    {
+      "type": "checkbox",
+      "id": "video_loop",
+      "label": "Loop video",
+      "default": true,
+      "visible_if": "{{ block.settings.media_type == 'video' }}"
+    },
+    {
+      "type": "header",
+      "content": "Media Overlay"
+    },
+    {
+      "type": "select",
+      "id": "overlay_style",
+      "label": "Overlay",
+      "options": [
+        {
+          "value": "none",
+          "label": "None"
+        },
+        {
+          "value": "tint",
+          "label": "Tint"
+        },
+        {
+          "value": "gradient",
+          "label": "Gradient"
+        }
+      ],
+      "default": "none"
+    },
+    {
+      "type": "range",
+      "id": "overlay_opacity",
+      "label": "Overlay opacity",
+      "min": 0,
+      "max": 100,
+      "step": 5,
+      "unit": "%",
+      "default": 40,
+      "visible_if": "{{ block.settings.overlay_style != 'none' }}"
+    },
+    {
+      "type": "header",
+      "content": "Overlay Layout"
+    },
+    {
+      "type": "text_alignment",
+      "id": "align_x",
+      "label": "Horizontal alignment",
+      "default": "right"
+    },
+    {
+      "type": "select",
+      "id": "align_y",
+      "label": "Vertical alignment",
+      "options": [
+        {
+          "value": "top",
+          "label": "Top"
+        },
+        {
+          "value": "middle",
+          "label": "Middle"
+        },
+        {
+          "value": "bottom",
+          "label": "Bottom"
+        }
+      ],
+      "default": "top"
+    },
+    {
+      "type": "select",
+      "id": "content_gap",
+      "label": "Gap between items",
+      "options": [
+        {
+          "value": "none",
+          "label": "None"
+        },
+        {
+          "value": "xs",
+          "label": "Extra small"
+        },
+        {
+          "value": "sm",
+          "label": "Small"
+        },
+        {
+          "value": "md",
+          "label": "Medium"
+        },
+        {
+          "value": "lg",
+          "label": "Large"
+        }
+      ],
+      "default": "sm"
+    },
+    {
+      "type": "select",
+      "id": "content_padding",
+      "label": "Content padding",
+      "options": [
+        {
+          "value": "none",
+          "label": "None"
+        },
+        {
+          "value": "sm",
+          "label": "Small"
+        },
+        {
+          "value": "md",
+          "label": "Medium"
+        },
+        {
+          "value": "lg",
+          "label": "Large"
+        }
+      ],
+      "default": "sm"
+    }
+  ],
+  "blocks": [
+    {
+      "type": "rich_content"
+    },
+    {
+      "type": "_badge"
+    }
+  ],
+  "presets": [
+    {
+      "name": "After Slide",
+      "blocks": {
+        "badge": {
+          "type": "_badge",
+          "blocks": {
+            "label": {
+              "type": "_badge_text",
+              "settings": {
+                "text": "After"
+              }
+            }
+          },
+          "block_order": [
+            "label"
+          ]
+        }
+      },
+      "block_order": [
+        "badge"
+      ]
+    }
+  ]
+}
+{% endschema %}

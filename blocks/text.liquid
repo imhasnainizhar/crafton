@@ -1,0 +1,530 @@
+{%- comment -%}
+  Text
+
+  - The theme's single text block; a thin wrapper over snippets/text.liquid.
+  - Replaces the retired `label` and `name` blocks: its size ladder starts at
+    caption size and Fit Content gives the intrinsic width those blocks had.
+  - Typography is resolved by snippets/typography-resolver.liquid (role 'text').
+  - Alignment inherits from the parent layout by default; the override pins it
+    left, center, or right.
+{%- endcomment -%}
+
+{%- liquid
+  assign paragraph_alignment = 'inherit'
+  assign paragraph_flex_alignment = 'inherit'
+  unless block.settings.alignment_inherit
+    assign paragraph_alignment = block.settings.alignment | default: 'left'
+    assign paragraph_flex_alignment = 'flex-start'
+    if paragraph_alignment == 'center'
+      assign paragraph_flex_alignment = 'center'
+    elsif paragraph_alignment == 'right'
+      assign paragraph_flex_alignment = 'flex-end'
+    endif
+  endunless
+-%}
+
+<div style="--align-x: {{ paragraph_flex_alignment }}; --text-align: {{ paragraph_alignment }};" {{ block.shopify_attributes }}>
+  {% render 'text',
+    id: block.id,
+    content: block.settings.paragraph_text,
+    source: block.settings,
+    max_width: block.settings.max_width,
+    space_top: block.settings.space_top,
+    space_bottom: block.settings.space_bottom,
+    enable_truncate: block.settings.enable_truncate,
+    truncate_lines: block.settings.truncate_lines,
+    truncate_mode: block.settings.truncate_mode,
+    read_more_text: block.settings.read_more_text,
+    transition_duration: block.settings.transition_duration,
+    popover_title: block.settings.popover_title,
+    overlay_opacity: block.settings.overlay_opacity,
+    popover_color_scheme: block.settings.popover_color_scheme,
+    popover_background_role: block.settings.popover_background_role,
+    popover_max_height: block.settings.popover_max_height,
+    popover_max_width: block.settings.popover_max_width,
+    popover_animation: block.settings.popover_animation,
+    popover_fade: block.settings.popover_fade,
+    popover_mobile_layout: block.settings.popover_mobile_layout,
+    popover_full_width_mobile: block.settings.popover_full_width_mobile,
+    popover_content_alignment: block.settings.popover_content_alignment
+  %}
+</div>
+
+{% schema %}
+{
+  "name": "Text",
+  "settings": [
+    {
+      "type": "header",
+      "content": "Text",
+      "info": "A block of text using the theme's Text typography role. Use it for body copy, captions, labels and short names alike."
+    },
+    {
+      "type": "richtext",
+      "id": "paragraph_text",
+      "label": "Paragraph",
+      "default": "<p>This is a custom paragraph snippet utilizing a CSS variable for its font size.</p>"
+    },
+    {
+      "type": "select",
+      "id": "text_color",
+      "label": "Color",
+      "info": "Automatic follows this block's own role, so a card set to Accent recolors it.",
+      "options": [
+        {
+          "value": "auto",
+          "label": "Automatic"
+        },
+        {
+          "value": "heading",
+          "label": "Heading"
+        },
+        {
+          "value": "text",
+          "label": "Text"
+        },
+        {
+          "value": "soft",
+          "label": "Soft Text"
+        },
+        {
+          "value": "accent",
+          "label": "Accent"
+        },
+        {
+          "value": "parent",
+          "label": "Inherit From Parent"
+        }
+      ],
+      "default": "auto"
+    },
+    {
+      "type": "header",
+      "content": "Typography"
+    },
+    {
+      "type": "select",
+      "id": "font_size",
+      "label": "Size",
+      "info": "Approximate sizes are shown at Size Factor 1.",
+      "options": [
+        {
+          "value": "xxs",
+          "label": "XXS (~11px)"
+        },
+        {
+          "value": "xs",
+          "label": "XS (~12px)"
+        },
+        {
+          "value": "sm",
+          "label": "SM (~14px)"
+        },
+        {
+          "value": "md",
+          "label": "MD (~16px)"
+        },
+        {
+          "value": "lg",
+          "label": "LG (~18px)"
+        },
+        {
+          "value": "xl",
+          "label": "XL (~24px)"
+        },
+        {
+          "value": "xxl",
+          "label": "XXL (~32px)"
+        }
+      ],
+      "default": "md"
+    },
+    {
+      "type": "select",
+      "id": "font_weight",
+      "label": "Font Weight",
+      "options": [
+        {
+          "value": "normal",
+          "label": "Normal"
+        },
+        {
+          "value": "medium",
+          "label": "Medium"
+        },
+        {
+          "value": "semibold",
+          "label": "Semi-bold"
+        },
+        {
+          "value": "bold",
+          "label": "Bold"
+        }
+      ],
+      "default": "normal"
+    },
+    {
+      "type": "checkbox",
+      "id": "override_line_height",
+      "label": "Override Theme Line Height",
+      "default": false
+    },
+    {
+      "type": "range",
+      "id": "line_height",
+      "label": "Line Height",
+      "min": 0.8,
+      "max": 2.4,
+      "step": 0.1,
+      "default": 1.5,
+      "visible_if": "{{ block.settings.override_line_height }}"
+    },
+    {
+      "type": "select",
+      "id": "text_casing",
+      "label": "Text Casing",
+      "info": "On None, the text renders exactly as typed.",
+      "options": [
+        {
+          "value": "theme",
+          "label": "Theme"
+        },
+        {
+          "value": "none",
+          "label": "None"
+        }
+      ],
+      "default": "theme"
+    },
+    {
+      "type": "header",
+      "content": "Layout & Spacing"
+    },
+    {
+      "type": "checkbox",
+      "id": "alignment_inherit",
+      "label": "Inherit Alignment",
+      "info": "Recommended. Follows the alignment set by the parent layout.",
+      "default": true
+    },
+    {
+      "type": "text_alignment",
+      "id": "alignment",
+      "label": "Custom Alignment",
+      "default": "left",
+      "visible_if": "{{ block.settings.alignment_inherit == false }}"
+    },
+    {
+      "type": "select",
+      "id": "max_width",
+      "label": "Max Width",
+      "options": [
+        {
+          "value": "fit",
+          "label": "Fit Content"
+        },
+        {
+          "value": "240px",
+          "label": "XS (240px)"
+        },
+        {
+          "value": "320px",
+          "label": "SM (320px)"
+        },
+        {
+          "value": "400px",
+          "label": "MD (400px)"
+        },
+        {
+          "value": "480px",
+          "label": "LG (480px)"
+        },
+        {
+          "value": "560px",
+          "label": "XL (560px)"
+        },
+        {
+          "value": "100%",
+          "label": "Full Width (100%)"
+        }
+      ],
+      "default": "100%"
+    },
+    {
+      "type": "select",
+      "id": "space_top",
+      "label": "Space Above",
+      "options": [
+        {
+          "value": "none",
+          "label": "None"
+        },
+        {
+          "value": "xs",
+          "label": "XS"
+        },
+        {
+          "value": "sm",
+          "label": "S"
+        },
+        {
+          "value": "md",
+          "label": "M"
+        },
+        {
+          "value": "lg",
+          "label": "L"
+        },
+        {
+          "value": "xl",
+          "label": "XL"
+        },
+        {
+          "value": "2xl",
+          "label": "2XL"
+        }
+      ],
+      "default": "none"
+    },
+    {
+      "type": "select",
+      "id": "space_bottom",
+      "label": "Space Below",
+      "options": [
+        {
+          "value": "none",
+          "label": "None"
+        },
+        {
+          "value": "xs",
+          "label": "XS"
+        },
+        {
+          "value": "sm",
+          "label": "S"
+        },
+        {
+          "value": "md",
+          "label": "M"
+        },
+        {
+          "value": "lg",
+          "label": "L"
+        },
+        {
+          "value": "xl",
+          "label": "XL"
+        },
+        {
+          "value": "2xl",
+          "label": "2XL"
+        }
+      ],
+      "default": "none"
+    },
+    {
+      "type": "header",
+      "content": "Truncate / Read More"
+    },
+    {
+      "type": "checkbox",
+      "id": "enable_truncate",
+      "label": "Enable Truncate",
+      "default": false
+    },
+    {
+      "type": "range",
+      "id": "truncate_lines",
+      "min": 1,
+      "max": 12,
+      "step": 1,
+      "unit": "ln",
+      "label": "Lines Before Truncating",
+      "default": 3,
+      "visible_if": "{{ block.settings.enable_truncate }}"
+    },
+    {
+      "type": "select",
+      "id": "truncate_mode",
+      "label": "Reveal Mode",
+      "options": [
+        {
+          "value": "inline",
+          "label": "Expand In Place"
+        },
+        {
+          "value": "dialog",
+          "label": "Open In Popover"
+        }
+      ],
+      "default": "inline",
+      "visible_if": "{{ block.settings.enable_truncate }}"
+    },
+    {
+      "type": "text",
+      "id": "read_more_text",
+      "label": "Read More Text",
+      "default": "Read more",
+      "visible_if": "{{ block.settings.enable_truncate }}"
+    },
+    {
+      "type": "range",
+      "id": "transition_duration",
+      "min": 100,
+      "max": 1000,
+      "step": 50,
+      "unit": "ms",
+      "label": "Expand Transition (In Place)",
+      "default": 300,
+      "visible_if": "{{ block.settings.enable_truncate and block.settings.truncate_mode == 'inline' }}"
+    },
+    {
+      "type": "text",
+      "id": "popover_title",
+      "label": "Popover Title",
+      "info": "Shown in the popover header. The popover's own look is set in Theme settings > Truncate Popover.",
+      "visible_if": "{{ block.settings.enable_truncate and block.settings.truncate_mode == 'dialog' }}"
+    },
+    {
+      "type": "range",
+      "id": "overlay_opacity",
+      "min": 0,
+      "max": 100,
+      "step": 5,
+      "unit": "%",
+      "label": "Popover Backdrop Opacity",
+      "default": 40,
+      "visible_if": "{{ block.settings.enable_truncate and block.settings.truncate_mode == 'dialog' }}"
+    },
+    {
+      "type": "header",
+      "content": "Popover",
+      "info": "Look of the panel that opens when Reveal Mode is Open In Popover.",
+      "visible_if": "{{ block.settings.enable_truncate and block.settings.truncate_mode == 'dialog' }}"
+    },
+    {
+      "type": "color_scheme",
+      "id": "popover_color_scheme",
+      "label": "Color Scheme",
+      "default": "scheme_1",
+      "visible_if": "{{ block.settings.enable_truncate and block.settings.truncate_mode == 'dialog' }}"
+    },
+    {
+      "type": "select",
+      "id": "popover_background_role",
+      "label": "Background",
+      "info": "Base is the page colour, Surface is the raised panel colour.",
+      "options": [
+        {
+          "value": "base",
+          "label": "Base"
+        },
+        {
+          "value": "surface",
+          "label": "Surface"
+        }
+      ],
+      "default": "base",
+      "visible_if": "{{ block.settings.enable_truncate and block.settings.truncate_mode == 'dialog' }}"
+    },
+    {
+      "type": "select",
+      "id": "popover_content_alignment",
+      "label": "Content Alignment",
+      "options": [
+        {
+          "value": "left",
+          "label": "Left"
+        },
+        {
+          "value": "center",
+          "label": "Center"
+        },
+        {
+          "value": "right",
+          "label": "Right"
+        }
+      ],
+      "default": "left",
+      "visible_if": "{{ block.settings.enable_truncate and block.settings.truncate_mode == 'dialog' }}"
+    },
+    {
+      "type": "range",
+      "id": "popover_max_width",
+      "label": "Max Width",
+      "min": 320,
+      "max": 900,
+      "step": 20,
+      "unit": "px",
+      "default": 560,
+      "visible_if": "{{ block.settings.enable_truncate and block.settings.truncate_mode == 'dialog' }}"
+    },
+    {
+      "type": "range",
+      "id": "popover_max_height",
+      "label": "Max Height",
+      "info": "Share of the screen height the panel may fill before its content scrolls.",
+      "min": 30,
+      "max": 95,
+      "step": 5,
+      "unit": "dvh",
+      "default": 80,
+      "visible_if": "{{ block.settings.enable_truncate and block.settings.truncate_mode == 'dialog' }}"
+    },
+    {
+      "type": "range",
+      "id": "popover_animation",
+      "label": "Open Animation",
+      "info": "How long the popover's scale-out (or the drawer's slide-up) takes.",
+      "min": 150,
+      "max": 900,
+      "step": 25,
+      "unit": "ms",
+      "default": 400,
+      "visible_if": "{{ block.settings.enable_truncate and block.settings.truncate_mode == 'dialog' }}"
+    },
+    {
+      "type": "range",
+      "id": "popover_fade",
+      "label": "Scroll Fade",
+      "info": "Height of the fade at the top and bottom of the scrolling text.",
+      "min": 0,
+      "max": 20,
+      "step": 1,
+      "unit": "%",
+      "default": 8,
+      "visible_if": "{{ block.settings.enable_truncate and block.settings.truncate_mode == 'dialog' }}"
+    },
+    {
+      "type": "select",
+      "id": "popover_mobile_layout",
+      "label": "Mobile Layout",
+      "info": "Below 768px, open as a centered popover or a bottom sheet drawer.",
+      "options": [
+        {
+          "value": "popover",
+          "label": "Centered Popover"
+        },
+        {
+          "value": "drawer",
+          "label": "Bottom Sheet Drawer"
+        }
+      ],
+      "default": "popover",
+      "visible_if": "{{ block.settings.enable_truncate and block.settings.truncate_mode == 'dialog' }}"
+    },
+    {
+      "type": "checkbox",
+      "id": "popover_full_width_mobile",
+      "label": "Full Width On Mobile",
+      "default": true,
+      "visible_if": "{{ block.settings.enable_truncate and block.settings.truncate_mode == 'dialog' and block.settings.popover_mobile_layout == 'drawer' }}"
+    }
+  ],
+  "presets": [
+    {
+      "name": "Text"
+    }
+  ]
+}
+{% endschema %}

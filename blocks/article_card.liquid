@@ -1,0 +1,563 @@
+{%- comment -%}
+  Article Card (`arc-`) — one blog article as a card, in two modes:
+    flow    → the picture, then the content under it;
+    overlay → the content laid over the picture, on an optional scrim.
+  The card owns the picture, its shape, the mode, the surface and the colour
+  scheme; the text is composed from its article field children (Article Title,
+  Article Description, Article Author, Minutes Read, Article Date, Meta Row),
+  which read `closest.article` — this card's picked article.
+
+  The whole card opens the article through one stretched link under the
+  content; the content box ignores the pointer, so only real links and buttons
+  inside it stay clickable. Shape is the card's own ratio, or — on "Follow the
+  section" — the --arc-ratio a composing section publishes (Featured / Tabbed
+  Articles), else 4:5. Surface radius, border and shadow are the Design
+  System's item tokens.
+  Depends on: snippets/alignments.liquid, snippets/space-token.liquid,
+  snippets/color-role-resolver.liquid and the _article_* field blocks.
+{%- endcomment -%}
+
+{%- liquid
+  assign s = block.settings
+  assign art = s.article
+  assign layout = s.layout_mode | default: 'flow'
+  assign overlay_style = s.overlay_style | default: 'gradient'
+
+  assign img = s.image | default: art.image
+  assign url = art.url
+
+  # A card set to its own ratio carries it; otherwise the section's ratio.
+  assign own_ratio_m = blank
+  assign own_ratio_d = blank
+  if s.media_ratio_mobile != 'section'
+    assign own_ratio_m = s.media_ratio_mobile
+  endif
+  if s.media_ratio_desktop != 'section'
+    assign own_ratio_d = s.media_ratio_desktop
+  endif
+
+  assign surface = false
+  if layout == 'flow' and s.enable_surface
+    assign surface = true
+  endif
+
+  # Card colour: Surface is the scheme's surface with its own text colours;
+  # Accent is the scheme's neutral accent with its contrast colour as the text
+  # (every child follows through color-role-resolver). It paints the card
+  # background in flow and the shade behind the text in overlay.
+  assign card_accent = false
+  if s.background_role == 'accent'
+    if surface or layout == 'overlay'
+      assign card_accent = true
+    endif
+  endif
+  assign card_bg = 'var(--color-surface)'
+  if card_accent
+    assign card_bg = 'var(--surface-accent)'
+  endif
+
+  case s.overlay_align_y
+    when 'top'
+      assign overlay_y = 'flex-start'
+    when 'middle'
+      assign overlay_y = 'center'
+    else
+      assign overlay_y = 'flex-end'
+  endcase
+
+  assign scheme_class = blank
+  if s.scheme_source == 'block' and s.color_scheme != blank
+    assign scheme_class = 'color-' | append: s.color_scheme
+  endif
+
+  assign link_title = art.title | default: ''
+  assign link_label = 'theme.components.article_card.read_article' | t: title: link_title
+-%}
+
+{%- comment -%}
+  One content_for per file. The field children read closest.article, which Shopify
+  resolves to this card's own article setting (the nearest ancestor block setting
+  of that type), so nothing has to be passed down.
+{%- endcomment -%}
+{%- capture card_content -%}{% content_for 'blocks' %}{%- endcapture -%}
+
+{%- comment -%}
+  Static rules live in the stylesheet tag on the shared `.arc` class; the state
+  modifiers on the <article> (framed / surface / bare / border / auto-height /
+  linked) pick the branches. The style tag only publishes this card's values.
+{%- endcomment -%}
+{% stylesheet %}
+  .arc {
+    position: relative;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    min-width: 0;
+    align-self: stretch;
+    color: var(--color-text);
+    isolation: isolate;
+  }
+
+  .arc--auto-height { align-self: flex-start; }
+
+  /* Surface or overlay: the card itself is the visible item. */
+  .arc--framed {
+    border-radius: var(--ds-item-radius-mobile);
+    box-shadow: var(--ds-item-shadow-mobile);
+    overflow: hidden;
+  }
+
+  .arc--surface { background-color: var(--arc-card-bg); }
+
+  .arc--framed.arc--border {
+    border: var(--ds-item-border-width-mobile) solid var(--color-border);
+  }
+
+  .arc--linked { cursor: pointer; }
+
+  .arc__media {
+    position: relative;
+    display: block;
+    width: 100%;
+    flex: 0 0 auto;
+    aspect-ratio: var(--arc-own-ratio, var(--arc-ratio, 4/5));
+    overflow: hidden;
+    background-color: var(--color-surface);
+  }
+
+  /* No surface: the thumbnail is the visible item, so it takes the radius. */
+  .arc--bare .arc__media { border-radius: var(--ds-item-radius-mobile); }
+
+  .arc--bare.arc--border .arc__media {
+    border: var(--ds-item-border-width-mobile) solid var(--color-border);
+  }
+
+  /* Overlay: the picture IS the card, the content sits on it. */
+  .arc[data-arc-layout='overlay'] .arc__media { flex: 1 1 auto; }
+
+  .arc__image {
+    position: absolute;
+    inset: 0;
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.6s cubic-bezier(0.2, 0.7, 0.2, 1);
+  }
+
+  .arc__image--placeholder {
+    background-color: color-mix(in srgb, var(--color-text) 6%, transparent);
+    fill: color-mix(in srgb, var(--color-text) 28%, transparent);
+  }
+
+  .arc:hover .arc__image,
+  .arc:focus-within .arc__image {
+    transform: scale(1.04);
+  }
+
+  .arc__scrim {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    pointer-events: none;
+    background: var(--arc-scrim);
+  }
+
+  .arc__content {
+    --align-x: var(--align-x-mobile, flex-start);
+    --text-align: var(--text-align-mobile, left);
+    position: relative;
+    z-index: 4;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    align-items: var(--align-x);
+    text-align: var(--text-align);
+    gap: var(--arc-gap);
+    min-width: 0;
+    /* The stretched link underneath opens the article; only real links and
+       buttons in here take the pointer. */
+    pointer-events: none;
+    padding: var(--arc-pad);
+  }
+
+  .arc[data-arc-layout='flow'] .arc__content { flex: 1 1 auto; }
+  .arc--bare .arc__content { padding: var(--arc-pad) 0 0; }
+
+  .arc[data-arc-layout='overlay'] .arc__content {
+    position: absolute;
+    inset: 0;
+    justify-content: var(--arc-overlay-y);
+  }
+
+  .arc__content > * {
+    max-width: 100%;
+  }
+
+  .arc__content :is(a[href], button, input, select, textarea, label) {
+    position: relative;
+    z-index: 1;
+    pointer-events: auto;
+  }
+
+  .arc__link {
+    position: absolute;
+    inset: 0;
+    z-index: 3;
+    border-radius: inherit;
+  }
+
+  .arc__link:focus-visible {
+    outline: 2px solid var(--color-heading);
+    outline-offset: 2px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .arc__image { transition: none; }
+    .arc:hover .arc__image,
+    .arc:focus-within .arc__image { transform: none; }
+  }
+
+  @media (min-width: 768px) {
+    .arc--framed {
+      border-radius: var(--ds-item-radius-desktop);
+      box-shadow: var(--ds-item-shadow-desktop);
+    }
+
+    .arc--framed.arc--border { border-width: var(--ds-item-border-width-desktop); }
+
+    .arc--bare .arc__media { border-radius: var(--ds-item-radius-desktop); }
+    .arc--bare.arc--border .arc__media { border-width: var(--ds-item-border-width-desktop); }
+
+    .arc__content {
+      --align-x: var(--align-x-desktop, flex-start);
+      --text-align: var(--text-align-desktop, left);
+    }
+  }
+{% endstylesheet %}
+
+{% style %}
+  .arc--{{ block.id }} {
+    {% render 'alignments', source: s %}
+    {% if own_ratio_m != blank %}--arc-own-ratio: {{ own_ratio_m }};{% endif %}
+    {% if card_accent %}
+      {% render 'color-role-resolver', mode: 'context', source: s, content_color: 'accent', accent: 'neutral', accent_contrast: 'filled' %}
+    {% endif %}
+    --arc-card-bg: {{ card_bg }};
+    --arc-gap: {% render 'space-token', key: s.content_gap %};
+    --arc-pad: {% render 'space-token', key: s.card_padding %};
+    {% if layout == 'overlay' %}
+      --arc-overlay-y: {{ overlay_y }};
+      {% if overlay_style == 'gradient' %}
+        --arc-scrim: linear-gradient(to {% if s.overlay_align_y == 'top' %}bottom{% else %}top{% endif %}, color-mix(in srgb, {{ card_bg }} {{ s.overlay_opacity }}%, transparent), transparent 85%);
+      {% else %}
+        --arc-scrim: color-mix(in srgb, {{ card_bg }} {{ s.overlay_opacity }}%, transparent);
+      {% endif %}
+    {% endif %}
+  }
+
+  @media (min-width: 768px) {
+    .arc--{{ block.id }} {
+      {% if own_ratio_d != blank %}--arc-own-ratio: {{ own_ratio_d }};{% elsif own_ratio_m != blank %}--arc-own-ratio: var(--arc-ratio, 4/5);{% endif %}
+    }
+  }
+{% endstyle %}
+
+<article
+  class="arc arc--{{ block.id }}{% if surface or layout == 'overlay' %} arc--framed{% endif %}{% if surface %} arc--surface{% endif %}{% if surface == false and layout == 'flow' %} arc--bare{% endif %}{% if s.enable_border %} arc--border{% endif %}{% if s.height_mode == 'auto' %} arc--auto-height{% endif %}{% if url != blank %} arc--linked{% endif %}{% if scheme_class != blank %} {{ scheme_class }}{% endif %}"
+  data-arc-layout="{{ layout }}"
+  {{ block.shopify_attributes }}
+>
+  <div class="arc__media">
+    {%- if img != blank -%}
+      {{
+        img
+        | image_url: width: 1400
+        | image_tag:
+          class: 'arc__image',
+          loading: 'lazy',
+          widths: '360,540,720,900,1200,1400',
+          sizes: '(min-width: 990px) 33vw, (min-width: 768px) 50vw, 90vw',
+          alt: img.alt
+      }}
+    {%- else -%}
+      {{ 'blog-apparel-1' | placeholder_svg_tag: 'arc__image arc__image--placeholder' }}
+    {%- endif -%}
+    {%- if layout == 'overlay' and overlay_style != 'none' -%}
+      <span class="arc__scrim" aria-hidden="true"></span>
+    {%- endif -%}
+  </div>
+
+  {%- if url != blank -%}
+    <a class="arc__link" href="{{ url }}" aria-label="{{ link_label | escape }}"></a>
+  {%- endif -%}
+
+  <div class="arc__content">
+    {{ card_content }}
+  </div>
+</article>
+
+{% schema %}
+{
+  "name": "Article Card",
+  "tag": null,
+  "settings": [
+    {
+      "type": "header",
+      "content": "Article"
+    },
+    {
+      "type": "article",
+      "id": "article",
+      "label": "Article"
+    },
+    {
+      "type": "image_picker",
+      "id": "image",
+      "label": "Image",
+      "info": "Uses the article's featured image when empty."
+    },
+    {
+      "type": "header",
+      "content": "Layout"
+    },
+    {
+      "type": "select",
+      "id": "layout_mode",
+      "label": "Content placement",
+      "info": "Flow puts the text under the picture. Overlay lays it on the picture.",
+      "options": [
+        { "value": "flow", "label": "Flow — under the picture" },
+        { "value": "overlay", "label": "Overlay — on the picture" }
+      ],
+      "default": "flow"
+    },
+    {
+      "type": "select",
+      "id": "media_ratio_mobile",
+      "label": "Picture shape (mobile)",
+      "options": [
+        { "value": "section", "label": "Follow the section" },
+        { "value": "1/1", "label": "1:1" },
+        { "value": "4/5", "label": "4:5" },
+        { "value": "3/4", "label": "3:4" },
+        { "value": "2/3", "label": "2:3" },
+        { "value": "4/3", "label": "4:3" },
+        { "value": "3/2", "label": "3:2" },
+        { "value": "16/9", "label": "16:9" }
+      ],
+      "default": "section",
+      "info": "Follow the section gives every card in the section one shape (4:5 elsewhere)."
+    },
+    {
+      "type": "select",
+      "id": "media_ratio_desktop",
+      "label": "Picture shape (desktop)",
+      "options": [
+        { "value": "section", "label": "Follow the section" },
+        { "value": "1/1", "label": "1:1" },
+        { "value": "4/5", "label": "4:5" },
+        { "value": "3/4", "label": "3:4" },
+        { "value": "2/3", "label": "2:3" },
+        { "value": "4/3", "label": "4:3" },
+        { "value": "3/2", "label": "3:2" },
+        { "value": "16/9", "label": "16:9" }
+      ],
+      "default": "section"
+    },
+    {
+      "type": "select",
+      "id": "height_mode",
+      "label": "Card height",
+      "info": "Stretch matches the tallest card beside it. Auto follows its own content.",
+      "options": [
+        { "value": "stretch", "label": "Stretch" },
+        { "value": "auto", "label": "Auto" }
+      ],
+      "default": "stretch",
+      "visible_if": "{{ block.settings.layout_mode != 'overlay' }}"
+    },
+    {
+      "type": "text_alignment",
+      "id": "align_x_mobile",
+      "label": "Text alignment (mobile)",
+      "default": "left"
+    },
+    {
+      "type": "text_alignment",
+      "id": "align_x_desktop",
+      "label": "Text alignment (desktop)",
+      "default": "left"
+    },
+    {
+      "type": "header",
+      "content": "Overlay",
+      "visible_if": "{{ block.settings.layout_mode == 'overlay' }}"
+    },
+    {
+      "type": "select",
+      "id": "overlay_align_y",
+      "label": "Text position",
+      "options": [
+        { "value": "top", "label": "Top" },
+        { "value": "middle", "label": "Middle" },
+        { "value": "bottom", "label": "Bottom" }
+      ],
+      "default": "bottom",
+      "visible_if": "{{ block.settings.layout_mode == 'overlay' }}"
+    },
+    {
+      "type": "select",
+      "id": "overlay_style",
+      "label": "Shade behind the text",
+      "options": [
+        { "value": "gradient", "label": "Gradient" },
+        { "value": "flat", "label": "Even" },
+        { "value": "none", "label": "None" }
+      ],
+      "default": "gradient",
+      "visible_if": "{{ block.settings.layout_mode == 'overlay' }}"
+    },
+    {
+      "type": "range",
+      "id": "overlay_opacity",
+      "label": "Shade strength",
+      "min": 0,
+      "max": 100,
+      "step": 5,
+      "unit": "%",
+      "default": 55,
+      "visible_if": "{{ block.settings.layout_mode == 'overlay' and block.settings.overlay_style != 'none' }}"
+    },
+    {
+      "type": "header",
+      "content": "Surface"
+    },
+    {
+      "type": "checkbox",
+      "id": "enable_surface",
+      "label": "Card background",
+      "info": "Puts the picture and the text on one background. Off, the text sits straight on the page.",
+      "default": false,
+      "visible_if": "{{ block.settings.layout_mode != 'overlay' }}"
+    },
+    {
+      "type": "select",
+      "id": "background_role",
+      "label": "Card color",
+      "info": "Surface uses the color scheme's surface color and its normal text colors. Accent uses the scheme's neutral accent and its contrast color for the text. Paints the card background, or the shade behind the text in overlay.",
+      "options": [
+        { "value": "surface", "label": "Surface" },
+        { "value": "accent", "label": "Accent" }
+      ],
+      "default": "surface",
+      "visible_if": "{{ block.settings.layout_mode == 'overlay' or block.settings.enable_surface }}"
+    },
+    {
+      "type": "checkbox",
+      "id": "enable_border",
+      "label": "Border",
+      "info": "Uses the Design System's item border width.",
+      "default": false
+    },
+    {
+      "type": "header",
+      "content": "Colors"
+    },
+    {
+      "type": "select",
+      "id": "scheme_source",
+      "label": "Color scheme",
+      "info": "Card gives this card its own scheme, so its card color and text colors come from that scheme.",
+      "options": [
+        { "value": "section", "label": "Same as the section" },
+        { "value": "block", "label": "Card" }
+      ],
+      "default": "section"
+    },
+    {
+      "type": "color_scheme",
+      "id": "color_scheme",
+      "label": "Card color scheme",
+      "default": "scheme_1",
+      "visible_if": "{{ block.settings.scheme_source == 'block' }}"
+    },
+    {
+      "type": "header",
+      "content": "Spacing"
+    },
+    {
+      "type": "select",
+      "id": "content_gap",
+      "label": "Space between text lines",
+      "options": [
+        { "value": "none", "label": "None" },
+        { "value": "xs", "label": "Extra small" },
+        { "value": "sm", "label": "Small" },
+        { "value": "md", "label": "Medium" },
+        { "value": "lg", "label": "Large" }
+      ],
+      "default": "xs"
+    },
+    {
+      "type": "select",
+      "id": "card_padding",
+      "label": "Text padding",
+      "info": "Without a card background, only the space above the text is used.",
+      "options": [
+        { "value": "none", "label": "None" },
+        { "value": "xs", "label": "Extra small" },
+        { "value": "sm", "label": "Small" },
+        { "value": "md", "label": "Medium" },
+        { "value": "lg", "label": "Large" }
+      ],
+      "default": "sm"
+    }
+  ],
+  "blocks": [
+    { "type": "_article_title" },
+    { "type": "_article_excerpt" },
+    { "type": "_article_author" },
+    { "type": "_article_read_time" },
+    { "type": "_article_date" },
+    { "type": "_article_meta_row" }
+  ],
+  "presets": [
+    {
+      "name": "Article Card",
+      "blocks": {
+        "meta": {
+          "type": "_article_meta_row",
+          "blocks": {
+            "date": { "type": "_article_date" },
+            "read_time": { "type": "_article_read_time" }
+          },
+          "block_order": ["date", "read_time"]
+        },
+        "title": { "type": "_article_title" },
+        "excerpt": { "type": "_article_excerpt" },
+        "author": { "type": "_article_author" }
+      },
+      "block_order": ["meta", "title", "excerpt", "author"]
+    },
+    {
+      "name": "Article Card: Overlay",
+      "settings": {
+        "layout_mode": "overlay",
+        "media_ratio_mobile": "4/5",
+        "media_ratio_desktop": "4/5",
+        "scheme_source": "block",
+        "color_scheme": "scheme_2",
+        "card_padding": "md"
+      },
+      "blocks": {
+        "read_time": { "type": "_article_read_time" },
+        "title": { "type": "_article_title", "settings": { "font_size": "md" } },
+        "author": { "type": "_article_author" }
+      },
+      "block_order": ["read_time", "title", "author"]
+    }
+  ]
+}
+{% endschema %}

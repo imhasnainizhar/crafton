@@ -1,0 +1,222 @@
+{%- comment -%}
+  Badge (private) — generic semantic or custom badge. Delegates markup and
+  styling to snippets/badge.liquid and composes _badge_icon /
+  _verification_icon / _badge_text children. A badge is permanently a surface,
+  so it has no Cookie mode: Style alone (Base / Accent / Custom) picks the
+  colour family and decides whether Background or Accent Contrast is offered.
+{%- endcomment -%}
+
+{%- capture badge_content -%}{% content_for 'blocks' %}{%- endcapture -%}
+{% render 'badge', id: block.id, source: block.settings, content: badge_content, attributes: block.shopify_attributes %}
+
+{% schema %}
+{
+  "name": "Badge",
+  "tag": null,
+  "settings": [
+    {
+      "type": "header",
+      "content": "Style"
+    },
+    {
+      "type": "select",
+      "id": "badge_style",
+      "label": "Style",
+      "options": [
+        {
+          "value": "base",
+          "label": "Base"
+        },
+        {
+          "value": "accent",
+          "label": "Accent"
+        },
+        {
+          "value": "custom",
+          "label": "Custom"
+        }
+      ],
+      "default": "accent"
+    },
+    {
+      "type": "select",
+      "id": "background_role",
+      "label": "Background",
+      "options": [
+        {
+          "value": "base",
+          "label": "Base"
+        },
+        {
+          "value": "surface",
+          "label": "Surface"
+        }
+      ],
+      "default": "surface",
+      "visible_if": "{{ block.settings.badge_style == 'base' }}"
+    },
+    {
+      "type": "select",
+      "id": "cookie_radius_style",
+      "label": "Border Radius",
+      "options": [
+        {
+          "value": "rounded",
+          "label": "Rounded"
+        },
+        {
+          "value": "custom",
+          "label": "Custom"
+        }
+      ],
+      "default": "rounded"
+    },
+    {
+      "type": "range",
+      "id": "cookie_border_radius",
+      "label": "Corner Radius",
+      "min": 0,
+      "max": 40,
+      "step": 2,
+      "unit": "px",
+      "default": 8,
+      "visible_if": "{{ block.settings.cookie_radius_style == 'custom' }}"
+    },
+    {
+      "type": "select",
+      "id": "accent_selected",
+      "label": "Accent",
+      "options": [
+        {
+          "value": "neutral",
+          "label": "Neutral"
+        },
+        {
+          "value": "soft",
+          "label": "Soft"
+        },
+        {
+          "value": "strong",
+          "label": "Strong"
+        }
+      ],
+      "default": "neutral",
+      "visible_if": "{{ block.settings.badge_style == 'accent' }}"
+    },
+    {
+      "type": "select",
+      "id": "accent_contrast",
+      "label": "Accent Contrast",
+      "options": [
+        {
+          "value": "subtle",
+          "label": "Subtle"
+        },
+        {
+          "value": "filled",
+          "label": "Filled"
+        }
+      ],
+      "default": "filled",
+      "visible_if": "{{ block.settings.badge_style == 'accent' }}"
+    },
+    {
+      "type": "checkbox",
+      "id": "badge_border_enabled",
+      "label": "Show border",
+      "default": true
+    },
+    {
+      "type": "range",
+      "id": "badge_padding_x",
+      "label": "Horizontal padding",
+      "min": 2,
+      "max": 24,
+      "step": 1,
+      "unit": "px",
+      "default": 7
+    },
+    {
+      "type": "range",
+      "id": "badge_padding_y",
+      "label": "Vertical padding",
+      "min": 2,
+      "max": 16,
+      "step": 1,
+      "unit": "px",
+      "default": 3
+    },
+    {
+      "type": "color",
+      "id": "badge_background",
+      "label": "Custom background",
+      "default": "#000000",
+      "visible_if": "{{ block.settings.badge_style == 'custom' }}"
+    },
+    {
+      "type": "range",
+      "id": "badge_background_opacity",
+      "label": "Background opacity",
+      "min": 0,
+      "max": 100,
+      "step": 5,
+      "unit": "%",
+      "default": 100,
+      "visible_if": "{{ block.settings.badge_style == 'custom' }}"
+    },
+    {
+      "type": "color",
+      "id": "badge_text",
+      "label": "Custom text",
+      "default": "#ffffff",
+      "visible_if": "{{ block.settings.badge_style == 'custom' }}"
+    }
+  ],
+  "blocks": [
+    {
+      "type": "_badge_icon"
+    },
+    {
+      "type": "_verification_icon"
+    },
+    {
+      "type": "_badge_text"
+    }
+  ],
+  "presets": [
+    {
+      "name": "Badge",
+      "blocks": {
+        "icon": {
+          "type": "_badge_icon"
+        },
+        "label": {
+          "type": "_badge_text"
+        }
+      },
+      "block_order": [
+        "icon",
+        "label"
+      ]
+    },
+    {
+      "name": "Verified Badge",
+      "blocks": {
+        "icon": {
+          "type": "_verification_icon"
+        },
+        "label": {
+          "type": "_badge_text",
+          "settings": {
+            "text": "Verified Buyer"
+          }
+        }
+      },
+      "block_order": [
+        "icon",
+        "label"
+      ]
+    }
+  ]
+}
+{% endschema %}

@@ -1,0 +1,20 @@
+{%- comment -%}
+  Section Design Mode
+  Render contract:
+  - section_settings {SettingsDrop, required}: section.settings carrying the
+    complete schema contract documented in snippets/design-system-vars.liquid.
+  Usage: {% render 'section-design-mode', section_settings: section.settings %}
+  Schema fragment for callers: copy the complete SECTION SETTINGS SCHEMA
+  CONTRACT from snippets/design-system-vars.liquid without changing IDs,
+  options, defaults, or visible_if expressions.
+  Schema remains on the rendering section.
+
+  Auto emits nothing so the section inherits the root --ds-* values.
+  Blend and Custom emit a scoped set for the complete section subtree.
+  
+  Blend inherits only the global responsive Design Modes; every Design System
+  value the section's schema carries is its own, falling back to the global
+  value when left unset. Custom owns the responsive modes as well. The
+  Modern/Minimal decision is the only thing that separates the two.
+{%- endcomment -%}
+{% render 'design-system-vars', source: section_settings %}

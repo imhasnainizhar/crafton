@@ -1,0 +1,406 @@
+{%- comment -%}
+  Marquee — a color-scheme shell whose scrolling content is
+  composed from Marquee Item and Brand Icon blocks. The block group renders once via
+  content_for 'blocks'; assets/marquee.js clones it only when it overflows the
+  viewport for a seamless loop (otherwise it remains centered and static).
+  Optional edge fades sit on the viewport (not the scrolling track) so they
+  stay pinned while items pass underneath, same pattern as announcement-bar-slider.
+{%- endcomment -%}
+
+{%- style -%}
+  .section-{{ section.id }} {
+    position: relative;
+    overflow: hidden;
+    background-color: var(--color-base);
+    color: var(--color-text);
+    padding-block: calc({{ section.settings.padding_vertical }}rem);
+    display: flex;
+    align-items: center;
+  }
+
+  /* Cap wraps the viewport only, so the background stays full-bleed and the
+     fade edges track the (optionally narrower) capped content, not the
+     screen edge. */
+  .section-{{ section.id }} .marquee-viewport {
+    {% render 'bar-cap-vars', section_settings: section.settings %}
+    position: relative;
+    overflow: hidden;
+    width: 100%;
+    max-width: var(--bar-cap-mobile);
+    margin-inline: auto;
+  }
+
+  @media screen and (min-width: 768px) {
+    .section-{{ section.id }} .marquee-viewport {
+      max-width: var(--bar-cap-desktop);
+    }
+  }
+
+  /* --- Marquee Track & Animation --- */
+  .section-{{ section.id }} .scrolling-track {
+    display: flex;
+    width: 100%;
+    justify-content: center;
+    white-space: nowrap;
+  }
+
+  .section-{{ section.id }} .scrolling-content {
+    display: flex;
+    flex-shrink: 0;
+    align-items: center;
+    gap: calc({{ section.settings.item_gap }}rem);
+  }
+
+  .scrolling-text--ready.section-{{ section.id }} .scrolling-content {
+    padding-right: calc({{ section.settings.item_gap }}rem); /* Gap at the group seam so the loop is smooth */
+  }
+
+  .section-{{ section.id }} .scrolling-content .marquee-item:last-child {
+    margin-right: 0;
+  }
+
+  /* Blocks bring their own typography/colors; only neutralize flow margins here. */
+  .section-{{ section.id }} .scrolling-content .custom-heading-element {
+    margin: 0;
+  }
+
+  .section-{{ section.id }} .scrolling-content .marquee-item {
+    flex-shrink: 0;
+    position: relative;
+  }
+
+  {%- if section.settings.show_dividers -%}
+    .section-{{ section.id }}:not(.scrolling-text--ready) .scrolling-content .marquee-item:not(:last-child)::after,
+    .scrolling-text--ready.section-{{ section.id }} .scrolling-content .marquee-item::after {
+      content: '';
+      position: absolute;
+      top: 50%;
+      right: {{ section.settings.item_gap | divided_by: 2.0 | times: -1 }}rem;
+      width: 1px;
+      height: 60%;
+      background-color: var(--color-border);
+      opacity: {{ section.settings.divider_opacity | divided_by: 100.0 }};
+      transform: translate(50%, -50%);
+      pointer-events: none;
+    }
+  {%- endif -%}
+
+  .scrolling-text--ready.section-{{ section.id }} .scrolling-track {
+    animation: scrollText{{ section.id }} {{ section.settings.speed }}s linear infinite;
+  }
+
+  .scrolling-text--ready.section-{{ section.id }} .scrolling-track {
+    width: max-content;
+    justify-content: flex-start;
+  }
+
+  {%- if section.settings.stop_on_hover -%}
+    .section-{{ section.id }}:hover .scrolling-track {
+      animation-play-state: paused;
+    }
+  {%- endif -%}
+
+  @keyframes scrollText{{ section.id }} {
+    0% { transform: translateX(0); }
+    100% { transform: translateX(calc(-1 * var(--marquee-shift))); }
+  }
+
+  {%- if section.settings.enable_fades -%}
+    .section-{{ section.id }} .marquee-fade {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      width: {{ section.settings.fade_width }}%;
+      z-index: 2;
+      pointer-events: none;
+    }
+
+    .section-{{ section.id }} .marquee-fade--left {
+      left: 0;
+      background: linear-gradient(to right, var(--color-base), transparent);
+    }
+
+    .section-{{ section.id }} .marquee-fade--right {
+      right: 0;
+      background: linear-gradient(to left, var(--color-base), transparent);
+    }
+  {%- endif -%}
+{%- endstyle -%}
+
+<div
+  class="marquee-section section-{{ section.id }} color-{{ section.settings.color_scheme }}"
+>
+  <div class="marquee-viewport">
+    {%- if section.settings.enable_fades -%}
+      <div class="marquee-fade marquee-fade--left"></div>
+      <div class="marquee-fade marquee-fade--right"></div>
+    {%- endif -%}
+    <div class="scrolling-track">
+      <div class="scrolling-content">
+        {% content_for 'blocks' %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="{{ 'marquee.js' | asset_url }}" defer></script>
+
+{% schema %}
+{
+  "name": "Marquee",
+  "disabled_on": {
+    "templates": ["page", "blog"]
+  },
+  "settings": [
+    {
+      "type": "header",
+      "content": "Section",
+      "info": "An infinite marquee of scrolling text."
+    },
+    {
+      "type": "color_scheme",
+      "id": "color_scheme",
+      "label": "Color Scheme",
+      "default": "scheme_2"
+    },
+    {
+      "type": "header",
+      "content": "Layout"
+    },
+    {
+      "type": "range",
+      "id": "padding_vertical",
+      "label": "Vertical padding",
+      "min": 0,
+      "max": 2,
+      "step": 0.1,
+      "unit": "rem",
+      "default": 0.5
+    },
+    {
+      "type": "header",
+      "content": "Section Cap",
+      "info": "Independent of the padding above. Off by default — the marquee stays full width."
+    },
+    {
+      "type": "checkbox",
+      "id": "design_enable_section_width",
+      "label": "Enable Section Width",
+      "info": "Constrains the maximum width of the marquee viewport on large screens.",
+      "default": false
+    },
+    {
+      "type": "select",
+      "id": "design_section_width_mobile",
+      "label": "Section Width (Mobile)",
+      "options": [
+        {
+          "value": "none",
+          "label": "None"
+        },
+        {
+          "value": "wide",
+          "label": "Wide"
+        },
+        {
+          "value": "max",
+          "label": "Maximum"
+        }
+      ],
+      "default": "none",
+      "visible_if": "{{ section.settings.design_enable_section_width }}"
+    },
+    {
+      "type": "select",
+      "id": "design_section_width_desktop",
+      "label": "Section Width (Desktop)",
+      "options": [
+        {
+          "value": "none",
+          "label": "None"
+        },
+        {
+          "value": "wide",
+          "label": "Wide"
+        },
+        {
+          "value": "max",
+          "label": "Maximum"
+        },
+        {
+          "value": "tv",
+          "label": "TV"
+        }
+      ],
+      "default": "tv",
+      "visible_if": "{{ section.settings.design_enable_section_width }}"
+    },
+    {
+      "type": "header",
+      "content": "Animation & Layout"
+    },
+    {
+      "type": "range",
+      "id": "speed",
+      "label": "Animation Speed (Seconds)",
+      "info": "Lower is faster. Higher is slower.",
+      "min": 5,
+      "max": 60,
+      "step": 1,
+      "default": 20
+    },
+    {
+      "type": "checkbox",
+      "id": "stop_on_hover",
+      "label": "Stop scroll on hover",
+      "default": true
+    },
+    {
+      "type": "range",
+      "id": "item_gap",
+      "label": "Gap between items",
+      "min": 0,
+      "max": 4,
+      "step": 0.5,
+      "unit": "rem",
+      "default": 2.5
+    },
+    {
+      "type": "checkbox",
+      "id": "show_dividers",
+      "label": "Show Dividers",
+      "info": "Places a scheme Border divider halfway between consecutive Marquee Items.",
+      "default": false
+    },
+    {
+      "type": "range",
+      "id": "divider_opacity",
+      "label": "Divider Opacity",
+      "min": 0,
+      "max": 100,
+      "step": 5,
+      "unit": "%",
+      "default": 40,
+      "visible_if": "{{ section.settings.show_dividers }}"
+    },
+    {
+      "type": "header",
+      "content": "Edge Fades",
+      "info": "Fades the bar's background color in from both inner edges of the marquee viewport."
+    },
+    {
+      "type": "checkbox",
+      "id": "enable_fades",
+      "label": "Enable Edge Fades",
+      "info": "Softens text sliding in/out at the edges instead of cutting hard.",
+      "default": true
+    },
+    {
+      "type": "range",
+      "id": "fade_width",
+      "label": "Fade Shadow Width",
+      "min": 5,
+      "max": 30,
+      "step": 1,
+      "default": 15,
+      "unit": "%",
+      "visible_if": "{{ section.settings.enable_fades }}"
+    }
+  ],
+  "blocks": [
+    {
+      "type": "brand_icon"
+    },
+    {
+      "type": "_marquee_item"
+    }
+  ],
+  "presets": [
+    {
+      "name": "Marquee",
+      "category": "Hero & banners",
+      "blocks": {
+        "item_1": {
+          "type": "_marquee_item",
+          "blocks": {
+            "text_1": {
+              "type": "_marquee_text",
+              "settings": {
+                "text": "FREE SHIPPING ON ALL ORDERS",
+                "font_size": "lg"
+              }
+            }
+          },
+          "block_order": ["text_1"]
+        },
+        "item_2": {
+          "type": "_marquee_item",
+          "blocks": {
+            "text_1": {
+              "type": "_marquee_text",
+              "settings": {
+                "text": "SUMMER SALE NOW LIVE",
+                "font_size": "lg"
+              }
+            }
+          },
+          "block_order": ["text_1"]
+        },
+        "item_3": {
+          "type": "_marquee_item",
+          "blocks": {
+            "text_1": {
+              "type": "_marquee_text",
+              "settings": {
+                "text": "HASSLE-FREE RETURNS",
+                "font_size": "lg"
+              }
+            }
+          },
+          "block_order": ["text_1"]
+        },
+        "item_4": {
+          "type": "_marquee_item",
+          "blocks": {
+            "text_1": {
+              "type": "_marquee_text",
+              "settings": {
+                "text": "30 DAYS REPLACEMENT",
+                "font_size": "lg"
+              }
+            }
+          },
+          "block_order": ["text_1"]
+        },
+        "item_5": {
+          "type": "_marquee_item",
+          "blocks": {
+            "text_1": {
+              "type": "_marquee_text",
+              "settings": {
+                "text": "CRUELTY FREE",
+                "font_size": "lg"
+              }
+            }
+          },
+          "block_order": ["text_1"]
+        },
+        "item_6": {
+          "type": "_marquee_item",
+          "blocks": {
+            "text_1": {
+              "type": "_marquee_text",
+              "settings": {
+                "text": "SUSTAINABLE & NATURAL",
+                "font_size": "lg"
+              }
+            }
+          },
+          "block_order": ["text_1"]
+        }
+      },
+      "block_order": ["item_1", "item_2", "item_3", "item_4", "item_5", "item_6"]
+    }
+  ]
+}
+{% endschema %}

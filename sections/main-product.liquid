@@ -1,0 +1,178 @@
+{%- comment -%}
+  Product — media, title, price, variant picker, quantity and add to cart with
+  dynamic checkout buttons, then the description. A plain product form post
+  (no cart JavaScript), inside the shared page shell (assets/base.css).
+{%- endcomment -%}
+{%- assign current_variant = product.selected_or_first_available_variant -%}
+
+<div class="page-shell color-{{ section.settings.color_scheme }}">
+  <div class="page-shell__inner main-product">
+    <div class="main-product__media">
+      {%- for media in product.media limit: 10 -%}
+        {%- if media.media_type == 'image' -%}
+          {{
+            media
+            | image_url: width: 1400
+            | image_tag:
+              class: 'main-product__image',
+              loading: 'lazy',
+              widths: '400, 600, 800, 1000, 1200, 1400',
+              sizes: '(min-width: 768px) 55vw, 100vw'
+          }}
+        {%- else -%}
+          {{ media | media_tag: image_size: '1200x' }}
+        {%- endif -%}
+      {%- else -%}
+        {{ 'product-1' | placeholder_svg_tag: 'main-product__image main-product__image--placeholder' }}
+      {%- endfor -%}
+    </div>
+
+    <div class="main-product__info">
+      <h1 class="page-shell__title">{{ product.title | escape }}</h1>
+
+      <p class="main-product__price">
+        {%- if current_variant.compare_at_price > current_variant.price -%}
+          <s class="main-product__compare">{{ current_variant.compare_at_price | money }}</s>
+        {%- endif -%}
+        <span>{{ current_variant.price | money }}</span>
+      </p>
+
+      {%- form 'product', product, class: 'main-product__form' -%}
+        {%- if product.has_only_default_variant -%}
+          <input type="hidden" name="id" value="{{ current_variant.id }}">
+        {%- else -%}
+          <label for="ProductVariant-{{ section.id }}">{{ 'products.product.variant' | t }}</label>
+          <select name="id" id="ProductVariant-{{ section.id }}">
+            {%- for variant in product.variants -%}
+              <option
+                value="{{ variant.id }}"
+                {% if variant == current_variant %}
+                  selected
+                {% endif %}
+                {% unless variant.available %}
+                  disabled
+                {% endunless %}
+              >
+                {{ variant.title | escape }} – {{ variant.price | money }}
+              </option>
+            {%- endfor -%}
+          </select>
+        {%- endif -%}
+
+        <label for="ProductQty-{{ section.id }}">{{ 'products.product.quantity' | t }}</label>
+        <input type="number" name="quantity" id="ProductQty-{{ section.id }}" min="1" value="1">
+
+        <button
+          type="submit"
+          class="page-shell__button"
+          {% unless current_variant.available %}
+            disabled
+          {% endunless %}
+        >
+          {%- if current_variant.available -%}
+            {{ 'products.product.add_to_cart' | t }}
+          {%- else -%}
+            {{ 'products.product.sold_out' | t }}
+          {%- endif -%}
+        </button>
+        {{ form | payment_button }}
+      {%- endform -%}
+
+      {%- if product.description != blank -%}
+        <div class="page-shell__rte">{{ product.description }}</div>
+      {%- endif -%}
+    </div>
+  </div>
+</div>
+
+{% stylesheet %}
+  .main-product {
+    display: grid;
+    gap: var(--ds-layout-gap-mobile);
+  }
+
+  .main-product__media {
+    display: grid;
+    gap: var(--ds-item-gap-mobile);
+    min-width: 0;
+  }
+
+  .main-product__image {
+    display: block;
+    width: 100%;
+    height: auto;
+    border-radius: var(--ds-item-radius-mobile);
+    background-color: var(--color-surface);
+  }
+
+  .main-product__image--placeholder {
+    fill: var(--color-soft-text);
+  }
+
+  .main-product__info {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    min-width: 0;
+  }
+
+  .main-product__price {
+    display: flex;
+    gap: 0.5rem;
+    color: var(--color-heading);
+    font-size: var(--fs-text-lg);
+  }
+
+  .main-product__compare {
+    color: var(--color-soft-text);
+  }
+
+  .main-product__form {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .main-product__form select,
+  .main-product__form input[type='number'] {
+    padding: 0.75rem;
+    font: inherit;
+    color: var(--color-text);
+    background-color: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--ds-item-radius-mobile);
+  }
+
+  .main-product__form input[type='number'] {
+    width: 6rem;
+  }
+
+  @media (min-width: 768px) {
+    .main-product {
+      grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+      gap: var(--ds-layout-gap-desktop);
+      align-items: start;
+    }
+
+    .main-product__info {
+      position: sticky;
+      top: 2rem;
+    }
+  }
+{% endstylesheet %}
+
+{% schema %}
+{
+  "name": "Product",
+  "tag": "section",
+  "class": "shopify-section--main",
+  "settings": [
+    {
+      "type": "color_scheme",
+      "id": "color_scheme",
+      "label": "Color scheme",
+      "default": "scheme_1"
+    }
+  ]
+}
+{% endschema %}

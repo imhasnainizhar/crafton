@@ -1,0 +1,779 @@
+{%- comment -%}
+  FAQ — section shell for a question-and-answer block: Rich Content for the
+  intro and an FAQ List for the questions themselves. Elewind's FAQ without
+  background media: the color scheme paints the background. Spacing, gutter,
+  radius and shadow read the Design System tokens the section emits.
+{%- endcomment -%}
+
+{% style %}
+  .faq-section--{{ section.id }} {
+    {% render 'section-design-mode', section_settings: section.settings %}
+    --faq-min-height: {{ section.settings.min_height | default: 560 }}px;
+  }
+{% endstyle %}
+
+<section
+  class="faq-section faq-section--{{ section.id }} color-{{ section.settings.color_scheme | default: 'scheme_1' }}"
+  data-full-height="{{ section.settings.full_height }}"
+>
+  {%- if section.settings.full_height -%}
+    <script>document.currentScript.parentElement.classList.add('is-parsing');</script>
+  {%- endif -%}
+  <div class="faq-section__inner">
+    {% content_for 'blocks' %}
+  </div>
+  {%- if section.settings.full_height -%}
+    <script>document.currentScript.parentElement.classList.remove('is-parsing');</script>
+  {%- endif -%}
+</section>
+
+{% stylesheet %}
+  .faq-section {
+    position: relative;
+    overflow: hidden;
+    width: 100%;
+    padding-block: var(--ds-section-padding-mobile);
+    padding-inline: 0;
+    background: var(--color-base);
+    color: var(--color-text);
+
+    --faq-layout-gap: var(--ds-layout-gap-mobile);
+    --faq-gutter: var(--ds-layout-gutter-mobile);
+    --faq-item-gap: var(--ds-item-gap-mobile);
+    --faq-item-border-width: var(--ds-item-border-width-mobile);
+    --faq-item-radius: var(--ds-item-radius-mobile);
+    --faq-item-shadow: var(--ds-item-shadow-mobile);
+  }
+
+  .faq-section[data-full-height='true'] {
+    min-height: max(var(--faq-min-height), 100vh);
+    display: flex;
+    align-items: center;
+  }
+
+  /* Centred content re-centres as the page streams in (heading first, items
+     later), which the browser reports as a layout shift. Hold painting until
+     the section's closing script has run; layout still happens, so nothing
+     moves on screen. Without JS the class is never added. */
+  .faq-section.is-parsing .faq-section__inner {
+    visibility: hidden;
+  }
+
+  .faq-section__inner {
+    position: relative;
+    width: 100%;
+    max-width: var(--ds-section-width-mobile);
+    min-width: 0;
+    margin-inline: auto;
+    padding-inline: var(--faq-gutter);
+    display: flex;
+    flex-direction: column;
+    gap: var(--faq-layout-gap);
+    --align-x: flex-start;
+    --text-align: left;
+  }
+
+  .faq-section__inner > * {
+    width: 100%;
+    min-width: 0;
+  }
+
+  @media (min-width: 768px) {
+    .faq-section {
+      padding-block: var(--ds-section-padding-desktop);
+      --faq-layout-gap: var(--ds-layout-gap-desktop);
+      --faq-gutter: var(--ds-layout-gutter-desktop);
+      --faq-item-gap: var(--ds-item-gap-desktop);
+      --faq-item-border-width: var(--ds-item-border-width-desktop);
+      --faq-item-radius: var(--ds-item-radius-desktop);
+      --faq-item-shadow: var(--ds-item-shadow-desktop);
+    }
+
+    .faq-section__inner {
+      max-width: var(--ds-section-width-desktop);
+    }
+  }
+{% endstylesheet %}
+
+{% schema %}
+{
+  "name": "FAQ",
+  "disabled_on": {
+    "templates": [
+      "page",
+      "blog"
+    ]
+  },
+  "settings": [
+    {
+      "type": "header",
+      "content": "Appearance"
+    },
+    {
+      "type": "color_scheme",
+      "id": "color_scheme",
+      "label": "Color Scheme",
+      "default": "scheme_1"
+    },
+    {
+      "type": "header",
+      "content": "Animations",
+      "info": "Questions enter one after the other as the list scrolls into view."
+    },
+    {
+      "type": "checkbox",
+      "id": "animation_enabled",
+      "label": "Animate on scroll",
+      "default": true
+    },
+    {
+      "type": "select",
+      "id": "animation_effect",
+      "label": "Effect",
+      "options": [
+        {
+          "value": "fade",
+          "label": "Fade"
+        },
+        {
+          "value": "fade-up",
+          "label": "Fade up"
+        },
+        {
+          "value": "fade-down",
+          "label": "Fade down"
+        },
+        {
+          "value": "slide",
+          "label": "Slide"
+        },
+        {
+          "value": "scale",
+          "label": "Scale"
+        }
+      ],
+      "default": "fade-up",
+      "visible_if": "{{ section.settings.animation_enabled }}"
+    },
+    {
+      "type": "range",
+      "id": "animation_duration",
+      "label": "Duration",
+      "min": 0.2,
+      "max": 1.5,
+      "step": 0.1,
+      "unit": "s",
+      "default": 0.6,
+      "visible_if": "{{ section.settings.animation_enabled }}"
+    },
+    {
+      "type": "range",
+      "id": "animation_delay",
+      "label": "Delay",
+      "min": 0,
+      "max": 2,
+      "step": 0.1,
+      "unit": "s",
+      "default": 0,
+      "visible_if": "{{ section.settings.animation_enabled }}"
+    },
+    {
+      "type": "range",
+      "id": "animation_stagger",
+      "label": "Stagger",
+      "min": 0,
+      "max": 300,
+      "step": 10,
+      "unit": "ms",
+      "default": 120,
+      "visible_if": "{{ section.settings.animation_enabled }}"
+    },
+    {
+      "type": "range",
+      "id": "animation_distance",
+      "label": "Distance",
+      "min": 0,
+      "max": 100,
+      "step": 4,
+      "unit": "px",
+      "default": 24,
+      "visible_if": "{{ section.settings.animation_enabled and section.settings.animation_effect != 'fade' and section.settings.animation_effect != 'scale' }}"
+    },
+    {
+      "type": "select",
+      "id": "animation_ease",
+      "label": "Easing",
+      "options": [
+        {
+          "value": "out",
+          "label": "Out"
+        },
+        {
+          "value": "out-strong",
+          "label": "Out (strong)"
+        },
+        {
+          "value": "back",
+          "label": "Back"
+        },
+        {
+          "value": "in-out",
+          "label": "In out"
+        },
+        {
+          "value": "linear",
+          "label": "Linear"
+        }
+      ],
+      "default": "out",
+      "visible_if": "{{ section.settings.animation_enabled }}"
+    },
+    {
+      "type": "checkbox",
+      "id": "animation_once",
+      "label": "Animate only once",
+      "default": true,
+      "visible_if": "{{ section.settings.animation_enabled }}"
+    },
+    {
+      "type": "header",
+      "content": "Design Mode"
+    },
+    {
+      "type": "select",
+      "id": "section_design_mode",
+      "label": "Section Design Mode",
+      "info": "Auto: inherit all theme settings. Blend: inherit theme settings and override section padding, layout and item gaps, item shadow, and borders. Custom: use this section's Design Mode and complete Design System values.",
+      "options": [
+        {
+          "value": "auto",
+          "label": "Auto"
+        },
+        {
+          "value": "blend",
+          "label": "Blend"
+        },
+        {
+          "value": "custom",
+          "label": "Custom"
+        }
+      ],
+      "default": "blend"
+    },
+    {
+      "type": "select",
+      "id": "design_mode_desktop",
+      "label": "Desktop Design Mode",
+      "options": [
+        {
+          "value": "modern",
+          "label": "Modern"
+        },
+        {
+          "value": "minimal",
+          "label": "Minimal"
+        }
+      ],
+      "default": "modern",
+      "visible_if": "{{ section.settings.section_design_mode == 'custom' }}"
+    },
+    {
+      "type": "select",
+      "id": "design_mode_mobile",
+      "label": "Mobile Design Mode",
+      "options": [
+        {
+          "value": "modern",
+          "label": "Modern"
+        },
+        {
+          "value": "minimal",
+          "label": "Minimal"
+        }
+      ],
+      "default": "modern",
+      "visible_if": "{{ section.settings.section_design_mode == 'custom' }}"
+    },
+    {
+      "type": "header",
+      "content": "Spacing",
+      "visible_if": "{{ section.settings.section_design_mode == 'custom' or section.settings.section_design_mode == 'blend' }}"
+    },
+    {
+      "type": "select",
+      "id": "design_section_padding_desktop",
+      "label": "Section padding (desktop)",
+      "options": [
+        {
+          "value": "none",
+          "label": "None"
+        },
+        {
+          "value": "xs",
+          "label": "Extra small"
+        },
+        {
+          "value": "sm",
+          "label": "Small"
+        },
+        {
+          "value": "md",
+          "label": "Medium"
+        },
+        {
+          "value": "lg",
+          "label": "Large"
+        },
+        {
+          "value": "xl",
+          "label": "Extra large"
+        },
+        {
+          "value": "2xl",
+          "label": "Maximum"
+        }
+      ],
+      "default": "xl",
+      "visible_if": "{{ section.settings.section_design_mode == 'custom' or section.settings.section_design_mode == 'blend' }}"
+    },
+    {
+      "type": "select",
+      "id": "design_section_padding_mobile",
+      "label": "Section padding (mobile)",
+      "options": [
+        {
+          "value": "none",
+          "label": "None"
+        },
+        {
+          "value": "xs",
+          "label": "Extra small"
+        },
+        {
+          "value": "sm",
+          "label": "Small"
+        },
+        {
+          "value": "md",
+          "label": "Medium"
+        },
+        {
+          "value": "lg",
+          "label": "Large"
+        },
+        {
+          "value": "xl",
+          "label": "Extra large"
+        },
+        {
+          "value": "2xl",
+          "label": "Maximum"
+        }
+      ],
+      "default": "lg",
+      "visible_if": "{{ section.settings.section_design_mode == 'custom' or section.settings.section_design_mode == 'blend' }}"
+    },
+    {
+      "type": "select",
+      "id": "design_layout_gap_desktop",
+      "label": "Layout Gap (Desktop)",
+      "options": [
+        {
+          "value": "none",
+          "label": "None"
+        },
+        {
+          "value": "xs",
+          "label": "Extra small"
+        },
+        {
+          "value": "sm",
+          "label": "Small"
+        },
+        {
+          "value": "md",
+          "label": "Medium"
+        },
+        {
+          "value": "lg",
+          "label": "Large"
+        },
+        {
+          "value": "xl",
+          "label": "Extra large"
+        }
+      ],
+      "default": "md",
+      "visible_if": "{{ section.settings.section_design_mode == 'custom' or section.settings.section_design_mode == 'blend' }}"
+    },
+    {
+      "type": "select",
+      "id": "design_layout_gap_mobile",
+      "label": "Layout Gap (Mobile)",
+      "options": [
+        {
+          "value": "none",
+          "label": "None"
+        },
+        {
+          "value": "xs",
+          "label": "Extra small"
+        },
+        {
+          "value": "sm",
+          "label": "Small"
+        },
+        {
+          "value": "md",
+          "label": "Medium"
+        },
+        {
+          "value": "lg",
+          "label": "Large"
+        },
+        {
+          "value": "xl",
+          "label": "Extra large"
+        }
+      ],
+      "default": "sm",
+      "visible_if": "{{ section.settings.section_design_mode == 'custom' or section.settings.section_design_mode == 'blend' }}"
+    },
+    {
+      "type": "header",
+      "content": "Layout",
+      "visible_if": "{{ section.settings.section_design_mode == 'custom' or section.settings.section_design_mode == 'blend' }}"
+    },
+    {
+      "type": "checkbox",
+      "id": "design_enable_minimal_gutter",
+      "label": "Enable gutter in Minimal mode",
+      "default": true,
+      "visible_if": "{{ section.settings.section_design_mode == 'custom' or section.settings.section_design_mode == 'blend' }}"
+    },
+    {
+      "type": "select",
+      "id": "design_gutter_desktop",
+      "label": "Gutter (desktop)",
+      "options": [
+        {
+          "value": "none",
+          "label": "None"
+        },
+        {
+          "value": "xs",
+          "label": "Extra small"
+        },
+        {
+          "value": "sm",
+          "label": "Small"
+        },
+        {
+          "value": "md",
+          "label": "Medium"
+        },
+        {
+          "value": "lg",
+          "label": "Large"
+        },
+        {
+          "value": "xl",
+          "label": "Extra large"
+        }
+      ],
+      "default": "lg",
+      "visible_if": "{{ section.settings.section_design_mode == 'custom' or section.settings.section_design_mode == 'blend' }}"
+    },
+    {
+      "type": "select",
+      "id": "design_gutter_mobile",
+      "label": "Gutter (mobile)",
+      "options": [
+        {
+          "value": "none",
+          "label": "None"
+        },
+        {
+          "value": "sm",
+          "label": "Small"
+        },
+        {
+          "value": "md",
+          "label": "Medium"
+        },
+        {
+          "value": "lg",
+          "label": "Large"
+        }
+      ],
+      "default": "md",
+      "visible_if": "{{ section.settings.section_design_mode == 'custom' or section.settings.section_design_mode == 'blend' }}"
+    },
+    {
+      "type": "range",
+      "id": "design_layout_radius_desktop",
+      "label": "Layout radius (desktop)",
+      "info": "Blend: this section's radius always applies, even when the theme is Minimal. Custom: Minimal Design Mode removes it.",
+      "min": 0,
+      "max": 60,
+      "step": 2,
+      "unit": "px",
+      "default": 28,
+      "visible_if": "{{ section.settings.section_design_mode == 'custom' or section.settings.section_design_mode == 'blend' }}"
+    },
+    {
+      "type": "range",
+      "id": "design_layout_radius_mobile",
+      "label": "Layout radius (mobile)",
+      "info": "Blend: this section's radius always applies, even when the theme is Minimal. Custom: Minimal Design Mode removes it.",
+      "min": 0,
+      "max": 60,
+      "step": 2,
+      "unit": "px",
+      "default": 16,
+      "visible_if": "{{ section.settings.section_design_mode == 'custom' or section.settings.section_design_mode == 'blend' }}"
+    },
+    {
+      "type": "header",
+      "content": "Section Width",
+      "info": "Independent of Design Mode — the width cap applies in both Modern and Minimal, in Blend as well as Custom, and only when enabled below."
+    },
+    {
+      "type": "checkbox",
+      "id": "design_enable_section_width",
+      "label": "Enable Section Width",
+      "default": true
+    },
+    {
+      "type": "select",
+      "id": "design_section_width_desktop",
+      "label": "Section Width (Desktop)",
+      "options": [
+        {
+          "value": "none",
+          "label": "None"
+        },
+        {
+          "value": "wide",
+          "label": "Wide"
+        },
+        {
+          "value": "max",
+          "label": "Maximum"
+        },
+        {
+          "value": "tv",
+          "label": "TV"
+        }
+      ],
+      "default": "wide",
+      "visible_if": "{{ section.settings.design_enable_section_width }}"
+    },
+    {
+      "type": "select",
+      "id": "design_section_width_mobile",
+      "label": "Section Width (Mobile)",
+      "options": [
+        {
+          "value": "none",
+          "label": "None"
+        },
+        {
+          "value": "wide",
+          "label": "Wide"
+        },
+        {
+          "value": "max",
+          "label": "Maximum"
+        }
+      ],
+      "default": "none",
+      "visible_if": "{{ section.settings.design_enable_section_width }}"
+    },
+    {
+      "type": "header",
+      "content": "Items Styling",
+      "visible_if": "{{ section.settings.section_design_mode == 'custom' or section.settings.section_design_mode == 'blend' }}"
+    },
+    {
+      "type": "checkbox",
+      "id": "design_enable_minimal_items_gap",
+      "label": "Enable gap in Minimal mode",
+      "default": true,
+      "visible_if": "{{ section.settings.section_design_mode == 'custom' or section.settings.section_design_mode == 'blend' }}"
+    },
+    {
+      "type": "range",
+      "id": "design_items_gap_desktop",
+      "label": "Items Gap (Desktop)",
+      "min": 0,
+      "max": 60,
+      "step": 2,
+      "unit": "px",
+      "default": 24,
+      "visible_if": "{{ section.settings.section_design_mode == 'custom' or section.settings.section_design_mode == 'blend' }}"
+    },
+    {
+      "type": "range",
+      "id": "design_items_gap_mobile",
+      "label": "Items Gap (Mobile)",
+      "min": 0,
+      "max": 40,
+      "step": 2,
+      "unit": "px",
+      "default": 16,
+      "visible_if": "{{ section.settings.section_design_mode == 'custom' or section.settings.section_design_mode == 'blend' }}"
+    },
+    {
+      "type": "range",
+      "id": "design_item_radius_desktop",
+      "label": "Item radius (desktop)",
+      "info": "Blend: this section's radius always applies, even when the theme is Minimal. Custom: Minimal Design Mode removes it.",
+      "min": 0,
+      "max": 50,
+      "step": 2,
+      "unit": "px",
+      "default": 12,
+      "visible_if": "{{ section.settings.section_design_mode == 'custom' or section.settings.section_design_mode == 'blend' }}"
+    },
+    {
+      "type": "range",
+      "id": "design_item_radius_mobile",
+      "label": "Item radius (mobile)",
+      "info": "Blend: this section's radius always applies, even when the theme is Minimal. Custom: Minimal Design Mode removes it.",
+      "min": 0,
+      "max": 50,
+      "step": 2,
+      "unit": "px",
+      "default": 12,
+      "visible_if": "{{ section.settings.section_design_mode == 'custom' or section.settings.section_design_mode == 'blend' }}"
+    },
+    {
+      "type": "select",
+      "id": "design_item_shadow",
+      "label": "Item shadow",
+      "options": [
+        {
+          "value": "none",
+          "label": "None"
+        },
+        {
+          "value": "sm",
+          "label": "Small"
+        },
+        {
+          "value": "md",
+          "label": "Medium"
+        },
+        {
+          "value": "lg",
+          "label": "Large"
+        }
+      ],
+      "default": "md",
+      "visible_if": "{{ section.settings.section_design_mode == 'custom' or section.settings.section_design_mode == 'blend' }}"
+    },
+    {
+      "type": "range",
+      "id": "design_item_border_width",
+      "label": "Item border width",
+      "min": 0,
+      "max": 10,
+      "step": 1,
+      "unit": "px",
+      "default": 1,
+      "visible_if": "{{ section.settings.section_design_mode == 'custom' or section.settings.section_design_mode == 'blend' }}"
+    },
+    {
+      "type": "header",
+      "content": "Height"
+    },
+    {
+      "type": "checkbox",
+      "id": "full_height",
+      "label": "Full screen height",
+      "default": true
+    },
+    {
+      "type": "number",
+      "id": "min_height",
+      "label": "Minimum height (px)",
+      "default": 560,
+      "visible_if": "{{ section.settings.full_height }}"
+    }
+  ],
+  "blocks": [
+    {
+      "type": "rich_content"
+    },
+    {
+      "type": "_faq_list"
+    }
+  ],
+  "presets": [
+    {
+      "name": "FAQ",
+      "category": "Text & content",
+      "blocks": [
+        {
+          "type": "rich_content",
+          "blocks": [
+            {
+              "type": "subtitle",
+              "settings": {
+                "text": "FAQ"
+              }
+            },
+            {
+              "type": "heading",
+              "settings": {
+                "heading_text": "Your questions, answered.",
+                "heading_tag": "h2"
+              }
+            },
+            {
+              "type": "text",
+              "settings": {
+                "paragraph_text": "<p>Everything you need to know about our products and your experience.</p>"
+              }
+            }
+          ]
+        },
+        {
+          "type": "_faq_list",
+          "blocks": [
+            {
+              "type": "_faq_item",
+              "settings": {
+                "question": "How do I choose the right product for me?",
+                "answer": "<p>Start with our quick guide on each product page — it lists who the product is best for, how to use it, and what results to expect. Still unsure? Our team is happy to recommend a match.</p>"
+              }
+            },
+            {
+              "type": "_faq_item",
+              "settings": {
+                "question": "What makes your products different?",
+                "answer": "<p>We focus on clean, effective ingredients and rigorous testing so you get results without compromise.</p>"
+              }
+            },
+            {
+              "type": "_faq_item",
+              "settings": {
+                "question": "How long does shipping take?",
+                "answer": "<p>Orders ship within 1-2 business days and typically arrive within 3-7 business days.</p>"
+              }
+            },
+            {
+              "type": "_faq_item",
+              "settings": {
+                "question": "Can I return a product if I'm not satisfied?",
+                "answer": "<p>Yes, we offer a 30-day satisfaction guarantee on all purchases. Reach out and we'll arrange a refund or an exchange — no complicated forms.</p>"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
+{% endschema %}

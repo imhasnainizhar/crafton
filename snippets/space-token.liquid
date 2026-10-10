@@ -1,0 +1,7 @@
+{%- comment -%}
+  Maps a spacing-token key to its CSS value. Used inside {% style %} declarations
+  so every migrated block/section emits identical fluid-spacing math.
+  Usage: padding-block: {% render 'space-token', key: block.settings.padding_vertical %};
+  Keys: none | xs | sm | md | lg | xl | 2xl  (see assets/base.css :root).
+{%- endcomment -%}
+{%- if key == 'none' or key == blank -%}0px{%- else -%}var(--space-{{ key }}){%- endif -%}

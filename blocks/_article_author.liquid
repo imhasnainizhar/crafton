@@ -1,0 +1,198 @@
+{%- comment -%}
+  Article Author — the author of the closest article (`closest.article`),
+  with an optional "By" prefix and the author's staff avatar
+  (article.user.image) or initial. Text-role type through
+  snippets/typography-resolver.liquid, colour through
+  snippets/color-role-resolver.liquid.
+{%- endcomment -%}
+
+{% stylesheet %}
+  .art-author {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5em;
+    margin: 0;
+    max-width: 100%;
+  }
+
+  .art-author .art-author__avatar {
+    flex: 0 0 auto;
+    display: grid;
+    place-items: center;
+    width: var(--art-avatar-size);
+    height: var(--art-avatar-size);
+    border-radius: 50%;
+    overflow: hidden;
+    background-color: color-mix(in srgb, currentColor 14%, transparent);
+    font-size: calc(var(--art-avatar-size) * 0.42);
+    font-weight: 600;
+    line-height: 1;
+  }
+
+  .art-author .art-author__avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .art-author .art-author__name {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .art-author .art-author__prefix {
+    opacity: 0.72;
+  }
+{% endstylesheet %}
+
+{%- liquid
+  assign art = closest.article
+  assign author = art.author
+  if art == blank
+    assign author = 'theme.components.article_card.placeholder_author' | t
+  endif
+  assign avatar = art.user.image
+-%}
+
+{%- if author != blank -%}
+  {% style %}
+    .art-author--{{ block.id }} {
+      --art-avatar-size: {{ block.settings.avatar_size }}px;
+      {% render 'typography-resolver', role: 'text', source: block.settings %}
+      {% render 'color-role-resolver', mode: 'color', role: 'text', source: block.settings %}
+    }
+  {% endstyle %}
+
+  <p class="art-author art-author--{{ block.id }}" {{ block.shopify_attributes }}>
+    {%- if block.settings.show_avatar -%}
+      <span class="art-author__avatar" aria-hidden="true">
+        {%- if avatar != blank -%}
+          {{ avatar | image_url: width: 120 | image_tag: loading: 'lazy', alt: '' }}
+        {%- else -%}
+          {{- author | slice: 0 | upcase -}}
+        {%- endif -%}
+      </span>
+    {%- endif -%}
+    <span class="art-author__name">
+      {%- if block.settings.prefix != blank -%}
+        <span class="art-author__prefix">{{ block.settings.prefix | escape }} </span>
+      {%- endif -%}
+      {{- author | escape -}}
+    </span>
+  </p>
+{%- endif -%}
+
+{% schema %}
+{
+  "name": "Article Author",
+  "tag": null,
+  "settings": [
+    {
+      "type": "header",
+      "content": "Article Author",
+      "info": "The name of the staff member who wrote the article."
+    },
+    {
+      "type": "text",
+      "id": "prefix",
+      "label": "Text before the name",
+      "default": "By"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_avatar",
+      "label": "Show author picture",
+      "info": "Uses the staff member's profile picture, or their initial when there is none.",
+      "default": false
+    },
+    {
+      "type": "range",
+      "id": "avatar_size",
+      "label": "Picture size",
+      "min": 16,
+      "max": 64,
+      "step": 2,
+      "unit": "px",
+      "default": 28,
+      "visible_if": "{{ block.settings.show_avatar }}"
+    },
+    {
+      "type": "header",
+      "content": "Typography"
+    },
+    {
+      "type": "select",
+      "id": "font_size",
+      "label": "Size",
+      "options": [
+        { "value": "xxs", "label": "Extra small" },
+        { "value": "xs", "label": "Small" },
+        { "value": "sm", "label": "Medium" },
+        { "value": "md", "label": "Body" }
+      ],
+      "default": "xs"
+    },
+    {
+      "type": "select",
+      "id": "font_weight",
+      "label": "Font Weight",
+      "options": [
+        { "value": "normal", "label": "Normal" },
+        { "value": "medium", "label": "Medium" },
+        { "value": "semibold", "label": "Semi-bold" },
+        { "value": "bold", "label": "Bold" }
+      ],
+      "default": "medium"
+    },
+    {
+      "type": "checkbox",
+      "id": "override_line_height",
+      "label": "Override Theme Line Height",
+      "default": false
+    },
+    {
+      "type": "range",
+      "id": "line_height",
+      "label": "Line Height",
+      "min": 0.8,
+      "max": 2.4,
+      "step": 0.1,
+      "default": 1.4,
+      "visible_if": "{{ block.settings.override_line_height }}"
+    },
+    {
+      "type": "select",
+      "id": "text_casing",
+      "label": "Text Casing",
+      "info": "On None, the text renders exactly as typed.",
+      "options": [
+        { "value": "theme", "label": "Theme" },
+        { "value": "none", "label": "None" }
+      ],
+      "default": "theme"
+    },
+    {
+      "type": "select",
+      "id": "text_color",
+      "label": "Color",
+      "info": "Automatic follows this block's own role, so a card set to Accent recolors it.",
+      "options": [
+        { "value": "auto", "label": "Automatic" },
+        { "value": "heading", "label": "Heading" },
+        { "value": "text", "label": "Text" },
+        { "value": "soft", "label": "Soft Text" },
+        { "value": "accent", "label": "Accent" },
+        { "value": "parent", "label": "Inherit From Parent" }
+      ],
+      "default": "auto"
+    }
+  ],
+  "presets": [
+    {
+      "name": "Article Author"
+    }
+  ]
+}
+{% endschema %}

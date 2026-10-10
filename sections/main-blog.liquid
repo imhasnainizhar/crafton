@@ -1,0 +1,104 @@
+{%- comment -%}
+  Blog — the blog title over its articles as Classic Article Cards
+  (snippets/classic-article-card.liquid) in a paginated grid, inside the shared
+  page shell (assets/base.css).
+{%- endcomment -%}
+{% style %}
+  .main-blog--{{ section.id }} {
+    --cls-ratio: {{ section.settings.card_ratio | default: '4/3' }};
+  }
+{% endstyle %}
+
+<div class="page-shell color-{{ section.settings.color_scheme }}">
+  <div class="page-shell__inner main-blog main-blog--{{ section.id }}">
+    <h1 class="page-shell__title">{{ blog.title | escape }}</h1>
+
+    {%- paginate blog.articles by 12 -%}
+      <ul class="main-blog__grid" role="list">
+        {%- for article in blog.articles -%}
+          <li>
+            {% render 'classic-article-card',
+              article: article,
+              show_date: section.settings.show_date,
+              show_excerpt: section.settings.show_excerpt
+            %}
+          </li>
+        {%- endfor -%}
+      </ul>
+
+      {%- if paginate.pages > 1 -%}
+        <nav class="page-shell__pagination" aria-label="{{ 'general.pagination.label' | t }}">
+          {{- paginate | default_pagination -}}
+        </nav>
+      {%- endif -%}
+    {%- endpaginate -%}
+  </div>
+</div>
+
+{% stylesheet %}
+  .main-blog {
+    display: flex;
+    flex-direction: column;
+    gap: var(--ds-layout-gap-mobile);
+  }
+
+  .main-blog__grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--ds-item-gap-mobile);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  @media (min-width: 768px) {
+    .main-blog {
+      gap: var(--ds-layout-gap-desktop);
+    }
+
+    .main-blog__grid {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: var(--ds-item-gap-desktop);
+    }
+  }
+{% endstylesheet %}
+
+{% schema %}
+{
+  "name": "Blog posts",
+  "tag": "section",
+  "class": "shopify-section--main",
+  "settings": [
+    {
+      "type": "select",
+      "id": "card_ratio",
+      "label": "Image shape",
+      "options": [
+        { "value": "1/1", "label": "Square (1:1)" },
+        { "value": "4/3", "label": "Landscape (4:3)" },
+        { "value": "3/2", "label": "Landscape (3:2)" },
+        { "value": "16/9", "label": "Wide (16:9)" }
+      ],
+      "default": "4/3"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_date",
+      "label": "Show date",
+      "default": true
+    },
+    {
+      "type": "checkbox",
+      "id": "show_excerpt",
+      "label": "Show excerpt",
+      "default": true
+    },
+    {
+      "type": "color_scheme",
+      "id": "color_scheme",
+      "label": "Color scheme",
+      "default": "scheme_1"
+    }
+  ]
+}
+{% endschema %}

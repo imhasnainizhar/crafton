@@ -1,0 +1,673 @@
+{%- comment -%}
+  List Collections — a grid of Collection Item blocks, rendered as a grid or a
+  carousel independently per breakpoint. Reuses <container-carousel>
+  (assets/container-carousel.js): the JS initializes Swiper only when the
+  active breakpoint's layout is a carousel and toggles the .swiper-slide
+  class on children, so grid layout CSS below targets `.swiper-wrapper > *`,
+  never `.swiper-slide`, and stays correct even when desktop and mobile
+  disagree on grid vs. carousel.
+
+  Items render the shared Collection List Card (`clc-`). Its look belongs to
+  this block and reaches the item blocks through the card's hooks on the
+  carousel element, since a child block cannot read its parent's settings:
+  data-clc-plate / -float / -layout / -box / -icon, and --clc-ratio (per
+  breakpoint), --clc-title-weight, --clc-align / --clc-justify,
+  --clc-icon-size (one fluid clamp between the mobile and desktop sizes),
+  --clc-icon, --clc-plate-radius and, for an Accent card colour, the scheme's
+  neutral accent pair as --clc-plate-bg / --clc-plate-fg.
+  Depends on snippets/collection-list-card.liquid (its styles), snippets/fluid-clamp.liquid.
+{%- endcomment -%}
+
+{%- liquid
+  assign layout_desktop = block.settings.desktop_layout
+  assign layout_mobile = block.settings.mobile_layout
+  assign needs_swiper = false
+  if layout_desktop == 'carousel' or layout_mobile == 'carousel'
+    assign needs_swiper = true
+  endif
+
+  # Card look, published as the card's hooks.
+  assign cs = block.settings
+  assign card_flow = false
+  if cs.card_content_style == 'flow'
+    assign card_flow = true
+  endif
+  # Floating applies to a solid or glass background; a tint is never inset.
+  assign card_float = false
+  if cs.card_float != false and cs.card_plate != 'tint'
+    assign card_float = true
+  endif
+  # In flow, a floating plate or plain text reads as its own element, so the
+  # card's box moves onto the picture.
+  assign card_box = blank
+  if card_flow
+    if card_float or cs.card_plate == 'tint'
+      assign card_box = 'media'
+    endif
+  endif
+
+  case cs.card_content_align
+    when 'center'
+      assign card_justify = 'center'
+    when 'right'
+      assign card_justify = 'flex-end'
+    else
+      assign card_justify = 'flex-start'
+  endcase
+
+  # Icon: the built-in arrow, or the merchant's upload drawn as a mask. Under
+  # the image it shows only for left-aligned text with its checkbox on.
+  assign card_icon = blank
+  assign card_icon_url = blank
+  if cs.card_icon == 'custom' and cs.card_icon_image != blank
+    assign card_icon = 'mask'
+    assign card_icon_url = cs.card_icon_image | image_url: width: 96
+  endif
+  if card_flow
+    assign flow_icon = false
+    if cs.card_flow_icon and cs.card_content_align != 'center' and cs.card_content_align != 'right'
+      assign flow_icon = true
+    endif
+    unless flow_icon
+      assign card_icon = 'off'
+    endunless
+  endif
+
+  capture card_icon_size
+    render 'fluid-clamp', min: cs.card_icon_size_mobile, max: cs.card_icon_size_desktop
+  endcapture
+
+  # Entrance: the host section's Animations group (List Collections) staggers
+  # the cards. A host without that group leaves this block static.
+  assign anim = section.settings
+-%}
+
+
+{% if needs_swiper %}
+  <script src="{{ 'container-carousel.js' | asset_url }}" type="module"></script>
+{% endif %}
+
+{% style %}
+  .list-collections--{{ block.id }} {
+    display: block;
+    width: 100%;
+    box-sizing: border-box;
+    --list-collections-gap: var(--ds-item-gap-mobile);
+    --clc-ratio: {{ block.settings.card_ratio_mobile }};
+    --clc-title-weight: {{ block.settings.card_title_weight }};
+    --clc-align: {{ cs.card_content_align | default: 'left' }};
+    --clc-justify: {{ card_justify }};
+    --clc-icon-size: {{ card_icon_size | strip }};
+    {% if card_float %}--clc-plate-radius: {{ cs.card_plate_radius }}px;{% endif %}
+    {% if card_icon == 'mask' %}--clc-icon: url('{{ card_icon_url }}');{% endif %}
+    {%- comment -%}
+      Card colour: Surface is the card's own default (the scheme's surface
+      and heading colour). Accent publishes the scheme's neutral accent and
+      its contrast colour; the icon follows the text.
+    {%- endcomment -%}
+    {% if cs.card_color == 'accent' %}
+      --clc-plate-bg: var(--color-accent-neutral);
+      --clc-plate-fg: var(--color-accent-neutral-contrast);
+    {% endif %}
+    {%- comment -%} Glass look: Frosted or Liquid, Touch or Full (snippets/glass-resolver). {%- endcomment -%}
+    {% if cs.card_plate == 'glass' %}
+      {% if cs.card_color == 'accent' %}
+        {% render 'glass-resolver', style: cs.card_glass_style, strength: cs.card_glass_strength, color: 'var(--color-accent-neutral)', weight: 'heavy', prefix: 'clc-glass' %}
+      {% else %}
+        {% render 'glass-resolver', style: cs.card_glass_style, strength: cs.card_glass_strength, prefix: 'clc-glass' %}
+      {% endif %}
+    {% endif %}
+    --swiper-theme-color: var(--color-text);
+    --swiper-navigation-size: 16px;
+    /* 24px tap targets; the visible dot stays 8px (padding + content-box). */
+    --swiper-pagination-bullet-size: 24px;
+    --swiper-pagination-bullet-horizontal-gap: 0px;
+    /* The arrows are absolutely placed: keep them on this carousel. */
+    position: relative;
+  }
+
+  .list-collections--{{ block.id }} .swiper {
+    {%- comment -%}
+      No overflow here — base.css's `container-carousel .swiper` rule already
+      clips horizontally while letting hover lift/shadow escape vertically;
+      redeclaring it locally would outrank that shared rule.
+    {%- endcomment -%}
+    width: 100%;
+    box-sizing: border-box;
+  }
+  .list-collections--{{ block.id }} .swiper-wrapper > * {
+    box-sizing: border-box;
+    min-width: 0;
+  }
+  .list-collections--{{ block.id }} .swiper-slide {
+    height: auto;
+  }
+
+  .list-collections--{{ block.id }} .swiper-button-prev,
+  .list-collections--{{ block.id }} .swiper-button-next {
+    color: var(--color-text);
+  }
+  .list-collections--{{ block.id }} .swiper-pagination {
+    position: static;
+    margin-top: var(--ds-layout-gap-mobile);
+  }
+  .list-collections--{{ block.id }} .swiper-pagination-bullet {
+    padding: 8px;
+    background: var(--color-text);
+    background-clip: content-box;
+  }
+
+  {% if layout_mobile == 'grid' %}
+    .list-collections--{{ block.id }} .swiper:not(.swiper-initialized) .swiper-wrapper {
+      display: grid;
+      grid-template-columns: repeat({{ block.settings.mobile_columns }}, minmax(0, 1fr));
+      gap: var(--list-collections-gap);
+    }
+    /* Carousel chrome belongs to the carousel breakpoint only. */
+    .list-collections--{{ block.id }} .swiper-button-prev,
+    .list-collections--{{ block.id }} .swiper-button-next,
+    .list-collections--{{ block.id }} .swiper-pagination {
+      display: none;
+    }
+  {% else %}
+    .list-collections--{{ block.id }} .swiper:not(.swiper-initialized) .swiper-wrapper {
+      display: flex;
+      gap: var(--list-collections-gap);
+      overflow-x: auto;
+      scrollbar-width: none;
+    }
+    .list-collections--{{ block.id }} .swiper:not(.swiper-initialized) .swiper-wrapper::-webkit-scrollbar {
+      display: none;
+    }
+    .list-collections--{{ block.id }} .swiper:not(.swiper-initialized) .swiper-wrapper > * {
+      flex: 0 0 70%;
+      width: 70%;
+    }
+  {% endif %}
+
+  {%- comment -%}
+    768px matches <container-carousel>'s own matchMedia('(min-width: 768px)')
+    breakpoint (assets/container-carousel.js) — these must stay in sync or the
+    CSS fallback and the JS-driven breakpoint disagree in the 750–767px band.
+  {%- endcomment -%}
+  @media screen and (min-width: 768px) {
+    .list-collections--{{ block.id }} {
+      --list-collections-gap: var(--ds-item-gap-desktop);
+      --clc-ratio: {{ block.settings.card_ratio_desktop }};
+    }
+    .list-collections--{{ block.id }} .swiper-pagination {
+      margin-top: var(--ds-layout-gap-desktop);
+    }
+
+    {% if layout_desktop == 'grid' %}
+      .list-collections--{{ block.id }} .swiper:not(.swiper-initialized) .swiper-wrapper {
+        display: grid;
+        grid-template-columns: repeat({{ block.settings.desktop_columns }}, minmax(0, 1fr));
+        gap: var(--list-collections-gap);
+      }
+      .list-collections--{{ block.id }} .swiper:not(.swiper-initialized) .swiper-wrapper > * {
+        flex: none;
+        width: auto;
+      }
+      .list-collections--{{ block.id }} .swiper-button-prev,
+      .list-collections--{{ block.id }} .swiper-button-next,
+      .list-collections--{{ block.id }} .swiper-pagination {
+        display: none;
+      }
+    {% else %}
+      {% if layout_mobile == 'grid' %}
+        .list-collections--{{ block.id }} .swiper-button-prev,
+        .list-collections--{{ block.id }} .swiper-button-next {
+          display: flex;
+        }
+        .list-collections--{{ block.id }} .swiper-pagination {
+          display: block;
+        }
+      {% endif %}
+      .list-collections--{{ block.id }} .swiper:not(.swiper-initialized) .swiper-wrapper {
+        display: flex;
+        gap: var(--list-collections-gap);
+        overflow-x: auto;
+        scrollbar-width: none;
+      }
+      .list-collections--{{ block.id }} .swiper:not(.swiper-initialized) .swiper-wrapper::-webkit-scrollbar {
+        display: none;
+      }
+      .list-collections--{{ block.id }} .swiper:not(.swiper-initialized) .swiper-wrapper > * {
+        flex: 0 0 calc(100% / {{ block.settings.desktop_columns }} - var(--list-collections-gap));
+        width: auto;
+      }
+    {% endif %}
+  }
+
+    /* Cards stagger in with the section's Animations group (snippets/motion-reveal). */
+    .list-collections--{{ block.id }} {
+      {% render 'motion-reveal', part: 'vars', from: anim %}
+    }
+{% endstyle %}
+
+<container-carousel
+  class="list-collections list-collections--{{ block.id }}"
+  data-layout-desktop="{{ layout_desktop }}"
+  data-layout-mobile="{{ layout_mobile }}"
+  data-spv-desktop="{{ block.settings.desktop_columns }}"
+  data-spv-mobile="{{ block.settings.mobile_columns }}"
+  data-loop="false"
+  data-clc-plate="{{ cs.card_plate }}"
+  {% if card_float %}data-clc-float{% endif %}
+  {% if card_flow %}data-clc-layout="flow"{% endif %}
+  {% if card_box != blank %}data-clc-box="{{ card_box }}"{% endif %}
+  {% if card_icon != blank %}data-clc-icon="{{ card_icon }}"{% endif %}
+  {{ block.shopify_attributes }}
+>
+  <div class="swiper">
+    <div class="swiper-wrapper {% render 'motion-reveal', part: 'class', from: anim, group: true %}">
+      {% content_for 'blocks' %}
+    </div>
+    <div class="swiper-pagination"></div>
+  </div>
+  <div class="swiper-button-prev"></div>
+  <div class="swiper-button-next"></div>
+</container-carousel>
+
+{% schema %}
+{
+  "name": "Collections",
+  "tag": null,
+  "blocks": [
+    {
+      "type": "_collection_card"
+    }
+  ],
+  "presets": [
+    {
+      "name": "Collections",
+      "settings": {
+        "desktop_layout": "grid",
+        "desktop_columns": 4,
+        "mobile_layout": "carousel",
+        "mobile_columns": "1"
+      },
+      "blocks": [
+        {
+          "type": "_collection_card",
+          "settings": {
+            "title": "New Arrivals"
+          }
+        },
+        {
+          "type": "_collection_card",
+          "settings": {
+            "title": "Best Sellers"
+          }
+        },
+        {
+          "type": "_collection_card",
+          "settings": {
+            "title": "Sale"
+          }
+        },
+        {
+          "type": "_collection_card",
+          "settings": {
+            "title": "Featured"
+          }
+        }
+      ]
+    }
+  ],
+  "settings": [
+    {
+      "type": "header",
+      "content": "Desktop"
+    },
+    {
+      "type": "select",
+      "id": "desktop_layout",
+      "label": "Layout",
+      "options": [
+        {
+          "value": "grid",
+          "label": "Grid"
+        },
+        {
+          "value": "carousel",
+          "label": "Carousel"
+        }
+      ],
+      "default": "grid"
+    },
+    {
+      "type": "range",
+      "id": "desktop_columns",
+      "label": "Collections per row",
+      "min": 2,
+      "max": 6,
+      "step": 1,
+      "default": 4
+    },
+    {
+      "type": "header",
+      "content": "Mobile"
+    },
+    {
+      "type": "select",
+      "id": "mobile_layout",
+      "label": "Layout",
+      "options": [
+        {
+          "value": "grid",
+          "label": "Grid"
+        },
+        {
+          "value": "carousel",
+          "label": "Carousel"
+        }
+      ],
+      "default": "carousel"
+    },
+    {
+      "type": "select",
+      "id": "mobile_columns",
+      "label": "Collections per row",
+      "options": [
+        {
+          "value": "1",
+          "label": "1"
+        },
+        {
+          "value": "2",
+          "label": "2"
+        }
+      ],
+      "default": "1"
+    },
+    {
+      "type": "header",
+      "content": "Card"
+    },
+    {
+      "type": "select",
+      "id": "card_content_style",
+      "label": "Text placement",
+      "options": [
+        {
+          "value": "overlay",
+          "label": "On the image"
+        },
+        {
+          "value": "flow",
+          "label": "Under the image"
+        }
+      ],
+      "default": "overlay"
+    },
+    {
+      "type": "select",
+      "id": "card_content_align",
+      "label": "Text alignment",
+      "options": [
+        {
+          "value": "left",
+          "label": "Left"
+        },
+        {
+          "value": "center",
+          "label": "Center"
+        },
+        {
+          "value": "right",
+          "label": "Right"
+        }
+      ],
+      "default": "left"
+    },
+    {
+      "type": "select",
+      "id": "card_plate",
+      "label": "Text background",
+      "options": [
+        {
+          "value": "solid",
+          "label": "Solid"
+        },
+        {
+          "value": "glass",
+          "label": "Glass"
+        },
+        {
+          "value": "tint",
+          "label": "Shadow tint"
+        }
+      ],
+      "default": "solid",
+      "info": "Under the image, Shadow tint shows plain text."
+    },
+    {
+      "type": "checkbox",
+      "id": "card_float",
+      "label": "Floating text background",
+      "info": "Insets the background from the card's edges with its own rounded corners. Off: it runs edge to edge.",
+      "default": true,
+      "visible_if": "{{ block.settings.card_plate != 'tint' }}"
+    },
+    {
+      "type": "range",
+      "id": "card_plate_radius",
+      "label": "Text background corners",
+      "min": 0,
+      "max": 40,
+      "step": 2,
+      "unit": "px",
+      "default": 12,
+      "visible_if": "{{ block.settings.card_plate != 'tint' and block.settings.card_float != false }}"
+    },
+    {
+      "type": "select",
+      "id": "card_glass_style",
+      "label": "Glass look",
+      "info": "Frosted is a soft, milky pane. Liquid is clearer, keeps the picture's colours vivid and catches light along its edges.",
+      "options": [
+        {
+          "value": "frosted",
+          "label": "Frosted"
+        },
+        {
+          "value": "liquid",
+          "label": "Liquid"
+        }
+      ],
+      "default": "frosted",
+      "visible_if": "{{ block.settings.card_plate == 'glass' }}"
+    },
+    {
+      "type": "select",
+      "id": "card_glass_strength",
+      "label": "Glass strength",
+      "info": "A touch of glass keeps the picture almost clear behind the text. Full glass gives the whole effect.",
+      "options": [
+        {
+          "value": "full",
+          "label": "Full glass"
+        },
+        {
+          "value": "touch",
+          "label": "A touch of glass"
+        }
+      ],
+      "default": "full",
+      "visible_if": "{{ block.settings.card_plate == 'glass' }}"
+    },
+    {
+      "type": "select",
+      "id": "card_color",
+      "label": "Card colour",
+      "options": [
+        {
+          "value": "surface",
+          "label": "Surface"
+        },
+        {
+          "value": "accent",
+          "label": "Accent"
+        }
+      ],
+      "default": "surface",
+      "info": "Surface uses the colour scheme's surface colour and its normal text colours. Accent uses the scheme's neutral accent and its contrast colour for the text and icon. Applies to the shade, glass or solid background behind the text, and to the card background when the text sits under the picture."
+    },
+    {
+      "type": "select",
+      "id": "card_ratio_mobile",
+      "label": "Card shape (mobile)",
+      "options": [
+        {
+          "value": "1/1",
+          "label": "1:1"
+        },
+        {
+          "value": "4/5",
+          "label": "4:5"
+        },
+        {
+          "value": "3/4",
+          "label": "3:4"
+        },
+        {
+          "value": "2/3",
+          "label": "2:3"
+        },
+        {
+          "value": "4/3",
+          "label": "4:3"
+        },
+        {
+          "value": "3/2",
+          "label": "3:2"
+        },
+        {
+          "value": "16/9",
+          "label": "16:9"
+        }
+      ],
+      "default": "1/1"
+    },
+    {
+      "type": "select",
+      "id": "card_ratio_desktop",
+      "label": "Card shape (desktop)",
+      "options": [
+        {
+          "value": "1/1",
+          "label": "1:1"
+        },
+        {
+          "value": "4/5",
+          "label": "4:5"
+        },
+        {
+          "value": "3/4",
+          "label": "3:4"
+        },
+        {
+          "value": "2/3",
+          "label": "2:3"
+        },
+        {
+          "value": "4/3",
+          "label": "4:3"
+        },
+        {
+          "value": "3/2",
+          "label": "3:2"
+        },
+        {
+          "value": "16/9",
+          "label": "16:9"
+        }
+      ],
+      "default": "1/1"
+    },
+    {
+      "type": "select",
+      "id": "card_title_weight",
+      "label": "Title weight",
+      "options": [
+        {
+          "value": "400",
+          "label": "Regular"
+        },
+        {
+          "value": "500",
+          "label": "Medium"
+        },
+        {
+          "value": "600",
+          "label": "Semibold"
+        },
+        {
+          "value": "700",
+          "label": "Bold"
+        }
+      ],
+      "default": "700"
+    },
+    {
+      "type": "header",
+      "content": "Card icon",
+      "info": "Slides in before the text on hover and pushes it along."
+    },
+    {
+      "type": "select",
+      "id": "card_icon",
+      "label": "Icon",
+      "options": [
+        {
+          "value": "arrow",
+          "label": "Arrow"
+        },
+        {
+          "value": "custom",
+          "label": "My own icon"
+        }
+      ],
+      "default": "arrow"
+    },
+    {
+      "type": "image_picker",
+      "id": "card_icon_image",
+      "label": "Custom icon",
+      "info": "Drawn in the text colour — a transparent PNG or SVG works best.",
+      "visible_if": "{{ block.settings.card_icon == 'custom' }}"
+    },
+    {
+      "type": "range",
+      "id": "card_icon_size_mobile",
+      "label": "Icon size (mobile)",
+      "info": "The icon grows smoothly from the mobile size on a phone to the desktop size on a wide screen.",
+      "min": 12,
+      "max": 48,
+      "step": 1,
+      "unit": "px",
+      "default": 18
+    },
+    {
+      "type": "range",
+      "id": "card_icon_size_desktop",
+      "label": "Icon size (desktop)",
+      "min": 12,
+      "max": 48,
+      "step": 1,
+      "unit": "px",
+      "default": 22
+    },
+    {
+      "type": "checkbox",
+      "id": "card_flow_icon",
+      "label": "Show icon when text is under the image",
+      "info": "Left-aligned text only: the icon slides in and pushes the text along.",
+      "default": false,
+      "visible_if": "{{ block.settings.card_content_style == 'flow' and block.settings.card_content_align != 'center' and block.settings.card_content_align != 'right' }}"
+    }
+  ]
+}
+{% endschema %}

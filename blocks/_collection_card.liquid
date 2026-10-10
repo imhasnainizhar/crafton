@@ -1,0 +1,94 @@
+{%- comment -%}
+  Collection Card — one collection, rendered by the shared Collection List
+  Card (snippets/collection-list-card.liquid). Used as the card child of List
+  Collections, Featured Collections (`ffx-`) and Tabbed Collections (`ftx-`).
+  This block owns the content — collection, image, title and which subtitle to
+  show; the card's look (plate, floating, shape, title weight, icon) belongs to
+  the composing parent block, published down as data-clc-* and --clc-*,
+  because a child block cannot read its parent's settings.
+{%- endcomment -%}
+
+{%- liquid
+  assign s = block.settings
+  assign coll = s.collection
+  assign subtitle = blank
+  case s.subtitle_source
+    when 'count'
+      assign product_count = coll.all_products_count | default: 0
+      assign subtitle = 'theme.components.collection_card.products_count' | t: count: product_count
+    when 'description'
+      assign subtitle = coll.description | strip_html | strip
+    when 'custom'
+      assign subtitle = s.subtitle
+  endcase
+-%}
+
+{% render 'collection-list-card',
+  collection: coll,
+  image: s.image,
+  title: s.title,
+  subtitle: subtitle,
+  attributes: block.shopify_attributes
+%}
+
+{% schema %}
+{
+  "name": "Collection Card",
+  "tag": null,
+  "settings": [
+    {
+      "type": "collection",
+      "id": "collection",
+      "label": "Collection"
+    },
+    {
+      "type": "image_picker",
+      "id": "image",
+      "label": "Image",
+      "info": "Uses the collection's image when empty."
+    },
+    {
+      "type": "text",
+      "id": "title",
+      "label": "Title",
+      "info": "Uses the collection title when empty."
+    },
+    {
+      "type": "select",
+      "id": "subtitle_source",
+      "label": "Subtitle",
+      "options": [
+        {
+          "value": "description",
+          "label": "Collection description"
+        },
+        {
+          "value": "count",
+          "label": "Number of products"
+        },
+        {
+          "value": "custom",
+          "label": "My own text"
+        },
+        {
+          "value": "none",
+          "label": "None"
+        }
+      ],
+      "default": "description",
+      "info": "Shown on one line under the title."
+    },
+    {
+      "type": "text",
+      "id": "subtitle",
+      "label": "Subtitle text",
+      "visible_if": "{{ block.settings.subtitle_source == 'custom' }}"
+    }
+  ],
+  "presets": [
+    {
+      "name": "Collection Card"
+    }
+  ]
+}
+{% endschema %}

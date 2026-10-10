@@ -3,22 +3,22 @@
 <!doctype html>
 <html lang="{{ request.locale.iso_code }}">
   <head>
-    {% # Inlined CSS Variables %}
-    {% render 'css-variables' %}
-
-    {% # Load and preload the critical CSS %}
-    {{ 'critical.css' | asset_url | stylesheet_tag: preload: true }}
-    {{ 'base.css' | asset_url | stylesheet_tag }}
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>{{ 'gift_card.card' | t }} – {{ shop.name }}</title>
 
     {% # Social, title, etc. %}
     {% render 'meta-tags' %}
 
+    {% # Color schemes, type roles and Design System tokens %}
+    {% render 'theme-styles' %}
+
     {{ content_for_header }}
   </head>
 
-  <body class="template-gift-card">
-    <main>
-      <div>
+  <body class="template-gift-card color-{{ settings.color_schemes.first.id }}">
+    <main class="page-shell page-shell--narrow page-shell--center">
+      <div class="page-shell__inner">
         <h1>{{ gift_card.balance | money }}</h1>
 
         {% if gift_card.enabled == false or gift_card.expired %}

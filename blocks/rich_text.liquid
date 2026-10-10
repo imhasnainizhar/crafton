@@ -1,0 +1,836 @@
+{%- comment -%}
+  Rich Text
+
+  A single Shopify rich-text editor box rendered as `.rte` content, plus its own
+  panel surface (glass/solid background, border, radius, padding).
+
+  TYPOGRAPHY IS GLOBAL HERE. A rich-text box is one field, so there is no way to
+  target an individual heading inside it from this block. Heading and text sizes
+  for `.rte` content therefore come from Theme settings > Typography > Rich Text,
+  which reuse the same ladders and the same Heading and Text Size Factors as the
+  Heading and Text blocks. This block owns only weight, line height and casing.
+
+  Accent typography is resolved by snippets/accent-typography.liquid: this block
+  hands over its settings object, and the snippet inherits the theme Typography
+  defaults unless "Use Custom Accent Typography" is checked.
+{%- endcomment -%}
+
+{%- liquid
+  assign rt_selector = '.block-' | append: block.id | append: ' .rte'
+
+  assign rt_h1 = settings.rich_text_h1_size | default: 'xxl'
+  assign rt_h2 = settings.rich_text_h2_size | default: 'xl'
+  assign rt_h3 = settings.rich_text_h3_size | default: 'lg'
+  assign rt_h4 = settings.rich_text_h4_size | default: 'md'
+  assign rt_h5 = settings.rich_text_h5_size | default: 'sm'
+  assign rt_h6 = settings.rich_text_h6_size | default: 'xs'
+
+  capture rt_bg
+    render 'background-role-token', key: block.settings.background_role
+  endcapture
+-%}
+
+{%- style -%}
+  .block-{{ block.id }} {
+    /* Layout & Alignment */
+    box-sizing: border-box;
+    max-width: min({{ block.settings.max_width | default: '100%' }}, 100%);
+    margin: 0 auto;
+    /* Contain the content: long words / URLs wrap instead of overflowing when
+       truncation is off (no clipping wrapper is present in that case). */
+    overflow-wrap: break-word;
+    word-break: break-word;
+    text-align: {{ block.settings.text_alignment }};
+    padding: calc({{ block.settings.padding_vertical }}rem) calc({{ block.settings.padding_horizontal }}rem);
+    
+
+    /* Colour follows whatever scheme the section or parent block sets; this
+       block only picks which background role of that scheme it paints. */
+    color: var(--color-text);
+    {% case block.settings.background_style %}
+      {% when 'none' %}
+      background-color: transparent;
+      {% when 'glass' %}
+      background-color: {{ rt_bg }};
+      background-color: color-mix(in srgb, {{ rt_bg }} {{ block.settings.glass_tint_opacity }}%, transparent);
+      -webkit-backdrop-filter: blur({{ block.settings.glass_blur }}px);
+      backdrop-filter: blur({{ block.settings.glass_blur }}px);
+      box-shadow: 0 8px 32px color-mix(in srgb, var(--color-shadow) {{ block.settings.glass_shadow_opacity }}%, transparent);
+      {% else %}
+      background-color: {{ rt_bg }};
+    {% endcase %}
+
+    /* Border Styling */
+    {% if block.settings.border_enabled %}
+      border: {{ block.settings.border_thickness | at_least: 1 }}px solid {% if block.settings.background_style == 'glass' %}color-mix(in srgb, var(--color-border) {{ block.settings.glass_border_opacity }}%, transparent){% else %}var(--color-border){% endif %};
+    {% else %}
+      border: 0;
+    {% endif %}
+    border-radius: var(--ds-layout-radius-mobile);
+
+    /* Typography — role 'text'; sizes come from the global Rich Text settings. */
+    {% render 'typography-resolver', role: 'text', source: block.settings %}
+  }
+
+  /* Headings inside the rich text box. One editor field cannot expose a size
+     control per heading, so these come from Theme settings > Typography >
+     Rich Text and use the shared heading ladder. */
+  .block-{{ block.id }} .rte h1 { font-size: var(--fs-heading-{{ rt_h1 }}); }
+  .block-{{ block.id }} .rte h2 { font-size: var(--fs-heading-{{ rt_h2 }}); }
+  .block-{{ block.id }} .rte h3 { font-size: var(--fs-heading-{{ rt_h3 }}); }
+  .block-{{ block.id }} .rte h4 { font-size: var(--fs-heading-{{ rt_h4 }}); }
+  .block-{{ block.id }} .rte h5 { font-size: var(--fs-heading-{{ rt_h5 }}); }
+  .block-{{ block.id }} .rte h6 { font-size: var(--fs-heading-{{ rt_h6 }}); }
+
+  .block-{{ block.id }} .rte h1,
+  .block-{{ block.id }} .rte h2,
+  .block-{{ block.id }} .rte h3,
+  .block-{{ block.id }} .rte h4,
+  .block-{{ block.id }} .rte h5,
+  .block-{{ block.id }} .rte h6 {
+    font-family: var(--font-heading-family);
+    line-height: var(--lh-heading);
+    letter-spacing: var(--ls-heading);
+    color: var(--color-heading);
+  }
+
+  /* Ensure RTE formatting inside the block doesn't override padding */
+  .block-{{ block.id }} .rte {
+    margin: 0;
+  }
+
+  /* Media never exceeds the box; tables/pre scroll internally rather than
+     stretching the block. */
+  .block-{{ block.id }} .rte img,
+  .block-{{ block.id }} .rte video,
+  .block-{{ block.id }} .rte iframe {
+    max-width: 100%;
+    height: auto;
+  }
+
+  .block-{{ block.id }} .rte table,
+  .block-{{ block.id }} .rte pre {
+    max-width: 100%;
+    overflow-x: auto;
+  }
+
+  
+
+  @media (min-width: 768px) {
+    .block-{{ block.id }} {
+      border-radius: var(--ds-layout-radius-desktop);
+    }
+  }
+{%- endstyle -%}
+
+{%- comment -%}
+  No scheme class here: the block inherits the scheme of whatever contains it
+  and only chooses which background role of that scheme it paints.
+{%- endcomment -%}
+
+<div class="block-{{ block.id }}" {{ block.shopify_attributes }}>
+  <div class="rte" {% render 'accent-typography', source: block.settings, mode: 'attributes' %}>
+    {% render 'truncate-text',
+      id: block.id,
+      content: block.settings.content,
+      enable: block.settings.enable_truncate,
+      lines: block.settings.truncate_lines,
+      mode: block.settings.truncate_mode,
+      read_more_text: block.settings.read_more_text,
+      transition: block.settings.transition_duration,
+      popover_title: block.settings.popover_title,
+      overlay_opacity: block.settings.overlay_opacity,
+      popover_color_scheme: block.settings.popover_color_scheme,
+      popover_background_role: block.settings.popover_background_role,
+      popover_max_height: block.settings.popover_max_height,
+      popover_max_width: block.settings.popover_max_width,
+      popover_animation: block.settings.popover_animation,
+      popover_fade: block.settings.popover_fade,
+      popover_mobile_layout: block.settings.popover_mobile_layout,
+      popover_full_width_mobile: block.settings.popover_full_width_mobile,
+      popover_content_alignment: block.settings.popover_content_alignment
+    %}
+  </div>
+</div>
+
+{% render 'accent-typography', source: block.settings, selector: rt_selector %}
+{% schema %}
+{
+  "name": "Rich Text",
+  "settings": [
+    {
+      "type": "header",
+      "content": "Content"
+    },
+    {
+      "type": "richtext",
+      "id": "content",
+      "label": "Text",
+      "default": "<p>Share details about your brand, store, or products.</p>"
+    },
+    {
+      "type": "header",
+      "content": "Layout",
+      "info": "Box width, alignment and inner spacing."
+    },
+    {
+      "type": "text_alignment",
+      "id": "text_alignment",
+      "label": "Text Alignment",
+      "default": "center"
+    },
+    {
+      "type": "select",
+      "id": "max_width",
+      "label": "Maximum Width",
+      "options": [
+        {
+          "value": "400px",
+          "label": "SM (400px)"
+        },
+        {
+          "value": "768px",
+          "label": "MD (768px)"
+        },
+        {
+          "value": "1024px",
+          "label": "LG (1024px)"
+        },
+        {
+          "value": "1200px",
+          "label": "XL (1200px)"
+        },
+        {
+          "value": "1440px",
+          "label": "2XL (1440px)"
+        },
+        {
+          "value": "100%",
+          "label": "Full Width (100%)"
+        }
+      ],
+      "default": "768px"
+    },
+    {
+      "type": "range",
+      "id": "padding_vertical",
+      "min": 0,
+      "max": 10,
+      "step": 0.5,
+      "unit": "rem",
+      "label": "Vertical Padding",
+      "default": 1.5
+    },
+    {
+      "type": "range",
+      "id": "padding_horizontal",
+      "min": 0,
+      "max": 10,
+      "step": 0.5,
+      "unit": "rem",
+      "label": "Horizontal Padding",
+      "default": 1.5
+    },
+    {
+      "type": "header",
+      "content": "Typography",
+      "info": "Heading and text sizes inside Rich Text are set in Theme settings > Typography > Rich Text, because this block uses a single editor box. They use the same ladders and Size Factors as the Heading and Text blocks."
+    },
+    {
+      "type": "select",
+      "id": "font_weight",
+      "label": "Font Weight",
+      "options": [
+        {
+          "value": "normal",
+          "label": "Normal"
+        },
+        {
+          "value": "medium",
+          "label": "Medium"
+        },
+        {
+          "value": "semibold",
+          "label": "Semi-bold"
+        },
+        {
+          "value": "bold",
+          "label": "Bold"
+        }
+      ],
+      "default": "normal"
+    },
+    {
+      "type": "select",
+      "id": "text_casing",
+      "label": "Text Casing",
+      "info": "On None, the text renders exactly as typed.",
+      "options": [
+        {
+          "value": "theme",
+          "label": "Theme"
+        },
+        {
+          "value": "none",
+          "label": "None"
+        }
+      ],
+      "default": "theme"
+    },
+    {
+      "type": "checkbox",
+      "id": "override_line_height",
+      "label": "Override Theme Line Height",
+      "default": false
+    },
+    {
+      "type": "range",
+      "id": "line_height",
+      "label": "Line Height",
+      "min": 0.8,
+      "max": 2.4,
+      "step": 0.1,
+      "default": 1.5,
+      "visible_if": "{{ block.settings.override_line_height }}"
+    },
+    {
+      "type": "header",
+      "content": "Background",
+      "info": "Colours come from the scheme of the section or block containing this one."
+    },
+    {
+      "type": "select",
+      "id": "background_style",
+      "label": "Background Style",
+      "options": [
+        {
+          "value": "none",
+          "label": "None"
+        },
+        {
+          "value": "solid",
+          "label": "Solid"
+        },
+        {
+          "value": "glass",
+          "label": "Glass"
+        }
+      ],
+      "default": "solid"
+    },
+    {
+      "type": "select",
+      "id": "background_role",
+      "label": "Background Colour",
+      "info": "Base is the page colour, Surface is the raised panel colour.",
+      "options": [
+        {
+          "value": "base",
+          "label": "Base"
+        },
+        {
+          "value": "surface",
+          "label": "Surface"
+        }
+      ],
+      "default": "base",
+      "visible_if": "{{ block.settings.background_style != 'none' }}"
+    },
+    {
+      "type": "range",
+      "id": "glass_tint_opacity",
+      "label": "Glass Tint Strength",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "%",
+      "default": 8,
+      "visible_if": "{{ block.settings.background_style == 'glass' }}"
+    },
+    {
+      "type": "range",
+      "id": "glass_blur",
+      "label": "Glass Blur",
+      "min": 0,
+      "max": 40,
+      "step": 1,
+      "unit": "px",
+      "default": 20,
+      "visible_if": "{{ block.settings.background_style == 'glass' }}"
+    },
+    {
+      "type": "range",
+      "id": "glass_shadow_opacity",
+      "label": "Glass Shadow Strength",
+      "min": 0,
+      "max": 40,
+      "step": 1,
+      "unit": "%",
+      "default": 12,
+      "visible_if": "{{ block.settings.background_style == 'glass' }}"
+    },
+    {
+      "type": "header",
+      "content": "Border"
+    },
+    {
+      "type": "checkbox",
+      "id": "border_enabled",
+      "label": "Show Border",
+      "default": false
+    },
+    {
+      "type": "range",
+      "id": "border_thickness",
+      "min": 1,
+      "max": 10,
+      "step": 1,
+      "unit": "px",
+      "label": "Border Thickness",
+      "default": 1,
+      "visible_if": "{{ block.settings.border_enabled }}"
+    },
+    {
+      "type": "range",
+      "id": "glass_border_opacity",
+      "label": "Glass Border Strength",
+      "min": 0,
+      "max": 100,
+      "step": 5,
+      "unit": "%",
+      "default": 15,
+      "visible_if": "{{ block.settings.background_style == 'glass' and block.settings.border_enabled }}"
+    },
+    {
+      "type": "header",
+      "content": "Truncate / Read More",
+      "info": "Clamps the text to a set number of lines and reveals the rest in place or in a popover."
+    },
+    {
+      "type": "checkbox",
+      "id": "enable_truncate",
+      "label": "Enable Truncate",
+      "default": false
+    },
+    {
+      "type": "range",
+      "id": "truncate_lines",
+      "min": 1,
+      "max": 12,
+      "step": 1,
+      "unit": "ln",
+      "label": "Lines Before Truncating",
+      "default": 3,
+      "visible_if": "{{ block.settings.enable_truncate }}"
+    },
+    {
+      "type": "text",
+      "id": "read_more_text",
+      "label": "Read More Text",
+      "default": "Read more",
+      "visible_if": "{{ block.settings.enable_truncate }}"
+    },
+    {
+      "type": "select",
+      "id": "truncate_mode",
+      "label": "Reveal Mode",
+      "options": [
+        {
+          "value": "inline",
+          "label": "Expand In Place"
+        },
+        {
+          "value": "dialog",
+          "label": "Open In Popover"
+        }
+      ],
+      "default": "inline",
+      "visible_if": "{{ block.settings.enable_truncate }}"
+    },
+    {
+      "type": "range",
+      "id": "transition_duration",
+      "min": 100,
+      "max": 1000,
+      "step": 50,
+      "unit": "ms",
+      "label": "Expand Transition (In Place)",
+      "default": 300,
+      "visible_if": "{{ block.settings.enable_truncate and block.settings.truncate_mode == 'inline' }}"
+    },
+    {
+      "type": "text",
+      "id": "popover_title",
+      "label": "Popover Title",
+      "info": "Shown in the popover header. The popover's own look is set in Theme settings > Truncate Popover.",
+      "visible_if": "{{ block.settings.enable_truncate and block.settings.truncate_mode == 'dialog' }}"
+    },
+    {
+      "type": "range",
+      "id": "overlay_opacity",
+      "min": 0,
+      "max": 100,
+      "step": 5,
+      "unit": "%",
+      "label": "Popover Backdrop Opacity",
+      "default": 40,
+      "visible_if": "{{ block.settings.enable_truncate and block.settings.truncate_mode == 'dialog' }}"
+    },
+    {
+      "type": "header",
+      "content": "Popover",
+      "info": "Look of the panel that opens when Reveal Mode is Open In Popover.",
+      "visible_if": "{{ block.settings.enable_truncate and block.settings.truncate_mode == 'dialog' }}"
+    },
+    {
+      "type": "color_scheme",
+      "id": "popover_color_scheme",
+      "label": "Color Scheme",
+      "default": "scheme_1",
+      "visible_if": "{{ block.settings.enable_truncate and block.settings.truncate_mode == 'dialog' }}"
+    },
+    {
+      "type": "select",
+      "id": "popover_background_role",
+      "label": "Background",
+      "info": "Base is the page colour, Surface is the raised panel colour.",
+      "options": [
+        {
+          "value": "base",
+          "label": "Base"
+        },
+        {
+          "value": "surface",
+          "label": "Surface"
+        }
+      ],
+      "default": "base",
+      "visible_if": "{{ block.settings.enable_truncate and block.settings.truncate_mode == 'dialog' }}"
+    },
+    {
+      "type": "select",
+      "id": "popover_content_alignment",
+      "label": "Content Alignment",
+      "options": [
+        {
+          "value": "left",
+          "label": "Left"
+        },
+        {
+          "value": "center",
+          "label": "Center"
+        },
+        {
+          "value": "right",
+          "label": "Right"
+        }
+      ],
+      "default": "left",
+      "visible_if": "{{ block.settings.enable_truncate and block.settings.truncate_mode == 'dialog' }}"
+    },
+    {
+      "type": "range",
+      "id": "popover_max_width",
+      "label": "Max Width",
+      "min": 320,
+      "max": 900,
+      "step": 20,
+      "unit": "px",
+      "default": 560,
+      "visible_if": "{{ block.settings.enable_truncate and block.settings.truncate_mode == 'dialog' }}"
+    },
+    {
+      "type": "range",
+      "id": "popover_max_height",
+      "label": "Max Height",
+      "info": "Share of the screen height the panel may fill before its content scrolls.",
+      "min": 30,
+      "max": 95,
+      "step": 5,
+      "unit": "dvh",
+      "default": 80,
+      "visible_if": "{{ block.settings.enable_truncate and block.settings.truncate_mode == 'dialog' }}"
+    },
+    {
+      "type": "range",
+      "id": "popover_animation",
+      "label": "Open Animation",
+      "info": "How long the popover's scale-out (or the drawer's slide-up) takes.",
+      "min": 150,
+      "max": 900,
+      "step": 25,
+      "unit": "ms",
+      "default": 400,
+      "visible_if": "{{ block.settings.enable_truncate and block.settings.truncate_mode == 'dialog' }}"
+    },
+    {
+      "type": "range",
+      "id": "popover_fade",
+      "label": "Scroll Fade",
+      "info": "Height of the fade at the top and bottom of the scrolling text.",
+      "min": 0,
+      "max": 20,
+      "step": 1,
+      "unit": "%",
+      "default": 8,
+      "visible_if": "{{ block.settings.enable_truncate and block.settings.truncate_mode == 'dialog' }}"
+    },
+    {
+      "type": "select",
+      "id": "popover_mobile_layout",
+      "label": "Mobile Layout",
+      "info": "Below 768px, open as a centered popover or a bottom sheet drawer.",
+      "options": [
+        {
+          "value": "popover",
+          "label": "Centered Popover"
+        },
+        {
+          "value": "drawer",
+          "label": "Bottom Sheet Drawer"
+        }
+      ],
+      "default": "popover",
+      "visible_if": "{{ block.settings.enable_truncate and block.settings.truncate_mode == 'dialog' }}"
+    },
+    {
+      "type": "checkbox",
+      "id": "popover_full_width_mobile",
+      "label": "Full Width On Mobile",
+      "default": true,
+      "visible_if": "{{ block.settings.enable_truncate and block.settings.truncate_mode == 'dialog' and block.settings.popover_mobile_layout == 'drawer' }}"
+    },
+    {
+      "type": "header",
+      "content": "Accent Typography",
+      "info": "Bold and italic words inherit Theme settings > Typography > Accent Typography."
+    },
+    {
+      "type": "checkbox",
+      "id": "use_custom_accent_typography",
+      "label": "Use Custom Accent Typography",
+      "default": false
+    },
+    {
+      "type": "header",
+      "content": "Custom Accent Typography",
+      "visible_if": "{{ block.settings.use_custom_accent_typography }}"
+    },
+    {
+      "type": "select",
+      "id": "accent_bold_style",
+      "label": "Bold text accent",
+      "default": "none",
+      "visible_if": "{{ block.settings.use_custom_accent_typography }}",
+      "options": [
+        {
+          "value": "none",
+          "label": "None"
+        },
+        {
+          "value": "color",
+          "label": "Bold color"
+        },
+        {
+          "value": "italic",
+          "label": "Italic"
+        },
+        {
+          "value": "highlight",
+          "label": "Highlight"
+        },
+        {
+          "value": "highlight_marker",
+          "label": "Highlight (marker)"
+        },
+        {
+          "value": "underline",
+          "label": "Underline"
+        },
+        {
+          "value": "underline_sketch",
+          "label": "Underline (hand-drawn)"
+        },
+        {
+          "value": "underline_wavy",
+          "label": "Underline (wavy)"
+        },
+        {
+          "value": "circle",
+          "label": "Circle"
+        },
+        {
+          "value": "circle_sketch",
+          "label": "Circle (hand-drawn)"
+        },
+        {
+          "value": "oval",
+          "label": "Oval"
+        },
+        {
+          "value": "oval_sketch",
+          "label": "Oval (hand-drawn)"
+        }
+      ]
+    },
+    {
+      "type": "select",
+      "id": "accent_italic_style",
+      "label": "Italic text accent",
+      "default": "none",
+      "visible_if": "{{ block.settings.use_custom_accent_typography }}",
+      "options": [
+        {
+          "value": "none",
+          "label": "None"
+        },
+        {
+          "value": "color",
+          "label": "Bold color"
+        },
+        {
+          "value": "italic",
+          "label": "Italic"
+        },
+        {
+          "value": "highlight",
+          "label": "Highlight"
+        },
+        {
+          "value": "highlight_marker",
+          "label": "Highlight (marker)"
+        },
+        {
+          "value": "underline",
+          "label": "Underline"
+        },
+        {
+          "value": "underline_sketch",
+          "label": "Underline (hand-drawn)"
+        },
+        {
+          "value": "underline_wavy",
+          "label": "Underline (wavy)"
+        },
+        {
+          "value": "circle",
+          "label": "Circle"
+        },
+        {
+          "value": "circle_sketch",
+          "label": "Circle (hand-drawn)"
+        },
+        {
+          "value": "oval",
+          "label": "Oval"
+        },
+        {
+          "value": "oval_sketch",
+          "label": "Oval (hand-drawn)"
+        }
+      ]
+    },
+    {
+      "type": "select",
+      "id": "accent_trigger",
+      "label": "Animation trigger",
+      "default": "in_view",
+      "visible_if": "{{ block.settings.use_custom_accent_typography }}",
+      "options": [
+        {
+          "value": "in_view",
+          "label": "Play once in view"
+        },
+        {
+          "value": "scrub",
+          "label": "Scrub with scroll"
+        }
+      ]
+    },
+    {
+      "type": "range",
+      "id": "accent_threshold",
+      "label": "Scroll threshold",
+      "info": "0 = draws across the whole scroll; higher tightens the draw toward the viewport center.",
+      "min": 0,
+      "max": 1,
+      "step": 0.1,
+      "default": 0.4,
+      "visible_if": "{{ block.settings.use_custom_accent_typography and block.settings.accent_trigger == 'scrub' }}"
+    },
+    {
+      "type": "range",
+      "id": "accent_stroke_width",
+      "label": "Stroke width",
+      "info": "For underline / circle / oval accents.",
+      "min": 1,
+      "max": 12,
+      "step": 1,
+      "unit": "px",
+      "default": 3,
+      "visible_if": "{{ block.settings.use_custom_accent_typography }}"
+    },
+    {
+      "type": "range",
+      "id": "accent_duration",
+      "label": "Animation duration",
+      "min": 100,
+      "max": 2000,
+      "step": 50,
+      "unit": "ms",
+      "default": 700,
+      "visible_if": "{{ block.settings.use_custom_accent_typography }}"
+    },
+    {
+      "type": "select",
+      "id": "accent_reverse",
+      "label": "Accent direction",
+      "default": "normal",
+      "visible_if": "{{ block.settings.use_custom_accent_typography }}",
+      "options": [
+        {
+          "value": "normal",
+          "label": "Forward"
+        },
+        {
+          "value": "opposite",
+          "label": "From opposite end"
+        },
+        {
+          "value": "erase",
+          "label": "Backward (erase)"
+        }
+      ]
+    },
+    {
+      "type": "checkbox",
+      "id": "accent_loop",
+      "label": "Loop accent",
+      "default": false,
+      "visible_if": "{{ block.settings.use_custom_accent_typography and block.settings.accent_trigger == 'in_view' }}"
+    },
+    {
+      "type": "select",
+      "id": "accent_loop_mode",
+      "label": "Loop mode",
+      "default": "yoyo",
+      "options": [
+        {
+          "value": "yoyo",
+          "label": "Yoyo (draw & undraw)"
+        },
+        {
+          "value": "restart",
+          "label": "Restart"
+        }
+      ],
+      "visible_if": "{{ block.settings.use_custom_accent_typography and block.settings.accent_loop and block.settings.accent_trigger == 'in_view' }}"
+    }
+  ],
+  "presets": [
+    {
+      "name": "Rich Text"
+    }
+  ]
+}
+{% endschema %}

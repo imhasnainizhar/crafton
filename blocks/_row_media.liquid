@@ -1,0 +1,108 @@
+{%- comment -%}
+  Row Media (private) — dynamic Row Media Item and Vertical Divider blocks
+  filling its parent completely. Split out of sections/row-media.liquid so the
+  side-by-side composition is a reusable unit. Media only: no text blocks.
+
+  Private block: only addable inside sections/row-media.liquid.
+{%- endcomment -%}
+
+{%- liquid
+  assign mobile_layout = block.settings.mobile_layout | default: 'row'
+
+  # Entrance: the Row Media section's Animations group staggers the row's
+  # tiles and dividers (snippets/motion-reveal).
+  assign anim = section.settings
+-%}
+
+{% style %}
+  .row-media-block--{{ block.id }} {
+    position: relative;
+    width: 100%;
+    height: 100%;
+  }
+
+  .row-media-block--{{ block.id }} .row-media-block__row {
+    display: flex;
+    align-items: stretch;
+    width: 100%;
+    height: 100%;
+    {%- if mobile_layout != 'row' %}
+      flex-direction: {{ mobile_layout }};
+    {%- endif %}
+  }
+
+  .row-media-block--{{ block.id }} .row-media-block__row > [class^="media--"] {
+    flex: 1 1 0;
+    min-width: 0;
+  }
+
+  .row-media-block--{{ block.id }} .row-media-block__row > [class^="vdivider-wrap--"] {
+    flex: 0 0 auto;
+  }
+
+  {%- if mobile_layout != 'row' %}
+    /* The divider is hidden while media blocks stack vertically. */
+    .row-media-block--{{ block.id }} .row-media-block__row > [class^="vdivider-wrap--"] {
+      display: none;
+    }
+
+    @media screen and (min-width: 768px) {
+      .row-media-block--{{ block.id }} .row-media-block__row {
+        flex-direction: row;
+        gap: 0;
+      }
+
+      .row-media-block--{{ block.id }} .row-media-block__row > [class^="vdivider-wrap--"] {
+        display: flex;
+      }
+    }
+  {%- endif %}
+
+    /* Entrance timing for snippets/motion-reveal (items inherit it). */
+    .row-media-block--{{ block.id }} {
+      {% render 'motion-reveal', part: 'vars', from: anim %}
+    }
+{% endstyle %}
+
+<div class="row-media-block--{{ block.id }}" {{ block.shopify_attributes }}>
+  <div
+    class="row-media-block__row {% render 'motion-reveal', part: 'class', from: anim, group: true %}"
+  >
+    {% content_for 'blocks' %}
+  </div>
+</div>
+
+{% schema %}
+{
+  "name": "Row Media",
+  "tag": null,
+  "settings": [
+    {
+      "type": "header",
+      "content": "Row Media",
+      "info": "Add Row Media Item blocks and optional Vertical Divider blocks in the order you want; they fill the parent."
+    },
+    {
+      "type": "select",
+      "id": "mobile_layout",
+      "label": "Mobile Layout",
+      "info": "Column modes stack the two media vertically on mobile (the divider is hidden while stacked).",
+      "options": [
+        { "value": "row", "label": "Row (side by side)" },
+        { "value": "column", "label": "Column" },
+        { "value": "column-reverse", "label": "Column Reverse" }
+      ],
+      "default": "row"
+    }
+  ],
+  "blocks": [
+    { "type": "_row_media_item" },
+    { "type": "_vertical_divider" }
+  ],
+  "presets": [
+    {
+      "name": "Row Media"
+    }
+  ]
+}
+{% endschema %}

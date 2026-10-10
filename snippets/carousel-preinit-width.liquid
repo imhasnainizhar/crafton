@@ -1,0 +1,69 @@
+{% doc %}
+  Carousel pre-init width: gives a Swiper carousel's slides, before Swiper
+  builds, the exact width Swiper will give them, (row − (spv − 1) × gap) / spv,
+  so the row never shows full-width or stretched cards that snap smaller once
+  the lazily loaded bundle runs. Prints CSS rules, so render it inside the
+  carousel's scoped style tag. A breakpoint whose slides-per-view is
+  'auto' keeps the slide's own CSS width (flex: 0 0 auto); a blank one prints nothing.
+
+  @param {string} scope - Selector of the carousel root that contains .swiper
+  @param {string} [spv_mobile] - Slides per view below 768px
+  @param {string} [spv_tablet] - Slides per view from 768px; when given, spv_desktop starts at 1024px (matches Swiper's 3-tier breakpoints)
+  @param {string} [spv_desktop] - Slides per view from 768px, or from 1024px with spv_tablet
+  @param {string} [gap] - The gap Swiper uses as spaceBetween (default var(--carousel-gap))
+  @param {string} [slide_width] - A CSS slide width for slidesPerView 'auto' carousels whose slides get their width class only from JS; overrides the spv tiers
+
+  @example
+  {% render 'carousel-preinit-width', scope: '.reviews-carousel--abc', spv_mobile: '1', spv_desktop: '3' %}
+{% enddoc %}
+{%- liquid
+  assign g = gap | default: 'var(--carousel-gap)'
+  assign wrapper_rule = scope | append: ' .swiper:not(.swiper-initialized) .swiper-wrapper'
+  assign rule = wrapper_rule | append: ' > :not(style, script, link, template)'
+
+  # A fixed CSS slide width needs no per-tier slides-per-view: clear the tiers.
+  if slide_width != blank
+    echo wrapper_rule | append: ' { gap: 0; } ' | append: rule | append: ' { flex: 0 0 ' | append: slide_width | append: '; max-width: none; margin-inline-end: ' | append: g | append: '; }'
+    assign spv_mobile = ''
+    assign spv_tablet = ''
+    assign spv_desktop = ''
+  endif
+
+  assign desktop_bp = '768px'
+  if spv_tablet != blank
+    assign desktop_bp = '1024px'
+  endif
+
+  for tier in (1..3)
+    case tier
+      when 1
+        assign spv = spv_mobile | append: ''
+        assign bp = ''
+      when 2
+        assign spv = spv_tablet | append: ''
+        assign bp = '768px'
+      when 3
+        assign spv = spv_desktop | append: ''
+        assign bp = desktop_bp
+    endcase
+    if spv == blank
+      continue
+    endif
+
+    if spv == 'auto'
+      assign decl = 'flex: 0 0 auto;'
+    else
+      assign decl = 'flex: 0 0 calc((100% - (' | append: spv | append: ' - 1) * ' | append: g | append: ') / ' | append: spv | append: '); max-width: none;'
+    endif
+    # Swiper spaces slides with a margin on every slide (the last included), not
+    # a flex gap, so a short centred row sits half a gap left once built. Match it.
+    assign decl = decl | append: ' margin-inline-end: ' | append: g | append: ';'
+    assign css = wrapper_rule | append: ' { gap: 0; } ' | append: rule | append: ' { ' | append: decl | append: ' }'
+
+    if bp == blank
+      echo css
+    else
+      echo '@media screen and (min-width: ' | append: bp | append: ') { ' | append: css | append: ' }'
+    endif
+  endfor
+-%}

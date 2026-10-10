@@ -1,0 +1,173 @@
+{%- comment -%}
+  Marquee Text — a lightweight text item for a Marquee. Inline richtext plus the
+  shared Text typography role (size, weight, casing) resolved by
+  snippets/typography-resolver.liquid; colour is inherited from the Marquee Item
+  so the ticker stays one colour. Private to Marquee Item
+  (blocks/_marquee_item.liquid). Depends on assets/marquee.js for the shared
+  [data-link-new-tab] hook.
+{%- endcomment -%}
+
+{% style %}
+  .marquee-text--{{ block.id }} {
+    {% render 'typography-resolver', role: 'text', source: block.settings %}
+    display: inline-block;
+    margin: 0;
+    white-space: nowrap;
+    color: inherit;
+    line-height: {% if block.settings.override_line_height %}{{ block.settings.line_height }}{% else %}1.2{% endif %};
+  }
+
+  .marquee-text--{{ block.id }} a {
+    color: var(--color-link);
+    text-decoration: {% if block.settings.link_underline %}underline{% else %}none{% endif %};
+  }
+
+  .marquee-text--{{ block.id }} p {
+    margin: 0;
+  }
+
+  .marquee-text--{{ block.id }} a:hover {
+    text-decoration: underline;
+  }
+{% endstyle %}
+
+<div
+  class="marquee-text marquee-text--{{ block.id }}"
+  data-link-new-tab="{{ block.settings.link_new_tab }}"
+  {{ block.shopify_attributes }}
+>{{ block.settings.text }}</div>
+
+{% schema %}
+{
+  "name": "Marquee Text",
+  "tag": null,
+  "settings": [
+    {
+      "type": "header",
+      "content": "Text",
+      "info": "Text sized for a scrolling Marquee. Font family, casing and Size Factor come from Theme settings > Typography > Body Text."
+    },
+    {
+      "type": "inline_richtext",
+      "id": "text",
+      "label": "Text",
+      "default": "FREE SHIPPING ON ALL ORDERS"
+    },
+    {
+      "type": "checkbox",
+      "id": "link_underline",
+      "label": "Underline Links",
+      "default": false
+    },
+    {
+      "type": "checkbox",
+      "id": "link_new_tab",
+      "label": "Open Links in New Tab",
+      "default": false
+    },
+    {
+      "type": "header",
+      "content": "Typography"
+    },
+    {
+      "type": "select",
+      "id": "font_size",
+      "label": "Size",
+      "info": "Approximate sizes are shown at Size Factor 1.",
+      "options": [
+        {
+          "value": "xxs",
+          "label": "XXS (~11px)"
+        },
+        {
+          "value": "xs",
+          "label": "XS (~12px)"
+        },
+        {
+          "value": "sm",
+          "label": "SM (~14px)"
+        },
+        {
+          "value": "md",
+          "label": "MD (~16px)"
+        },
+        {
+          "value": "lg",
+          "label": "LG (~18px)"
+        },
+        {
+          "value": "xl",
+          "label": "XL (~24px)"
+        },
+        {
+          "value": "xxl",
+          "label": "XXL (~32px)"
+        }
+      ],
+      "default": "lg"
+    },
+    {
+      "type": "select",
+      "id": "font_weight",
+      "label": "Font Weight",
+      "options": [
+        {
+          "value": "normal",
+          "label": "Normal"
+        },
+        {
+          "value": "medium",
+          "label": "Medium"
+        },
+        {
+          "value": "semibold",
+          "label": "Semi-bold"
+        },
+        {
+          "value": "bold",
+          "label": "Bold"
+        }
+      ],
+      "default": "normal"
+    },
+    {
+      "type": "checkbox",
+      "id": "override_line_height",
+      "label": "Override Theme Line Height",
+      "default": false
+    },
+    {
+      "type": "range",
+      "id": "line_height",
+      "label": "Line Height",
+      "min": 0.8,
+      "max": 2.4,
+      "step": 0.1,
+      "default": 1.2,
+      "visible_if": "{{ block.settings.override_line_height }}"
+    },
+    {
+      "type": "select",
+      "id": "text_casing",
+      "label": "Text Casing",
+      "info": "On None, the text renders exactly as typed.",
+      "options": [
+        {
+          "value": "theme",
+          "label": "Theme"
+        },
+        {
+          "value": "none",
+          "label": "None"
+        }
+      ],
+      "default": "theme"
+    }
+  ],
+  "presets": [
+    {
+      "name": "Marquee Text"
+    }
+  ]
+}
+{% endschema %}

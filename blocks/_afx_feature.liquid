@@ -1,0 +1,1464 @@
+{%- comment -%}
+  FEATURED ARTICLES — Featured Articles block (`afx-`).
+  Article Card children beside a hero, laid out by this block. It is the
+  Featured Collections (`ffx-`) block with the collection cards swapped for
+  article cards, so the stage reads the same: grid or carousel per
+  breakpoint, the carousel style, the shapes, the overlap and the View all
+  tile. The section around it is only a shell.
+
+  STAGE. Two columns: `.afx-lead` (the hero — a picture, or a Classic panel,
+  plus an empty content box) and `.afx-items` (the cards). With
+  "Content over hero" on, the controller moves the Rich Content placed right
+  before this block into that box, where hero_content_x / hero_content_y place
+  it. A phone always stacks the columns. On a desktop carousel the style
+  decides:
+    classic → stacked, both carousel ends free to bleed;
+    flyover → side by side, swiped cards pass OVER the hero (the only style
+              where "Hero overlapping" applies);
+    tunnel  → side by side, swiped cards pass UNDER the hero and are cut at its
+              outer edge, so they never reappear on the far side; the hero
+              column is an opaque cover the full height of the row.
+  Hero right mirrors the row, the cut side, the fade side and — through
+  `data-afx-mirror` — the swipe direction.
+
+  CLIPPING. The carousel viewport never overflow-clips; `carousel_bleed` cuts
+  it with a `clip-path` (open vertically so hover lift and shadows escape):
+  off, at the content edge; on, not at all, so cards run to the screen edge
+  where the section shell clips them. Tunnel adds one more `clip-path` on the
+  stage, cutting the hero side at the hero's outer edge.
+
+  CARDS are this block's Article Card children (blocks/article_card.liquid),
+  emitted straight into the track by `content_for 'blocks'`, so every rule
+  targets `.afx-track > *` and the controller tags each child as a Swiper
+  slide. Each card owns its look (flow or overlay, surface, colours); this
+  block publishes only --arc-ratio, the picture shape every card set to
+  "Follow the section" takes, which "Match article picture height" reads too.
+
+  EDGE FADE sits OUTSIDE the items box, in the strip between the content edge
+  and the screen edge, so a card at rest is never faded. Its width is that
+  strip, measured by the controller into --afx-edge-start / --afx-edge-end.
+
+  Depends on: blocks/article_card.liquid, snippets/fluid-clamp.liquid,
+  snippets/motion-reveal.liquid, and the section's assets
+  (swiper-bundle, articles-featured.js).
+{%- endcomment -%}
+
+{%- liquid
+  assign s = block.settings
+  assign sec = section.settings
+  assign anim = section.settings
+
+  assign carousel_m = false
+  if s.layout_mobile == 'carousel'
+    assign carousel_m = true
+  endif
+  assign carousel_d = false
+  if s.layout_desktop == 'carousel'
+    assign carousel_d = true
+  endif
+
+  # Hero: off, a Media card, or a Classic text panel.
+  assign hero_on = s.hero_enabled
+  assign media_on = false
+  assign panel_on = false
+  if hero_on
+    if s.hero_variant == 'classic'
+      assign panel_on = true
+    else
+      assign media_on = true
+    endif
+  endif
+  # Where the hero's Rich Content sits over the picture.
+  assign hero_x = 'flex-start'
+  if s.hero_content_x == 'center'
+    assign hero_x = 'center'
+  endif
+  case s.hero_content_y
+    when 'top'
+      assign hero_y = 'flex-start'
+    when 'center'
+      assign hero_y = 'center'
+    else
+      assign hero_y = 'flex-end'
+  endcase
+
+  # Carousel style. Flyover and Tunnel only lay out side by side on a desktop
+  # carousel; everywhere else the stage stacks.
+  assign style = 'classic'
+  if hero_on
+    assign style = s.carousel_style
+  endif
+  assign side = false
+  if carousel_d and style != 'classic'
+    assign side = true
+  endif
+  assign hero_end = false
+  if side and s.hero_position == 'right'
+    assign hero_end = true
+  endif
+
+  assign overlap_m = 0
+  if carousel_m and style == 'flyover'
+    assign overlap_m = s.carousel_overlap_mobile
+  endif
+  assign overlap_d = 0
+  if side and style == 'flyover'
+    assign overlap_d = s.carousel_overlap_desktop
+  endif
+
+
+  # Beside a Flyover / Tunnel carousel the hero takes its own, taller shapes.
+  assign hero_ratio_d = s.hero_ratio_desktop
+  if side
+    assign hero_ratio_d = s.hero_ratio_side
+  endif
+
+  # Fixed hero width is one fluid clamp, linearly interpolated between the
+  # mobile and desktop px widths (it only applies beside a Flyover / Tunnel
+  # carousel, i.e. on desktop).
+  if s.hero_width_mode == 'fixed'
+    capture hero_w
+      render 'fluid-clamp', min: s.hero_width_px_mobile, max: s.hero_width_px
+    endcapture
+    assign hero_w = hero_w | strip
+  else
+    assign hero_w = s.hero_width_desktop | append: '%'
+  endif
+
+  # Stage clip, as clip-path insets. -100vw leaves a side to the section
+  # shell (the screen edge); 0 cuts it at the stage.
+  assign clip_l = '-100vw'
+  assign clip_r = '-100vw'
+  if side and style == 'tunnel'
+    if hero_end
+      assign clip_r = '0'
+    else
+      assign clip_l = '0'
+    endif
+  endif
+  assign clip_d = blank
+  if clip_l != '-100vw' or clip_r != '-100vw'
+    assign clip_d = 'inset(-100vh ' | append: clip_r | append: ' -100vh ' | append: clip_l | append: ')'
+  endif
+
+  # Full-width hero: only the hero leaves the section rail, and only in the
+  # stacked layouts (a grid or a Classic carousel) — never beside a Flyover /
+  # Tunnel carousel. Content and cards keep the rail.
+  # Slide size: one fluid width (default), or a number of slides per view —
+  # one pair for a Classic carousel, another for Flyover / Tunnel. A count is
+  # turned into a width in CSS, from the carousel column's width in container
+  # units: the whole stage when stacked, the stage less the hero column and
+  # the gap (plus any Flyover overlap) side by side.
+  assign spv_on = false
+  if s.slide_sizing == 'count'
+    assign spv_on = true
+    if style == 'classic'
+      assign spv_m = s.slides_per_view_mobile
+      assign spv_d = s.slides_per_view_desktop
+    else
+      assign spv_m = s.slides_per_view_side_mobile
+      assign spv_d = s.slides_per_view_side_desktop
+    endif
+    assign spv_gaps_m = spv_m | minus: 1
+    assign spv_gaps_d = spv_d | minus: 1
+    if s.hero_width_mode == 'fixed'
+      assign spv_hero_w = 'var(--afx-hero-width)'
+    else
+      assign spv_hero_w = s.hero_width_desktop | append: 'cqw'
+    endif
+  endif
+  # Carousel bleed decides where cards stop, as a clip-path on the viewport:
+  #   cut  (bleed off) → at the content edge;
+  #   open (bleed on)  → no clip, cards run on to the screen edge.
+  # Side by side, the hero side is never cut here: it keeps its Flyover /
+  # Tunnel behaviour (Tunnel's cut is the stage / panel clip above).
+  assign bleed_mode = 'cut'
+  if s.carousel_bleed
+    assign bleed_mode = 'open'
+  endif
+  assign cut_l_d = '0'
+  assign cut_r_d = '0'
+  if side
+    if hero_end
+      assign cut_r_d = '-100vw'
+    else
+      assign cut_l_d = '-100vw'
+    endif
+  endif
+  # Hero matches the article card picture height: a card is its width x its ratio,
+  # so the height is computed in CSS from the slide width (carousel) or the
+  # column width (grid), per breakpoint.
+  assign hero_match = false
+  if hero_on and s.hero_match_cards
+    assign hero_match = true
+  endif
+  assign hero_full = false
+  if s.full_width and hero_on and side == false
+    assign hero_full = true
+  endif
+
+  assign fade_on = false
+  if s.edge_fade and s.carousel_bleed
+    if carousel_m or carousel_d
+      assign fade_on = true
+    endif
+  endif
+
+  # One fluid slide width, interpolated between the two breakpoint widths.
+  capture slide_w
+    render 'fluid-clamp', min: s.slide_width_mobile, max: s.slide_width_desktop
+  endcapture
+
+  # One picture shape for every card set to "Follow the section" (--arc-ratio).
+  assign card_ratio_m = s.card_ratio_mobile | default: '4/5'
+  assign card_ratio_d = s.card_ratio_desktop | default: '4/5'
+
+  assign hero_content = false
+  if hero_on and s.content_over_hero
+    assign hero_content = true
+  endif
+
+
+  assign more_btn_class = 'afx-more__btn'
+  if sec.more_variant == 'text'
+    assign more_btn_class = more_btn_class | append: ' afx-more__btn--text'
+    if sec.more_underline
+      assign more_btn_class = more_btn_class | append: ' afx-more__btn--underline'
+    endif
+  endif
+
+-%}
+
+{% style %}
+  .afx-stage--{{ block.id }} {
+    --afx-overlap: {{ overlap_m }}px;
+    --afx-hero-width: {{ hero_w }};
+    --afx-scrim: {{ s.hero_scrim }};
+    --afx-columns: {{ s.grid_columns_mobile }};
+    --arc-ratio: {{ card_ratio_m }};
+    {% if spv_on %}
+      --afx-slide-w: calc((100cqw - {{ spv_gaps_m }} * var(--ds-item-gap-mobile)) / {{ spv_m }});
+    {% else %}
+      --afx-slide-w: {{ slide_w | strip }};
+    {% endif %}
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: var(--ds-layout-gap-mobile);
+  }
+
+  {% if hero_full %}
+    /* Full-width hero: the hero alone steps out of the section rail — negative
+       inline margins only — with square corners. */
+    .afx-stage--{{ block.id }} .afx-lead {
+      margin-inline: calc(-1 * var(--ds-layout-gutter-mobile));
+    }
+  {% endif %}
+
+  /* ---------------------------------------------------------------- lead */
+
+  .afx-stage--{{ block.id }} .afx-lead {
+    position: relative;
+    z-index: 2;
+    display: flex;
+    flex-direction: column;
+    gap: var(--ds-layout-gap-mobile);
+    min-width: 0;
+  }
+
+  /* The hero box holds the picture, its overlay and the Rich Content laid
+     over it, and carries the corners so the overlay follows them. */
+  /* Opaque ground behind the picture, so a placeholder or a video that has not
+     painted yet never lets a Tunnel card show through. */
+  .afx-stage--{{ block.id }} .afx-herobox {
+    position: relative;
+    overflow: hidden;
+    border-radius: {% if hero_full %}0{% else %}var(--ds-layout-radius-mobile){% endif %};
+    background-color: var(--color-surface);
+  }
+
+  .afx-stage--{{ block.id }} .afx-hero__media {
+    position: relative;
+    overflow: hidden;
+    {% if s.hero_ratio_mobile != 'auto' %}aspect-ratio: {{ s.hero_ratio_mobile }};{% endif %}
+  }
+
+  .afx-stage--{{ block.id }} .afx-hero__image {
+    display: block;
+    width: 100%;
+    height: {% if s.hero_ratio_mobile != 'auto' %}100%{% else %}auto{% endif %};
+    object-fit: cover;
+  }
+
+  .afx-stage--{{ block.id }} .afx-hero__scrim {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    pointer-events: none;
+    background-color: color-mix(in srgb, var(--color-shadow) calc(var(--afx-scrim) * 1%), transparent);
+  }
+
+  /* Rich Content over the picture (moved in by the controller when "Content
+     over hero" is on): placed by the hero content position; its width, text
+     alignment and surface are its own settings. */
+  .afx-stage--{{ block.id }} .afx-hero__content {
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    display: flex;
+    flex-direction: column;
+    align-items: {{ hero_x }};
+    justify-content: {{ hero_y }};
+    padding: clamp(1rem, 4vw, 2.5rem);
+    pointer-events: none;
+  }
+
+  .afx-stage--{{ block.id }} .afx-hero__content > * {
+    max-width: 100%;
+    pointer-events: auto;
+  }
+
+  .afx-stage--{{ block.id }} .afx-hero__content:empty { display: none; }
+
+  {% if panel_on %}
+    /* Classic hero: the Rich Content on a plain panel in the section's base
+       colour — opaque, so a Tunnel carousel disappears behind it. */
+    .afx-stage--{{ block.id }} .afx-herobox {
+      background-color: var(--color-base);
+      {% if s.hero_border %}border: var(--ds-layout-border-width-mobile, 1px) solid var(--color-border);{% endif %}
+    }
+
+    .afx-stage--{{ block.id }} .afx-hero,
+    .afx-stage--{{ block.id }} .afx-hero__scrim { display: none; }
+
+    .afx-stage--{{ block.id }} .afx-hero__content { position: static; }
+  {% endif %}
+
+  /* --------------------------------------------------------------- items */
+
+  .afx-stage--{{ block.id }} .afx-items {
+    position: relative;
+    /* Flyover is the one style that passes over the hero; every other style
+       keeps the hero on top, which is what hides a Tunnel card. */
+    z-index: {% if style == 'flyover' %}3{% else %}1{% endif %};
+    min-width: 0;
+    margin-top: calc(-1 * var(--afx-overlap));
+  }
+
+  .afx-stage--{{ block.id }} .afx-items__viewport {
+    /* One axis only: a blanket overflow:hidden would clip card hover lift and
+       shadow along with the track. */
+    overflow-x: clip;
+    overflow-y: visible;
+  }
+
+  /* A mirrored carousel runs right to left; its cards still read left to right. */
+  .afx-stage--{{ block.id }} .afx-items__viewport[dir='rtl'] .afx-track > * { direction: ltr; }
+
+  /* Static (uninitialized) layout is a real grid, with Swiper's own slide
+     sizing neutralised. Swiper owns the box only once it initializes. */
+  .afx-stage--{{ block.id }} .afx-items__viewport:not(.swiper-initialized) .afx-track {
+    display: grid;
+    grid-template-columns: repeat(var(--afx-columns), minmax(0, 1fr));
+    gap: var(--ds-item-gap-mobile);
+    transition-property: none;
+  }
+
+  .afx-stage--{{ block.id }} .afx-track > * {
+    box-sizing: border-box;
+    min-width: 0;
+  }
+
+  .afx-stage--{{ block.id }} .afx-items__viewport:not(.swiper-initialized) .afx-track > * {
+    width: auto;
+  }
+
+
+  /* A carousel slide is one fluid width (Swiper runs slidesPerView: auto). */
+  .afx-stage--{{ block.id }} .afx-items__viewport.swiper-initialized .afx-track > * {
+    width: var(--afx-slide-w);
+    height: auto;
+  }
+
+  /* Edge fades live outside the items box, in the strip up to the screen edge. */
+  .afx-stage--{{ block.id }} .afx-fade {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    z-index: 4;
+    display: none;
+    pointer-events: none;
+  }
+
+  .afx-stage--{{ block.id }} .afx-fade--start {
+    right: 100%;
+    width: var(--afx-edge-start, var(--ds-layout-gutter-mobile));
+    background: linear-gradient(to left, transparent, var(--color-base));
+  }
+
+  .afx-stage--{{ block.id }} .afx-fade--end {
+    left: 100%;
+    width: var(--afx-edge-end, var(--ds-layout-gutter-mobile));
+    background: linear-gradient(to right, transparent, var(--color-base));
+  }
+
+  /* ------------------------------------------------------------ view all */
+
+  /* The View all link is the track's last cell. In a carousel that makes it the tile
+     after the final card; in a grid the track IS a grid, so it spans every
+     column as a centred row under the cards. One position, both layouts. */
+  .afx-stage--{{ block.id }} .afx-more {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* In a carousel the tile is as tall as the cards, so the link sits centred
+     on both axes. */
+  .afx-stage--{{ block.id }} .afx-items__viewport.swiper-initialized .afx-more {
+    height: auto;
+    align-self: stretch;
+  }
+
+  .afx-stage--{{ block.id }} .afx-items__viewport:not(.swiper-initialized) .afx-more {
+    grid-column: 1 / -1;
+    justify-self: center;
+    margin-top: var(--ds-layout-gap-mobile);
+  }
+
+  .afx-stage--{{ block.id }} .afx-more__btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1.75rem;
+    border: 1px solid var(--color-button-border, var(--color-border));
+    border-radius: 999px;
+    background-color: var(--color-button, transparent);
+    color: var(--color-button-text, var(--color-text));
+    font-size: var(--fs-text-sm);
+    cursor: pointer;
+    text-decoration: none;
+  }
+
+  .afx-stage--{{ block.id }} .afx-more__btn--text {
+    padding: 0.25rem 0;
+    border: 0;
+    background: none;
+    color: var(--color-text);
+  }
+
+  .afx-stage--{{ block.id }} .afx-more__btn--underline {
+    text-decoration: underline;
+    text-underline-offset: 0.25em;
+  }
+
+    /* Stage and cards enter with the section's motion (snippets/motion-reveal). */
+    .afx-stage--{{ block.id }} {
+      {% render 'motion-reveal', part: 'vars', from: anim %}
+    }
+
+  /* ------------------------------------------------ mobile-only carousel */
+
+  @media (max-width: 767.98px) {
+    {% if carousel_m %}
+      /* The viewport never overflow-clips a carousel; bleed cuts it with a
+         clip-path, open vertically so hover lift and shadows escape. */
+      .afx-stage--{{ block.id }} .afx-items__viewport { overflow: visible; }
+      {% if bleed_mode == 'cut' %}
+        .afx-stage--{{ block.id }} .afx-items__viewport { clip-path: inset(-100vh 0px -100vh 0px); }
+      {% endif %}
+      {% if fade_on %}
+        .afx-stage--{{ block.id }} .afx-fade { display: block; }
+      {% endif %}
+    {% endif %}
+  }
+
+  /* ------------------------------------------------------------- desktop */
+
+  @media (min-width: 768px) {
+    .afx-stage--{{ block.id }} {
+      --afx-overlap: {{ overlap_d }}px;
+      --afx-columns: {{ s.grid_columns_desktop }};
+      --arc-ratio: {{ card_ratio_d }};
+      gap: var(--ds-layout-gap-desktop);
+    }
+
+    {% if hero_full %}
+      .afx-stage--{{ block.id }} .afx-lead {
+        margin-inline: calc(-1 * var(--ds-layout-gutter-desktop));
+      }
+    {% endif %}
+
+    .afx-stage--{{ block.id }} .afx-lead { gap: var(--ds-layout-gap-desktop); }
+
+    .afx-stage--{{ block.id }} .afx-herobox {
+      {% unless hero_full %}border-radius: var(--ds-layout-radius-desktop);{% endunless %}
+      {% if panel_on and s.hero_border %}border-width: var(--ds-layout-border-width-desktop, 1px);{% endif %}
+    }
+
+    .afx-stage--{{ block.id }} .afx-hero__media {
+      {% if hero_ratio_d != 'auto' %}
+        aspect-ratio: {{ hero_ratio_d }};
+      {% elsif s.hero_ratio_mobile != 'auto' %}
+        aspect-ratio: auto;
+      {% endif %}
+    }
+
+    .afx-stage--{{ block.id }} .afx-hero__image {
+      height: {% if hero_ratio_d != 'auto' %}100%{% else %}auto{% endif %};
+    }
+
+    .afx-stage--{{ block.id }} .afx-items__viewport:not(.swiper-initialized) .afx-track {
+      gap: var(--ds-item-gap-desktop);
+    }
+
+
+    .afx-stage--{{ block.id }} .afx-items__viewport:not(.swiper-initialized) .afx-more {
+      margin-top: var(--ds-layout-gap-desktop);
+    }
+
+    .afx-stage--{{ block.id }} .afx-fade--start { width: var(--afx-edge-start, var(--ds-layout-gutter-desktop)); }
+    .afx-stage--{{ block.id }} .afx-fade--end { width: var(--afx-edge-end, var(--ds-layout-gutter-desktop)); }
+
+    {% if carousel_d %}
+      .afx-stage--{{ block.id }} .afx-items__viewport { overflow: visible; }
+      {% if bleed_mode == 'cut' %}
+        .afx-stage--{{ block.id }} .afx-items__viewport { clip-path: inset(-100vh {{ cut_r_d }} -100vh {{ cut_l_d }}); }
+      {% endif %}
+      {% if clip_d != blank %}
+        .afx-stage--{{ block.id }} { clip-path: {{ clip_d }}; }
+      {% endif %}
+      {% if fade_on %}
+        {% if side == false %}
+          .afx-stage--{{ block.id }} .afx-fade { display: block; }
+        {% elsif hero_end %}
+          .afx-stage--{{ block.id }} .afx-fade--start { display: block; }
+        {% else %}
+          .afx-stage--{{ block.id }} .afx-fade--end { display: block; }
+        {% endif %}
+      {% endif %}
+    {% endif %}
+
+    {% if side %}
+      .afx-stage--{{ block.id }} {
+        flex-direction: {% if hero_end %}row-reverse{% else %}row{% endif %};
+        align-items: center;
+      }
+
+      .afx-stage--{{ block.id }} .afx-lead {
+        flex: 0 0 var(--afx-hero-width);
+        max-width: 100%;
+      }
+
+      {% if style == 'tunnel' %}
+        /* Tunnel: the whole hero column is the tunnel mouth — an opaque cover
+           as tall as the row, the hero centred in it — so cards passing under
+           never show above, below or around the picture. */
+        .afx-stage--{{ block.id }} .afx-lead {
+          align-self: stretch;
+          justify-content: center;
+          background-color: var(--color-base);
+        }
+      {% endif %}
+
+      .afx-stage--{{ block.id }} .afx-items {
+        flex: 1 1 0;
+        margin-top: 0;
+        {% if hero_end %}
+          margin-right: calc(-1 * var(--afx-overlap));
+        {% else %}
+          margin-left: calc(-1 * var(--afx-overlap));
+        {% endif %}
+      }
+    {% endif %}
+  }
+  {% if spv_on or hero_match %}
+    /* Width container: slides per view and the matched hero height are both
+       measured from this box's own width, in container units. */
+    .afx-stage--{{ block.id }} { container-type: inline-size; }
+  {% endif %}
+
+  {% if spv_on %}
+    @media (min-width: 768px) {
+      .afx-stage--{{ block.id }} {
+        {% if side %}
+          --afx-slide-w: calc((100cqw - {{ spv_hero_w }} - var(--ds-layout-gap-desktop) + var(--afx-overlap) - {{ spv_gaps_d }} * var(--ds-item-gap-desktop)) / {{ spv_d }});
+        {% else %}
+          --afx-slide-w: calc((100cqw - {{ spv_gaps_d }} * var(--ds-item-gap-desktop)) / {{ spv_d }});
+        {% endif %}
+      }
+    }
+  {% endif %}
+
+  {% if hero_match %}
+    /* Hero matches the article card height, at every screen size. A card is
+       its width x its shape, so the height is that same sum: the slide width
+       in a carousel, the column width (from the stage's own width, through
+       container units) in a grid. It replaces the picture shape. */
+    .afx-stage--{{ block.id }} {
+      --afx-card-h: {% if carousel_m %}calc(var(--afx-slide-w) / (var(--arc-ratio))){% else %}calc((100cqw - (var(--afx-columns) - 1) * var(--ds-item-gap-mobile)) / var(--afx-columns) / (var(--arc-ratio))){% endif %};
+    }
+
+    .afx-stage--{{ block.id }} .afx-hero__media {
+      aspect-ratio: auto;
+      height: var(--afx-card-h);
+    }
+
+    .afx-stage--{{ block.id }} .afx-hero__image { height: 100%; }
+
+    {% if panel_on %}
+      .afx-stage--{{ block.id }} .afx-herobox { min-height: var(--afx-card-h); }
+    {% endif %}
+
+    @media (min-width: 768px) {
+      .afx-stage--{{ block.id }} {
+        --afx-card-h: {% if carousel_d %}calc(var(--afx-slide-w) / (var(--arc-ratio))){% else %}calc((100cqw - (var(--afx-columns) - 1) * var(--ds-item-gap-desktop)) / var(--afx-columns) / (var(--arc-ratio))){% endif %};
+      }
+    }
+  {% endif %}
+{% endstyle %}
+
+<div
+  class="afx-stage afx-stage--{{ block.id }} {% render 'motion-reveal', part: 'class', from: anim %} afx-stage--{{ style }}{% if side %} afx-stage--side{% endif %}{% unless hero_on %} afx-stage--no-hero{% endunless %}{% if hero_full %} afx-stage--hero-full{% endif %}"
+  data-afx-stage
+  data-afx-panel="{{ block.id }}"
+  data-afx-layout-mobile="{{ s.layout_mobile }}"
+  data-afx-layout-desktop="{{ s.layout_desktop }}"
+  {% if hero_content %}data-afx-hero-content{% endif %}
+  {% if side and hero_end %}data-afx-mirror{% endif %}
+  {{ block.shopify_attributes }}
+>
+  {%- if hero_on -%}
+    <div class="afx-lead">
+      <div class="afx-herobox">
+        {%- if media_on -%}
+          <div class="afx-hero">
+            <div class="afx-hero__media">
+              {%- if s.hero_media == 'video' and s.hero_video != blank -%}
+                {{
+                  s.hero_video
+                  | video_tag: class: 'afx-hero__image', image_size: '1600x', autoplay: true, loop: true, muted: true, controls: false
+                }}
+              {%- elsif s.hero_image != blank -%}
+                {{
+                  s.hero_image
+                  | image_url: width: 2000
+                  | image_tag: class: 'afx-hero__image', loading: 'lazy', sizes: '100vw', widths: '400,600,800,1200,1600,2000', alt: s.hero_image.alt
+                }}
+              {%- else -%}
+                {{ 'lifestyle-1' | placeholder_svg_tag: 'afx-hero__image afx-hero__image--placeholder' }}
+              {%- endif -%}
+            </div>
+          </div>
+          <div class="afx-hero__scrim" aria-hidden="true"></div>
+        {%- endif -%}
+        {%- comment -%}
+          Filled by the controller with the Rich Content placed right before
+          this block, when "Content over hero" is on.
+        {%- endcomment -%}
+        <div class="afx-hero__content" data-afx-herocontent></div>
+      </div>
+    </div>
+  {%- endif -%}
+
+  <div
+    class="afx-items"
+    data-afx-items
+  >
+    {%- if fade_on -%}
+      <span class="afx-fade afx-fade--start" aria-hidden="true"></span>
+      <span class="afx-fade afx-fade--end" aria-hidden="true"></span>
+    {%- endif -%}
+
+    <div class="afx-items__viewport swiper" data-afx-viewport>
+      <div
+        class="afx-track swiper-wrapper {% render 'motion-reveal', part: 'class', from: anim, group: true %}"
+        id="afx-track-{{ block.id }}"
+        data-afx-track
+      >
+        {%- comment -%}
+          Article Card children land here directly; the controller tags
+          each one as a slide.
+        {%- endcomment -%}
+        {% content_for 'blocks' %}
+
+        {%- comment -%}
+          The View all link is the track's last cell, so ONE position is right
+          in both layouts: a tile after the final card in a carousel, a centred
+          row under a grid. It carries data-afx-more-wrap, so it is never
+          mistaken for a card.
+        {%- endcomment -%}
+        {%- if sec.more_label != blank and sec.more_link != blank -%}
+          <div class="afx-more" data-afx-more-wrap>
+            <a class="{{ more_btn_class }}" href="{{ sec.more_link }}">{{ sec.more_label | escape }}</a>
+          </div>
+        {%- endif -%}
+      </div>
+    </div>
+
+  </div>
+</div>
+
+{% schema %}
+{
+  "name": "Featured Articles",
+  "tag": null,
+  "settings": [
+    {
+      "type": "header",
+      "content": "Layout"
+    },
+    {
+      "type": "select",
+      "id": "layout_mobile",
+      "label": "Cards on mobile",
+      "options": [
+        {
+          "value": "grid",
+          "label": "Grid"
+        },
+        {
+          "value": "carousel",
+          "label": "Carousel"
+        }
+      ],
+      "default": "carousel"
+    },
+    {
+      "type": "select",
+      "id": "layout_desktop",
+      "label": "Cards on desktop",
+      "options": [
+        {
+          "value": "grid",
+          "label": "Grid"
+        },
+        {
+          "value": "carousel",
+          "label": "Carousel"
+        }
+      ],
+      "default": "carousel"
+    },
+    {
+      "type": "checkbox",
+      "id": "full_width",
+      "label": "Full-width hero",
+      "info": "Runs the hero to the screen edges with square corners. Content and cards keep the page margins. Grid and Classic carousel only.",
+      "default": false,
+      "visible_if": "{{ block.settings.hero_enabled and block.settings.layout_desktop == 'grid' or block.settings.hero_enabled and block.settings.carousel_style == 'classic' }}"
+    },
+    {
+      "type": "range",
+      "id": "grid_columns_mobile",
+      "label": "Columns (mobile)",
+      "min": 1,
+      "max": 3,
+      "step": 1,
+      "default": 2,
+      "visible_if": "{{ block.settings.layout_mobile == 'grid' }}"
+    },
+    {
+      "type": "range",
+      "id": "grid_columns_desktop",
+      "label": "Columns (desktop)",
+      "min": 2,
+      "max": 6,
+      "step": 1,
+      "default": 4,
+      "visible_if": "{{ block.settings.layout_desktop == 'grid' }}"
+    },
+    {
+      "type": "header",
+      "content": "Hero"
+    },
+    {
+      "type": "checkbox",
+      "id": "hero_enabled",
+      "label": "Show hero",
+      "default": true
+    },
+    {
+      "type": "checkbox",
+      "id": "content_over_hero",
+      "label": "Content over hero",
+      "info": "Moves the Rich Content placed right before this block into its hero — over the picture, or onto the Classic panel.",
+      "default": false,
+      "visible_if": "{{ block.settings.hero_enabled }}"
+    },
+    {
+      "type": "select",
+      "id": "hero_variant",
+      "label": "Hero style",
+      "options": [
+        {
+          "value": "media",
+          "label": "Media"
+        },
+        {
+          "value": "classic",
+          "label": "Classic"
+        }
+      ],
+      "default": "media",
+      "info": "Classic shows the hero content on a plain panel, without a picture.",
+      "visible_if": "{{ block.settings.hero_enabled }}"
+    },
+    {
+      "type": "select",
+      "id": "hero_content_x",
+      "label": "Hero content position (horizontal)",
+      "options": [
+        {
+          "value": "left",
+          "label": "Left"
+        },
+        {
+          "value": "center",
+          "label": "Center"
+        }
+      ],
+      "default": "left",
+      "visible_if": "{{ block.settings.hero_enabled }}"
+    },
+    {
+      "type": "select",
+      "id": "hero_content_y",
+      "label": "Hero content position (vertical)",
+      "options": [
+        {
+          "value": "top",
+          "label": "Top"
+        },
+        {
+          "value": "center",
+          "label": "Center"
+        },
+        {
+          "value": "bottom",
+          "label": "Bottom"
+        }
+      ],
+      "default": "bottom",
+      "visible_if": "{{ block.settings.hero_enabled and block.settings.hero_variant == 'media' }}"
+    },
+    {
+      "type": "select",
+      "id": "hero_media",
+      "label": "Hero picture",
+      "options": [
+        {
+          "value": "image",
+          "label": "Image"
+        },
+        {
+          "value": "video",
+          "label": "Video"
+        }
+      ],
+      "default": "image",
+      "visible_if": "{{ block.settings.hero_enabled and block.settings.hero_variant == 'media' }}"
+    },
+    {
+      "type": "image_picker",
+      "id": "hero_image",
+      "label": "Image",
+      "visible_if": "{{ block.settings.hero_enabled and block.settings.hero_variant == 'media' and block.settings.hero_media == 'image' }}"
+    },
+    {
+      "type": "video",
+      "id": "hero_video",
+      "label": "Video",
+      "visible_if": "{{ block.settings.hero_enabled and block.settings.hero_variant == 'media' and block.settings.hero_media == 'video' }}"
+    },
+    {
+      "type": "checkbox",
+      "id": "hero_border",
+      "label": "Border around the hero",
+      "default": false,
+      "visible_if": "{{ block.settings.hero_enabled and block.settings.hero_variant == 'classic' }}"
+    },
+    {
+      "type": "range",
+      "id": "hero_scrim",
+      "label": "Hero overlay opacity",
+      "min": 0,
+      "max": 80,
+      "step": 5,
+      "unit": "%",
+      "default": 20,
+      "visible_if": "{{ block.settings.hero_enabled and block.settings.hero_variant == 'media' }}"
+    },
+    {
+      "type": "checkbox",
+      "id": "hero_match_cards",
+      "label": "Match article picture height",
+      "info": "The hero is exactly as tall as a article card's picture at every screen size, instead of following its own shape.",
+      "default": false,
+      "visible_if": "{{ block.settings.hero_enabled }}"
+    },
+    {
+      "type": "select",
+      "id": "hero_ratio_mobile",
+      "label": "Picture shape (mobile)",
+      "options": [
+        {
+          "value": "auto",
+          "label": "Natural"
+        },
+        {
+          "value": "1/1",
+          "label": "1:1"
+        },
+        {
+          "value": "4/5",
+          "label": "4:5"
+        },
+        {
+          "value": "3/4",
+          "label": "3:4"
+        },
+        {
+          "value": "2/3",
+          "label": "2:3"
+        },
+        {
+          "value": "4/3",
+          "label": "4:3"
+        },
+        {
+          "value": "3/2",
+          "label": "3:2"
+        },
+        {
+          "value": "16/9",
+          "label": "16:9"
+        },
+        {
+          "value": "21/9",
+          "label": "21:9"
+        }
+      ],
+      "default": "4/3",
+      "visible_if": "{{ block.settings.hero_enabled and block.settings.hero_variant == 'media' and block.settings.hero_match_cards != true }}"
+    },
+    {
+      "type": "select",
+      "id": "hero_ratio_desktop",
+      "label": "Picture shape (desktop)",
+      "options": [
+        {
+          "value": "auto",
+          "label": "Natural"
+        },
+        {
+          "value": "1/1",
+          "label": "1:1"
+        },
+        {
+          "value": "4/5",
+          "label": "4:5"
+        },
+        {
+          "value": "3/4",
+          "label": "3:4"
+        },
+        {
+          "value": "2/3",
+          "label": "2:3"
+        },
+        {
+          "value": "4/3",
+          "label": "4:3"
+        },
+        {
+          "value": "3/2",
+          "label": "3:2"
+        },
+        {
+          "value": "16/9",
+          "label": "16:9"
+        },
+        {
+          "value": "21/9",
+          "label": "21:9"
+        }
+      ],
+      "default": "16/9",
+      "visible_if": "{{ block.settings.hero_enabled and block.settings.hero_variant == 'media' and block.settings.layout_desktop == 'grid' or block.settings.carousel_style == 'classic' }}",
+      "info": "Used when the hero sits above the cards."
+    },
+    {
+      "type": "select",
+      "id": "hero_ratio_side",
+      "label": "Picture shape (beside the carousel)",
+      "options": [
+        {
+          "value": "1/1",
+          "label": "1:1"
+        },
+        {
+          "value": "4/5",
+          "label": "Portrait (4:5)"
+        },
+        {
+          "value": "2/3",
+          "label": "Tall (2:3)"
+        }
+      ],
+      "default": "1/1",
+      "info": "Desktop, when the carousel style is Flyover or Tunnel.",
+      "visible_if": "{{ block.settings.hero_enabled and block.settings.hero_variant == 'media' and block.settings.layout_desktop == 'carousel' and block.settings.carousel_style != 'classic' and block.settings.hero_match_cards != true }}"
+    },
+    {
+      "type": "select",
+      "id": "hero_width_mode",
+      "label": "Hero width",
+      "options": [
+        {
+          "value": "percent",
+          "label": "Percentage"
+        },
+        {
+          "value": "fixed",
+          "label": "Fixed"
+        }
+      ],
+      "default": "percent",
+      "visible_if": "{{ block.settings.hero_enabled and block.settings.layout_desktop == 'carousel' and block.settings.carousel_style != 'classic' }}"
+    },
+    {
+      "type": "range",
+      "id": "hero_width_desktop",
+      "label": "Hero takes",
+      "min": 30,
+      "max": 70,
+      "step": 5,
+      "unit": "%",
+      "default": 45,
+      "visible_if": "{{ block.settings.hero_enabled and block.settings.layout_desktop == 'carousel' and block.settings.carousel_style != 'classic' and block.settings.hero_width_mode == 'percent' }}"
+    },
+    {
+      "type": "range",
+      "id": "hero_width_px_mobile",
+      "label": "Hero width (mobile)",
+      "info": "The hero width grows smoothly from the mobile width on a small screen to the desktop width on a wide one. It sits beside the carousel on desktop only; a phone always shows it full width.",
+      "min": 160,
+      "max": 720,
+      "step": 10,
+      "unit": "px",
+      "default": 320,
+      "visible_if": "{{ block.settings.hero_enabled and block.settings.layout_desktop == 'carousel' and block.settings.carousel_style != 'classic' and block.settings.hero_width_mode == 'fixed' }}"
+    },
+    {
+      "type": "range",
+      "id": "hero_width_px",
+      "label": "Hero width (desktop)",
+      "min": 240,
+      "max": 960,
+      "step": 20,
+      "unit": "px",
+      "default": 480,
+      "visible_if": "{{ block.settings.hero_enabled and block.settings.layout_desktop == 'carousel' and block.settings.carousel_style != 'classic' and block.settings.hero_width_mode == 'fixed' }}"
+    },
+    {
+      "type": "header",
+      "content": "Carousel"
+    },
+    {
+      "type": "select",
+      "id": "carousel_style",
+      "label": "Carousel style",
+      "options": [
+        {
+          "value": "classic",
+          "label": "Classic"
+        },
+        {
+          "value": "flyover",
+          "label": "Flyover"
+        },
+        {
+          "value": "tunnel",
+          "label": "Tunnel"
+        }
+      ],
+      "default": "classic",
+      "info": "Classic sits under the hero. Flyover and Tunnel sit beside it on desktop, and swiped cards pass over or under it.",
+      "visible_if": "{{ block.settings.hero_enabled and block.settings.layout_mobile == 'carousel' or block.settings.layout_desktop == 'carousel' }}"
+    },
+    {
+      "type": "select",
+      "id": "hero_position",
+      "label": "Carousel and hero position",
+      "options": [
+        {
+          "value": "left",
+          "label": "Hero left"
+        },
+        {
+          "value": "right",
+          "label": "Hero right"
+        }
+      ],
+      "default": "left",
+      "visible_if": "{{ block.settings.hero_enabled and block.settings.layout_desktop == 'carousel' and block.settings.carousel_style != 'classic' }}"
+    },
+    {
+      "type": "range",
+      "id": "carousel_overlap_mobile",
+      "label": "Hero overlapping (mobile)",
+      "min": 0,
+      "max": 160,
+      "step": 4,
+      "unit": "px",
+      "default": 0,
+      "visible_if": "{{ block.settings.hero_enabled and block.settings.layout_mobile == 'carousel' and block.settings.carousel_style == 'flyover' }}"
+    },
+    {
+      "type": "range",
+      "id": "carousel_overlap_desktop",
+      "label": "Hero overlapping (desktop)",
+      "min": 0,
+      "max": 320,
+      "step": 8,
+      "unit": "px",
+      "default": 0,
+      "visible_if": "{{ block.settings.hero_enabled and block.settings.layout_desktop == 'carousel' and block.settings.carousel_style == 'flyover' }}"
+    },
+    {
+      "type": "checkbox",
+      "id": "carousel_bleed",
+      "label": "Carousel bleed",
+      "info": "Cards run past the page margin to the screen edge. Off, cards stop at the content edge.",
+      "default": true,
+      "visible_if": "{{ block.settings.layout_mobile == 'carousel' or block.settings.layout_desktop == 'carousel' }}"
+    },
+    {
+      "type": "checkbox",
+      "id": "edge_fade",
+      "label": "Screen-edge fade",
+      "info": "Fades cards as they leave the content area toward the screen edge. Needs Carousel bleed.",
+      "default": false,
+      "visible_if": "{{ block.settings.carousel_bleed and block.settings.layout_mobile == 'carousel' or block.settings.carousel_bleed and block.settings.layout_desktop == 'carousel' }}"
+    },
+    {
+      "type": "select",
+      "id": "slide_sizing",
+      "label": "Slide size",
+      "options": [
+        {
+          "value": "width",
+          "label": "Set a width"
+        },
+        {
+          "value": "count",
+          "label": "Slides per view"
+        }
+      ],
+      "default": "width",
+      "info": "Slides per view fits exactly that many cards across the carousel; a half shows a peek of the next one. Set a width keeps one card size that grows with the screen.",
+      "visible_if": "{{ block.settings.layout_mobile == 'carousel' or block.settings.layout_desktop == 'carousel' }}"
+    },
+    {
+      "type": "range",
+      "id": "slides_per_view_mobile",
+      "label": "Slides per view (mobile)",
+      "min": 1,
+      "max": 4,
+      "step": 0.5,
+      "default": 1.5,
+      "visible_if": "{{ block.settings.slide_sizing == 'count' and block.settings.carousel_style == 'classic' or block.settings.slide_sizing == 'count' and block.settings.hero_enabled == false }}"
+    },
+    {
+      "type": "range",
+      "id": "slides_per_view_desktop",
+      "label": "Slides per view (desktop)",
+      "min": 1,
+      "max": 8,
+      "step": 0.5,
+      "default": 4,
+      "visible_if": "{{ block.settings.slide_sizing == 'count' and block.settings.carousel_style == 'classic' or block.settings.slide_sizing == 'count' and block.settings.hero_enabled == false }}"
+    },
+    {
+      "type": "range",
+      "id": "slides_per_view_side_mobile",
+      "label": "Slides per view, Flyover / Tunnel (mobile)",
+      "min": 1,
+      "max": 4,
+      "step": 0.5,
+      "default": 1.5,
+      "visible_if": "{{ block.settings.slide_sizing == 'count' and block.settings.hero_enabled and block.settings.carousel_style != 'classic' }}"
+    },
+    {
+      "type": "range",
+      "id": "slides_per_view_side_desktop",
+      "label": "Slides per view, Flyover / Tunnel (desktop)",
+      "info": "Counted across the carousel beside the hero.",
+      "min": 1,
+      "max": 6,
+      "step": 0.5,
+      "default": 2.5,
+      "visible_if": "{{ block.settings.slide_sizing == 'count' and block.settings.hero_enabled and block.settings.carousel_style != 'classic' }}"
+    },
+    {
+      "type": "range",
+      "id": "slide_width_mobile",
+      "label": "Slide width (mobile)",
+      "info": "Slides grow smoothly from the mobile width on a phone to the desktop width on a wide screen.",
+      "min": 140,
+      "max": 400,
+      "step": 10,
+      "unit": "px",
+      "default": 220,
+      "visible_if": "{{ block.settings.layout_mobile == 'carousel' and block.settings.slide_sizing != 'count' or block.settings.layout_desktop == 'carousel' and block.settings.slide_sizing != 'count' }}"
+    },
+    {
+      "type": "range",
+      "id": "slide_width_desktop",
+      "label": "Slide width (desktop)",
+      "min": 180,
+      "max": 520,
+      "step": 10,
+      "unit": "px",
+      "default": 300,
+      "visible_if": "{{ block.settings.layout_mobile == 'carousel' and block.settings.slide_sizing != 'count' or block.settings.layout_desktop == 'carousel' and block.settings.slide_sizing != 'count' }}"
+    },
+    {
+      "type": "header",
+      "content": "Article cards",
+      "info": "Cards whose picture shape is set to Follow the section take this shape. Each card owns its own look."
+    },
+    {
+      "type": "select",
+      "id": "card_ratio_mobile",
+      "label": "Picture shape (mobile)",
+      "options": [
+        {
+          "value": "1/1",
+          "label": "1:1"
+        },
+        {
+          "value": "4/5",
+          "label": "4:5"
+        },
+        {
+          "value": "3/4",
+          "label": "3:4"
+        },
+        {
+          "value": "2/3",
+          "label": "2:3"
+        },
+        {
+          "value": "4/3",
+          "label": "4:3"
+        },
+        {
+          "value": "3/2",
+          "label": "3:2"
+        },
+        {
+          "value": "16/9",
+          "label": "16:9"
+        }
+      ],
+      "default": "4/5"
+    },
+    {
+      "type": "select",
+      "id": "card_ratio_desktop",
+      "label": "Picture shape (desktop)",
+      "options": [
+        {
+          "value": "1/1",
+          "label": "1:1"
+        },
+        {
+          "value": "4/5",
+          "label": "4:5"
+        },
+        {
+          "value": "3/4",
+          "label": "3:4"
+        },
+        {
+          "value": "2/3",
+          "label": "2:3"
+        },
+        {
+          "value": "4/3",
+          "label": "4:3"
+        },
+        {
+          "value": "3/2",
+          "label": "3:2"
+        },
+        {
+          "value": "16/9",
+          "label": "16:9"
+        }
+      ],
+      "default": "4/5"
+    }
+  ],
+  "presets": [
+    {
+      "name": "Featured Articles",
+      "blocks": {
+        "card_1": {
+          "type": "article_card",
+          "blocks": {
+            "meta": {
+              "type": "_article_meta_row",
+              "blocks": {
+                "date": {
+                  "type": "_article_date"
+                },
+                "read_time": {
+                  "type": "_article_read_time"
+                }
+              },
+              "block_order": [
+                "date",
+                "read_time"
+              ]
+            },
+            "title": {
+              "type": "_article_title"
+            },
+            "excerpt": {
+              "type": "_article_excerpt"
+            },
+            "author": {
+              "type": "_article_author"
+            }
+          },
+          "block_order": [
+            "meta",
+            "title",
+            "excerpt",
+            "author"
+          ]
+        },
+        "card_2": {
+          "type": "article_card",
+          "blocks": {
+            "meta": {
+              "type": "_article_meta_row",
+              "blocks": {
+                "date": {
+                  "type": "_article_date"
+                },
+                "read_time": {
+                  "type": "_article_read_time"
+                }
+              },
+              "block_order": [
+                "date",
+                "read_time"
+              ]
+            },
+            "title": {
+              "type": "_article_title"
+            },
+            "excerpt": {
+              "type": "_article_excerpt"
+            },
+            "author": {
+              "type": "_article_author"
+            }
+          },
+          "block_order": [
+            "meta",
+            "title",
+            "excerpt",
+            "author"
+          ]
+        },
+        "card_3": {
+          "type": "article_card",
+          "blocks": {
+            "meta": {
+              "type": "_article_meta_row",
+              "blocks": {
+                "date": {
+                  "type": "_article_date"
+                },
+                "read_time": {
+                  "type": "_article_read_time"
+                }
+              },
+              "block_order": [
+                "date",
+                "read_time"
+              ]
+            },
+            "title": {
+              "type": "_article_title"
+            },
+            "excerpt": {
+              "type": "_article_excerpt"
+            },
+            "author": {
+              "type": "_article_author"
+            }
+          },
+          "block_order": [
+            "meta",
+            "title",
+            "excerpt",
+            "author"
+          ]
+        },
+        "card_4": {
+          "type": "article_card",
+          "blocks": {
+            "meta": {
+              "type": "_article_meta_row",
+              "blocks": {
+                "date": {
+                  "type": "_article_date"
+                },
+                "read_time": {
+                  "type": "_article_read_time"
+                }
+              },
+              "block_order": [
+                "date",
+                "read_time"
+              ]
+            },
+            "title": {
+              "type": "_article_title"
+            },
+            "excerpt": {
+              "type": "_article_excerpt"
+            },
+            "author": {
+              "type": "_article_author"
+            }
+          },
+          "block_order": [
+            "meta",
+            "title",
+            "excerpt",
+            "author"
+          ]
+        }
+      },
+      "block_order": [
+        "card_1",
+        "card_2",
+        "card_3",
+        "card_4"
+      ]
+    }
+  ],
+  "blocks": [
+    {
+      "type": "article_card"
+    }
+  ]
+}
+{% endschema %}

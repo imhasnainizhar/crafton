@@ -1,0 +1,13 @@
+{%- comment -%}
+  Maps a card shadow key to its CSS box-shadow value. Mirrors space-token so
+  card.liquid and the shared card-token snippet emit one shared definition (declared in
+  assets/base.css :root as --card-shadow-*) instead of duplicating the strings.
+  Usage: box-shadow: {% render 'shadow-token', key: block.settings.shadow %};
+  Keys: none | sm | md | lg
+{%- endcomment -%}
+{%- case key -%}
+  {%- when 'sm' -%}var(--card-shadow-sm)
+  {%- when 'md' -%}var(--card-shadow-md)
+  {%- when 'lg' -%}var(--card-shadow-lg)
+  {%- else -%}none
+{%- endcase -%}

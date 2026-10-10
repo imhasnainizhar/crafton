@@ -1,0 +1,172 @@
+{%- comment -%}
+  Search — the search form and paginated results (products, articles and
+  pages) as image-and-title cards, inside the shared page shell
+  (assets/base.css). On hover a card's picture lifts (--card-hover-lift), its
+  image zooms and the title underline draws in.
+{%- endcomment -%}
+<div class="page-shell color-{{ section.settings.color_scheme }}">
+  <div class="page-shell__inner main-search">
+    <h1 class="page-shell__title">{{ 'search.title' | t }}</h1>
+
+    <form action="{{ routes.search_url }}" method="get" role="search" class="main-search__form">
+      <label class="visually-hidden" for="SearchInput-{{ section.id }}">{{ 'search.placeholder' | t }}</label>
+      <input
+        type="search"
+        name="q"
+        id="SearchInput-{{ section.id }}"
+        value="{{ search.terms | escape }}"
+        placeholder="{{ 'search.placeholder' | t }}"
+      >
+      <button type="submit" class="page-shell__button">{{ 'search.submit' | t }}</button>
+    </form>
+
+    {%- if search.performed -%}
+      {%- if search.results_count == 0 -%}
+        <p>{{ 'search.no_results_html' | t: terms: search.terms }}</p>
+      {%- else -%}
+        <p>{{ 'search.results_for_html' | t: terms: search.terms, count: search.results_count }}</p>
+
+        {%- paginate search.results by 20 -%}
+          <ul class="main-search__results" role="list">
+            {%- for result in search.results -%}
+              {%- assign featured_image = result.featured_image | default: result.image -%}
+              <li>
+                <a class="main-search__result" href="{{ result.url }}">
+                  <span class="main-search__media">
+                    {%- if featured_image -%}
+                      {{ featured_image | image_url: width: 400 | image_tag: loading: 'lazy', widths: '200, 400', sizes: '(min-width: 768px) 20vw, 50vw' }}
+                    {%- endif -%}
+                  </span>
+                  <span class="main-search__title">{{ result.title | escape }}</span>
+                  {%- if result.price -%}
+                    <span class="main-search__price">{{ result.price | money }}</span>
+                  {%- endif -%}
+                </a>
+              </li>
+            {%- endfor -%}
+          </ul>
+
+          {%- if paginate.pages > 1 -%}
+            <nav class="page-shell__pagination" aria-label="{{ 'general.pagination.label' | t }}">
+              {{- paginate | default_pagination -}}
+            </nav>
+          {%- endif -%}
+        {%- endpaginate -%}
+      {%- endif -%}
+    {%- endif -%}
+  </div>
+</div>
+
+{% stylesheet %}
+  .main-search {
+    display: flex;
+    flex-direction: column;
+    gap: var(--ds-layout-gap-mobile);
+  }
+
+  .main-search__form {
+    display: flex;
+    gap: 0.5rem;
+  }
+
+  .main-search__form input {
+    flex: 1 1 auto;
+    min-width: 0;
+    padding: 0.75rem 1rem;
+    font: inherit;
+    color: var(--color-text);
+    background-color: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--ds-item-radius-mobile);
+  }
+
+  .main-search__results {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--ds-item-gap-mobile);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .main-search__result {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    color: var(--color-heading);
+    text-decoration: none;
+  }
+
+  .main-search__media {
+    display: block;
+    overflow: hidden;
+    aspect-ratio: 1 / 1;
+    border-radius: var(--ds-item-radius-mobile);
+    background-color: var(--color-surface);
+    transition: transform 0.45s cubic-bezier(0.2, 0.7, 0.2, 1), box-shadow 0.45s cubic-bezier(0.2, 0.7, 0.2, 1);
+  }
+
+  .main-search__media img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.6s ease;
+  }
+
+  .main-search__title {
+    align-self: flex-start;
+    background-image: linear-gradient(currentColor, currentColor);
+    background-position: 0 100%;
+    background-repeat: no-repeat;
+    background-size: 0% 1px;
+    transition: background-size 0.35s ease;
+  }
+
+  .main-search__result:is(:hover, :focus-visible) .main-search__title {
+    background-size: 100% 1px;
+  }
+
+  @media (hover: hover) and (prefers-reduced-motion: no-preference) {
+    html:not(.motion-disabled) .main-search__result:is(:hover, :focus-visible) .main-search__media {
+      transform: var(--card-hover-lift);
+      box-shadow: 0 1rem 2rem -1rem color-mix(in srgb, var(--color-shadow) 45%, transparent);
+    }
+
+    html:not(.motion-disabled) .main-search__result:is(:hover, :focus-visible) .main-search__media img {
+      transform: scale(1.04);
+    }
+  }
+
+  .main-search__price {
+    color: var(--color-text);
+    font-size: var(--fs-text-sm);
+  }
+
+  @media (min-width: 768px) {
+    .main-search {
+      gap: var(--ds-layout-gap-desktop);
+    }
+
+    .main-search__results {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: var(--ds-item-gap-desktop);
+    }
+  }
+{% endstylesheet %}
+
+{% schema %}
+{
+  "name": "Search",
+  "tag": "section",
+  "class": "shopify-section--main",
+  "settings": [
+    {
+      "type": "color_scheme",
+      "id": "color_scheme",
+      "label": "Color scheme",
+      "default": "scheme_1"
+    }
+  ]
+}
+{% endschema %}

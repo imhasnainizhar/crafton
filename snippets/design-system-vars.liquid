@@ -1,0 +1,723 @@
+{%- comment -%}
+  Resolves the theme Design System at the current CSS scope.
+
+  `source` can be the global settings object or section.settings. Components
+  consume only --ds-* variables and do not branch on where values originated.
+
+  `design_surface_shadow` is intentionally global-only and is read from theme
+  settings, so it is not duplicated in the section schema contract below.
+
+  TV FONT BUMP: Arithmetic growth for fonts on ultra-wide displays (1920px+).
+  Minimal mode suppresses bump to maintain minimalist aesthetic end-to-end.
+{%- endcomment -%}
+{%- comment -%}
+  SECTION SETTINGS SCHEMA CONTRACT FOR DESIGN SYSTEM:
+
+  When this snippet receives `source: section.settings`, the section schema must
+  define these exact setting IDs. Copy the following settings into the section's
+  `schema.settings` array. Keep the IDs unchanged because they are read directly
+  from `source` above. In `visible_if`, use `section.settings` (not `settings`).
+
+  Shopify limits each visible_if expression to 250 characters. Shared values
+  and Minimal opt-ins therefore use the upload-safe Blend-or-Custom condition;
+  the resolver still decides whether each value affects Modern or Minimal CSS.
+  Radius is the exception to Blend's mode inheritance: a Blend section's item
+  and layout radii apply at every breakpoint, Minimal included. Only a Custom
+  section's own Minimal mode resolves them to 0px.
+
+  [
+    {
+      "type": "header",
+      "content": "Design Mode"
+    },
+    {
+      "type": "select",
+      "id": "section_design_mode",
+      "label": "Section Design Mode",
+      "info": "Auto: inherit all theme settings. Blend: use this section's values with the theme's responsive Design Mode. Custom: use this section's Design Mode and Design System values.",
+      "options": [
+        {
+          "value": "auto",
+          "label": "Auto"
+        },
+        {
+          "value": "blend",
+          "label": "Blend"
+        },
+        {
+          "value": "custom",
+          "label": "Custom"
+        }
+      ],
+      "default": "auto"
+    },
+    {
+      "type": "select",
+      "id": "design_mode_desktop",
+      "label": "Desktop Design Mode",
+      "options": [
+        {
+          "value": "modern",
+          "label": "Modern"
+        },
+        {
+          "value": "minimal",
+          "label": "Minimal"
+        }
+      ],
+      "default": "modern",
+      "visible_if": "{{ section.settings.section_design_mode == 'custom' }}"
+    },
+    {
+      "type": "select",
+      "id": "design_mode_mobile",
+      "label": "Mobile Design Mode",
+      "options": [
+        {
+          "value": "modern",
+          "label": "Modern"
+        },
+        {
+          "value": "minimal",
+          "label": "Minimal"
+        }
+      ],
+      "default": "modern",
+      "visible_if": "{{ section.settings.section_design_mode == 'custom' }}"
+    },
+    {
+      "type": "header",
+      "content": "Spacing",
+      "visible_if": "{{ section.settings.section_design_mode == 'custom' or section.settings.section_design_mode == 'blend' }}"
+    },
+    {
+      "type": "select",
+      "id": "design_section_padding_desktop",
+      "label": "Section padding (desktop)",
+      "options": [
+        {
+          "value": "none",
+          "label": "None"
+        },
+        {
+          "value": "xs",
+          "label": "Extra small"
+        },
+        {
+          "value": "sm",
+          "label": "Small"
+        },
+        {
+          "value": "md",
+          "label": "Medium"
+        },
+        {
+          "value": "lg",
+          "label": "Large"
+        },
+        {
+          "value": "xl",
+          "label": "Extra large"
+        },
+        {
+          "value": "2xl",
+          "label": "Maximum"
+        }
+      ],
+      "default": "xl",
+      "visible_if": "{{ section.settings.section_design_mode == 'custom' or section.settings.section_design_mode == 'blend' }}"
+    },
+    {
+      "type": "select",
+      "id": "design_section_padding_mobile",
+      "label": "Section padding (mobile)",
+      "options": [
+        {
+          "value": "none",
+          "label": "None"
+        },
+        {
+          "value": "xs",
+          "label": "Extra small"
+        },
+        {
+          "value": "sm",
+          "label": "Small"
+        },
+        {
+          "value": "md",
+          "label": "Medium"
+        },
+        {
+          "value": "lg",
+          "label": "Large"
+        },
+        {
+          "value": "xl",
+          "label": "Extra large"
+        },
+        {
+          "value": "2xl",
+          "label": "Maximum"
+        }
+      ],
+      "default": "lg",
+      "visible_if": "{{ section.settings.section_design_mode == 'custom' or section.settings.section_design_mode == 'blend' }}"
+    },
+    {
+      "type": "checkbox",
+      "id": "design_enable_minimal_layout_gap",
+      "label": "Enable Layout gap in minimal mode",
+      "default": true,
+      "visible_if": "{{ section.settings.section_design_mode == 'custom' or section.settings.section_design_mode == 'blend' }}"
+    },
+    {
+      "type": "select",
+      "id": "design_layout_gap_desktop",
+      "label": "Layout Gap (Desktop)",
+      "options": [
+        {
+          "value": "none",
+          "label": "None"
+        },
+        {
+          "value": "xs",
+          "label": "Extra small"
+        },
+        {
+          "value": "sm",
+          "label": "Small"
+        },
+        {
+          "value": "md",
+          "label": "Medium"
+        },
+        {
+          "value": "lg",
+          "label": "Large"
+        },
+        {
+          "value": "xl",
+          "label": "Extra large"
+        }
+      ],
+      "default": "md",
+      "visible_if": "{{ section.settings.section_design_mode == 'custom' or section.settings.section_design_mode == 'blend' }}"
+    },
+    {
+      "type": "select",
+      "id": "design_layout_gap_mobile",
+      "label": "Layout Gap (Mobile)",
+      "options": [
+        {
+          "value": "none",
+          "label": "None"
+        },
+        {
+          "value": "xs",
+          "label": "Extra small"
+        },
+        {
+          "value": "sm",
+          "label": "Small"
+        },
+        {
+          "value": "md",
+          "label": "Medium"
+        },
+        {
+          "value": "lg",
+          "label": "Large"
+        },
+        {
+          "value": "xl",
+          "label": "Extra large"
+        }
+      ],
+      "default": "sm",
+      "visible_if": "{{ section.settings.section_design_mode == 'custom' or section.settings.section_design_mode == 'blend' }}"
+    },
+    {
+      "type": "header",
+      "content": "Layout",
+      "visible_if": "{{ section.settings.section_design_mode == 'custom' or section.settings.section_design_mode == 'blend' }}"
+    },
+    {
+      "type": "checkbox",
+      "id": "design_enable_minimal_gutter",
+      "label": "Enable gutter in Minimal mode",
+      "default": false,
+      "visible_if": "{{ section.settings.section_design_mode == 'custom' or section.settings.section_design_mode == 'blend' }}"
+    },
+    {
+      "type": "select",
+      "id": "design_gutter_desktop",
+      "label": "Gutter (desktop)",
+      "options": [
+        {
+          "value": "none",
+          "label": "None"
+        },
+        {
+          "value": "xs",
+          "label": "Extra small"
+        },
+        {
+          "value": "sm",
+          "label": "Small"
+        },
+        {
+          "value": "md",
+          "label": "Medium"
+        },
+        {
+          "value": "lg",
+          "label": "Large"
+        },
+        {
+          "value": "xl",
+          "label": "Extra large"
+        }
+      ],
+      "default": "lg",
+      "visible_if": "{{ section.settings.section_design_mode == 'custom' or section.settings.section_design_mode == 'blend' }}"
+    },
+    {
+      "type": "select",
+      "id": "design_gutter_mobile",
+      "label": "Gutter (mobile)",
+      "options": [
+        {
+          "value": "none",
+          "label": "None"
+        },
+        {
+          "value": "sm",
+          "label": "Small"
+        },
+        {
+          "value": "md",
+          "label": "Medium"
+        },
+        {
+          "value": "lg",
+          "label": "Large"
+        }
+      ],
+      "default": "md",
+      "visible_if": "{{ section.settings.section_design_mode == 'custom' or section.settings.section_design_mode == 'blend' }}"
+    },
+    {
+      "type": "range",
+      "id": "design_layout_radius_desktop",
+      "label": "Layout radius (desktop)",
+      "info": "Blend: this section's radius always applies, even when the theme is Minimal. Custom: Minimal Design Mode removes it.",
+      "min": 0,
+      "max": 80,
+      "step": 2,
+      "unit": "px",
+      "default": 24,
+      "visible_if": "{{ section.settings.section_design_mode == 'custom' or section.settings.section_design_mode == 'blend' }}"
+    },
+    {
+      "type": "range",
+      "id": "design_layout_radius_mobile",
+      "label": "Layout radius (mobile)",
+      "info": "Blend: this section's radius always applies, even when the theme is Minimal. Custom: Minimal Design Mode removes it.",
+      "min": 0,
+      "max": 60,
+      "step": 2,
+      "unit": "px",
+      "default": 16,
+      "visible_if": "{{ section.settings.section_design_mode == 'custom' or section.settings.section_design_mode == 'blend' }}"
+    },
+    {
+      "type": "header",
+      "content": "Section Width",
+      "info": "Independent of Design Mode, A Part of Design System — the width cap applies in both Modern and Minimal, in Blend as well as Custom, and only when enabled below.",
+    },
+    {
+      "type": "checkbox",
+      "id": "design_enable_section_width",
+      "label": "Enable Section Width",
+      "default": false,
+    },
+    {
+      "type": "select",
+      "id": "design_section_width_desktop",
+      "label": "Section Width (Desktop)",
+      "options": [
+        {
+          "value": "none",
+          "label": "None"
+        },
+        {
+          "value": "wide",
+          "label": "Wide"
+        },
+        {
+          "value": "max",
+          "label": "Maximum"
+        },
+        {
+          "value": "tv",
+          "label": "TV"
+        }
+      ],
+      "default": "tv",
+      "visible_if": "{{ section.settings.design_enable_section_width }}"
+    },
+    {
+      "type": "select",
+      "id": "design_section_width_mobile",
+      "label": "Section Width (Mobile)",
+      "options": [
+        {
+          "value": "none",
+          "label": "None"
+        },
+        {
+          "value": "wide",
+          "label": "Wide"
+        },
+        {
+          "value": "max",
+          "label": "Maximum"
+        }
+      ],
+      "default": "none",
+      "visible_if": "{{ section.settings.design_enable_section_width }}"
+    },
+      {
+        "type": "checkbox",
+        "id": "section_width_affects_carousels",
+        "label": "Section Width Affects Carousel",
+        "default": false,
+        "visible_if": "{{ section.settings.design_enable_section_width }}"
+      },
+    {
+      "type": "header",
+      "content": "Items Styling",
+      "visible_if": "{{ section.settings.section_design_mode == 'custom' or section.settings.section_design_mode == 'blend' }}"
+    },
+    {
+      "type": "checkbox",
+      "id": "design_enable_minimal_items_gap",
+      "label": "Enable Items Gap in Minimal Mode",
+      "default": false,
+      "visible_if": "{{ section.settings.section_design_mode == 'custom' or section.settings.section_design_mode == 'blend' }}"
+    },
+    {
+      "type": "range",
+      "id": "design_items_gap_desktop",
+      "label": "Items Gap (Desktop)",
+      "min": 0,
+      "max": 60,
+      "step": 2,
+      "unit": "px",
+      "default": 24,
+      "visible_if": "{{ section.settings.section_design_mode == 'custom' or section.settings.section_design_mode == 'blend' }}"
+    },
+    {
+      "type": "range",
+      "id": "design_items_gap_mobile",
+      "label": "Items Gap (Mobile)",
+      "min": 0,
+      "max": 40,
+      "step": 2,
+      "unit": "px",
+      "default": 16,
+      "visible_if": "{{ section.settings.section_design_mode == 'custom' or section.settings.section_design_mode == 'blend' }}"
+    },
+    {
+      "type": "range",
+      "id": "design_item_radius_desktop",
+      "label": "Item radius (desktop)",
+      "info": "Blend: this section's radius always applies, even when the theme is Minimal. Custom: Minimal Design Mode removes it.",
+      "min": 0,
+      "max": 50,
+      "step": 2,
+      "unit": "px",
+      "default": 12,
+      "visible_if": "{{ section.settings.section_design_mode == 'custom' or section.settings.section_design_mode == 'blend' }}"
+    },
+    {
+      "type": "range",
+      "id": "design_item_radius_mobile",
+      "label": "Item radius (mobile)",
+      "info": "Blend: this section's radius always applies, even when the theme is Minimal. Custom: Minimal Design Mode removes it.",
+      "min": 0,
+      "max": 50,
+      "step": 2,
+      "unit": "px",
+      "default": 12,
+      "visible_if": "{{ section.settings.section_design_mode == 'custom' or section.settings.section_design_mode == 'blend' }}"
+    },
+    {
+      "type": "select",
+      "id": "design_item_shadow",
+      "label": "Item shadow",
+      "options": [
+        {
+          "value": "none",
+          "label": "None"
+        },
+        {
+          "value": "sm",
+          "label": "Small"
+        },
+        {
+          "value": "md",
+          "label": "Medium"
+        },
+        {
+          "value": "lg",
+          "label": "Large"
+        }
+      ],
+      "default": "md",
+      "visible_if": "{{ section.settings.section_design_mode == 'custom' or section.settings.section_design_mode == 'blend' }}"
+    },
+    {
+      "type": "header",
+      "content": "Borders",
+      "visible_if": "{{ section.settings.section_design_mode == 'custom' or section.settings.section_design_mode == 'blend' }}"
+    },
+    {
+      "type": "checkbox",
+      "id": "design_enable_minimal_borders",
+      "label": "Enable borders in Minimal mode",
+      "default": true,
+      "visible_if": "{{ section.settings.section_design_mode == 'custom' or section.settings.section_design_mode == 'blend' }}"
+    },
+    {
+      "type": "range",
+      "id": "design_item_border_width",
+      "label": "Item border width",
+      "min": 0,
+      "max": 10,
+      "step": 1,
+      "unit": "px",
+      "default": 1,
+      "visible_if": "{{ section.settings.section_design_mode == 'custom' or section.settings.section_design_mode == 'blend' }}"
+    },
+    {
+      "type": "range",
+      "id": "design_layout_border_width",
+      "label": "Layout border width",
+      "min": 0,
+      "max": 10,
+      "step": 1,
+      "unit": "px",
+      "default": 1,
+      "visible_if": "{{ section.settings.section_design_mode == 'custom' or section.settings.section_design_mode == 'blend' }}"
+    }
+  ]
+
+  When a section omits this optional setting, Minimal borders inherit the
+  global Design System checkbox.
+
+  `section_width_affects_carousels` is intentionally not part of this section
+  contract. It is global-only and is read from `settings` by the snippet.
+{%- endcomment -%}
+
+{%- liquid
+  # Cap is opt-in and INDEPENDENT of Design Mode: it resolves from the Enable
+  # Cap checkbox alone, never from Modern/Minimal. Off by default, matching the
+  # theme's hidden-until-enabled convention.
+  #
+  # Scope precedence: this snippet is reached with a section `source` only in
+  # Blend or Custom mode. The section checkbox is authoritative — including
+  # when it is OFF. `default:` cannot express that: Liquid treats false as empty, so
+  # `source.design_enable_section_width | default: settings.design_enable_section_width` would let
+  # a section that deliberately turned cap off inherit the global cap instead.
+  assign cap_enabled = false
+  if source.design_enable_section_width
+    assign cap_enabled = true
+  endif
+
+  assign cap_mobile = 'none'
+  assign cap_desktop = 'none'
+  if cap_enabled
+    assign cap_mobile = source.design_section_width_mobile | default: 'none'
+    assign cap_desktop = source.design_section_width_desktop | default: 'tv'
+  endif
+
+  # Carousel cap(Width or Max Width Constrain) is a separate, GLOBAL-ONLY opt-in (no per-section override):
+  # carousels stay edge-bleed even when the main cap above is enabled, unless
+  # this second toggle is also on. Narrows the main toggle, never widens it.
+  #
+  # It is only shown in the editor when the GLOBAL Enable Section Width is on, so that is
+  # the condition it applies under — a section that turns cap on for itself
+  # must not activate a toggle the merchant could not see when they set it.
+  # The scope's own cap_enabled then narrows it further.
+  assign carousel_cap_enabled = false
+  if settings.design_enable_section_width and source.section_width_affects_carousels
+    assign carousel_cap_enabled = true
+  endif
+
+  assign carousel_cap_mobile = 'none'
+  assign carousel_cap_desktop = 'none'
+  if cap_enabled and carousel_cap_enabled
+    assign carousel_cap_mobile = cap_mobile
+    assign carousel_cap_desktop = cap_desktop
+  endif
+-%}
+
+{%- comment -%}
+  Cap sits outside the Modern/Minimal branches and Design Mode: it is an independent
+  opt-in.
+{%- endcomment -%}
+--ds-section-width-mobile: {% render 'cap-token', key: cap_mobile %};
+--ds-section-width-desktop: {% render 'cap-token', key: cap_desktop %};
+
+--ds-carousel-cap-mobile: {% render 'cap-token', key: carousel_cap_mobile %};
+--ds-carousel-cap-desktop: {% render 'cap-token', key: carousel_cap_desktop %};
+
+{%- if source.section_design_mode == 'custom' or source.section_design_mode == 'blend' -%}
+  {%- liquid
+    assign section_design_mode = source.section_design_mode | default: 'auto'
+    assign uses_section_values = false
+    if section_design_mode == 'custom' or section_design_mode == 'blend'
+      assign uses_section_values = true
+    endif
+
+    assign mobile_mode = settings.design_mode_mobile | default: 'modern'
+    assign desktop_mode = settings.design_mode_desktop | default: 'modern'
+    if section_design_mode == 'custom'
+      assign mobile_mode = source.design_mode_mobile | default: 'modern'
+      assign desktop_mode = source.design_mode_desktop | default: 'modern'
+    endif
+
+    assign section_padding_mobile = source.design_section_padding_mobile | default: settings.design_section_padding_mobile | default: 'lg'
+    assign section_padding_desktop = source.design_section_padding_desktop | default: settings.design_section_padding_desktop | default: 'xl'
+    assign layout_gap_mobile = source.design_layout_gap_mobile | default: settings.design_layout_gap_mobile | default: 'sm'
+    assign layout_gap_desktop = source.design_layout_gap_desktop | default: settings.design_layout_gap_desktop | default: 'md'
+    assign gutter_mobile = source.design_gutter_mobile | default: settings.design_gutter_mobile | default: 'md'
+    assign gutter_desktop = source.design_gutter_desktop | default: settings.design_gutter_desktop | default: 'lg'
+    # Layout gap historically remained enabled in Minimal. Preserve that
+    # behavior for sections and saved theme data that predate this setting:
+    # only an explicit false is allowed to collapse the resolved gap to zero.
+    assign minimal_layout_gap_enabled = true
+    if uses_section_values
+      if source.design_enable_minimal_layout_gap == true or source.design_enable_minimal_layout_gap == false
+        assign minimal_layout_gap_enabled = source.design_enable_minimal_layout_gap
+      endif
+    elsif settings.design_enable_minimal_layout_gap == true or settings.design_enable_minimal_layout_gap == false
+      assign minimal_layout_gap_enabled = settings.design_enable_minimal_layout_gap
+    endif
+    if uses_section_values
+      assign minimal_gutter_enabled = source.design_enable_minimal_gutter
+      assign minimal_items_gap_enabled = source.design_enable_minimal_items_gap
+    else
+      assign minimal_gutter_enabled = settings.design_enable_minimal_gutter
+      assign minimal_items_gap_enabled = settings.design_enable_minimal_items_gap
+    endif
+    assign minimal_borders_enabled = settings.design_enable_minimal_borders
+    if uses_section_values
+      if source.design_enable_minimal_borders == true or source.design_enable_minimal_borders == false
+        assign minimal_borders_enabled = source.design_enable_minimal_borders
+      endif
+    endif
+
+    assign items_gap_mobile = source.design_items_gap_mobile | default: settings.design_items_gap_mobile | default: 16
+    assign items_gap_desktop = source.design_items_gap_desktop | default: settings.design_items_gap_desktop | default: 24
+
+    # Radius is the section's own in Blend and Custom. A section that omits a
+    # radius setting falls back to the global value (`default` keeps an
+    # explicit 0, which Liquid does not treat as empty).
+    assign item_radius_mobile = source.design_item_radius_mobile | default: settings.design_item_radius_mobile | default: 12
+    assign item_radius_desktop = source.design_item_radius_desktop | default: settings.design_item_radius_desktop | default: 12
+    assign layout_radius_mobile = source.design_layout_radius_mobile | default: settings.design_layout_radius_mobile | default: 16
+    assign layout_radius_desktop = source.design_layout_radius_desktop | default: settings.design_layout_radius_desktop | default: 24
+
+    # Blend radius patch: Blend inherits the theme's Modern/Minimal decision,
+    # but radius is not part of that inheritance. A Blend section keeps its own
+    # radii at a Minimal breakpoint instead of collapsing them to 0px; only a
+    # Custom section's own Minimal mode removes radius.
+    assign keeps_radius_in_minimal = false
+    if section_design_mode == 'blend'
+      assign keeps_radius_in_minimal = true
+    endif
+
+    assign item_border_width = source.design_item_border_width | default: settings.design_item_border_width | default: 1
+    assign layout_border_width = source.design_layout_border_width | default: settings.design_layout_border_width | default: 1
+    assign item_border_width_mobile = item_border_width
+    assign item_border_width_desktop = item_border_width
+    assign layout_border_width_mobile = layout_border_width
+    assign layout_border_width_desktop = layout_border_width
+    if mobile_mode == 'minimal' and minimal_borders_enabled == false
+      assign item_border_width_mobile = 0
+      assign layout_border_width_mobile = 0
+    endif
+    if desktop_mode == 'minimal' and minimal_borders_enabled == false
+      assign item_border_width_desktop = 0
+      assign layout_border_width_desktop = 0
+    endif
+    assign item_shadow = source.design_item_shadow | default: settings.design_item_shadow | default: 'md'
+    assign surface_shadow = settings.design_surface_shadow | default: 'lg'
+  -%}
+
+  --ds-section-padding-mobile: {% render 'space-token', key: section_padding_mobile %}; --ds-section-padding-desktop:
+  {% render 'space-token', key: section_padding_desktop %}; --ds-layout-gap-mobile:
+  {% if mobile_mode == 'minimal' and minimal_layout_gap_enabled == false -%}
+    0px
+  {%- else -%}
+    {%- render 'space-token', key: layout_gap_mobile -%}
+  {%- endif -%}
+  ; --ds-layout-gap-desktop:
+  {% if desktop_mode == 'minimal' and minimal_layout_gap_enabled == false -%}
+    0px
+  {%- else -%}
+    {%- render 'space-token', key: layout_gap_desktop -%}
+  {%- endif -%}
+  ; --ds-item-border-width-mobile: {{ item_border_width_mobile }}px; --ds-item-border-width-desktop:
+  {{ item_border_width_desktop }}px;
+  {%- comment -%}
+    Layout border is the large-surface counterpart to item border width: tables,
+    banners and panels. Minimal keeps both border roles unless its explicit
+    checkbox disables them for the effective breakpoint.
+  {%- endcomment -%}
+  --ds-layout-border-width-mobile: {{ layout_border_width_mobile }}px; --ds-layout-border-width-desktop:
+  {{ layout_border_width_desktop }}px;
+
+  {%- if mobile_mode == 'minimal' %}
+    --ds-layout-gutter-mobile:
+    {% if minimal_gutter_enabled %}{% render 'space-token', key: gutter_mobile %}{% else %}0px{% endif %};
+    --ds-item-gap-mobile: {% if minimal_items_gap_enabled %}{{ items_gap_mobile }}px{% else %}0px{% endif %};
+    --ds-item-radius-mobile: {% if keeps_radius_in_minimal %}{{ item_radius_mobile }}px{% else %}0px{% endif %}; --ds-layout-radius-mobile: {% if keeps_radius_in_minimal %}{{ layout_radius_mobile }}px{% else %}0px{% endif %}; --ds-item-shadow-mobile: none;
+    --ds-surface-shadow-mobile: none;
+  {%- else %}
+    --ds-layout-gutter-mobile: {% render 'space-token', key: gutter_mobile %}; --ds-item-gap-mobile:
+    {{ items_gap_mobile }}px; --ds-item-radius-mobile: {{ item_radius_mobile }}px; --ds-layout-radius-mobile:
+    {{ layout_radius_mobile }}px; --ds-item-shadow-mobile: {% render 'shadow-token', key: item_shadow %};
+    --ds-surface-shadow-mobile: {% render 'shadow-token', key: surface_shadow %};
+  {%- endif %}
+
+  {%- if desktop_mode == 'minimal' %}
+    --ds-layout-gutter-desktop:
+    {% if minimal_gutter_enabled %}{% render 'space-token', key: gutter_desktop %}{% else %}0px{% endif %};
+    --ds-item-gap-desktop: {% if minimal_items_gap_enabled %}{{ items_gap_desktop }}px{% else %}0px{% endif %};
+    --ds-item-radius-desktop: {% if keeps_radius_in_minimal %}{{ item_radius_desktop }}px{% else %}0px{% endif %}; --ds-layout-radius-desktop: {% if keeps_radius_in_minimal %}{{ layout_radius_desktop }}px{% else %}0px{% endif %}; --ds-item-shadow-desktop: none;
+    --ds-surface-shadow-desktop: none;
+  {%- else %}
+    --ds-layout-gutter-desktop: {% render 'space-token', key: gutter_desktop %}; --ds-item-gap-desktop:
+    {{ items_gap_desktop }}px; --ds-item-radius-desktop: {{ item_radius_desktop }}px; --ds-layout-radius-desktop:
+    {{ layout_radius_desktop }}px; --ds-item-shadow-desktop: {% render 'shadow-token', key: item_shadow %};
+    --ds-surface-shadow-desktop: {% render 'shadow-token', key: surface_shadow %};
+  {%- endif %}
+
+  {%- comment -%}
+    Mode-aware multipliers. These are NOT aliases: Minimal mode zeroes them, so
+    components that scale a local padding/gap value by them collapse correctly.
+    Every pass-through alias and every factor pinned to 1 has been removed --
+    consume the --ds-* tokens directly instead.
+  {%- endcomment -%}
+  --layout-padding-factor-mobile:
+  {% if mobile_mode == 'minimal' %}0{% else %}1{% endif %}; --layout-padding-factor-desktop:
+  {% if desktop_mode == 'minimal' %}0{% else %}1{% endif %}; --layout-gap-grid-mobile:
+  {% if mobile_mode == 'minimal' %}0{% else %}1{% endif %}; --layout-gap-grid-desktop:
+  {% if desktop_mode == 'minimal' %}0{% else %}1{% endif %}; --layout-gap-swiper-mobile:
+  {% if mobile_mode == 'minimal' %}0{% else %}1{% endif %}; --layout-gap-swiper-desktop:
+  {% if desktop_mode == 'minimal' %}0{% else %}1{% endif %};
+{%- endif -%}

@@ -1,0 +1,515 @@
+{%- comment -%}
+  Accent Typography — the single owner of decorative accents applied to the
+  <strong> (bold channel) and <em> (italic channel) spans Shopify emits inside
+  a richtext / inline_richtext field, plus the whole-element
+  [data-accent-target] channel.
+
+  This snippet owns BOTH halves of the feature:
+    1. the inherit-vs-custom resolution (theme Typography settings vs. the
+       caller's own stored settings, gated by one checkbox), and
+    2. the output — either the data-accent-* attributes for the scope element
+       or the scoped CSS + JS loader.
+
+  Callers never resolve settings themselves. They pass their settings object
+  and render this snippet twice:
+
+    <h2 id="heading-{{ block.id }}"
+      {% render 'accent-typography', source: block.settings, mode: 'attributes' %}
+    >{{ block.settings.heading_text }}</h2>
+
+    {%- assign accent_selector = '#heading-' | append: block.id -%}
+    {% render 'accent-typography', source: block.settings, selector: accent_selector %}
+
+  ------------------------------------------------------------------------------
+
+  CONTRACT
+
+  Required (css mode only):
+  - selector:     {String}  CSS selector of the SCOPE element that directly
+                            contains the spans (e.g. '#heading-<id>' or
+                            '.block-<id> .rte').
+
+  Resolution:
+  - source:       {Object}  Caller settings (block.settings / section.settings).
+                            When source.use_custom_accent_typography is true,
+                            each accent_* key present on `source` wins over the
+                            matching theme setting; otherwise the theme
+                            Typography settings apply. Omit `source` to run on
+                            theme settings alone.
+  Output selection:
+  - mode:         {String}  'css' (default) — emits the scoped {% style %} and,
+                            unless assets:false, the accent JS loader.
+                            'attributes' — emits the data-accent-* attribute
+                            string for the scope element (nothing when every
+                            channel is 'none').
+  - assets:       {Boolean} css mode only. Default true. Set false when the host
+                            page already loaded assets/accent-typography.js.
+  - enabled:      {Boolean} Default true. Pass false to suppress all output
+                            (e.g. vertical headings, which use writing-mode).
+
+  Style enum:
+    none, color, italic, highlight, highlight_marker, underline,
+    underline_sketch, underline_wavy, circle, circle_sketch, oval, oval_sketch
+
+  Setting ids read from `source` (and their theme counterparts):
+    use_custom_accent_typography (gate), accent_use_font, accent_bold_style,
+    accent_italic_style, accent_trigger, accent_threshold, accent_stroke_width,
+    accent_duration, accent_reverse, accent_loop, accent_loop_mode.
+    accent_effect is read from `source` only and supplies the target channel.
+
+  Colors come from the active color scheme (var(--color-accent) /
+  var(--color-accent-contrast)) — never a raw picker. All motion is driven by a
+  single normalised custom property, --accent-progress (0 = hidden/empty,
+  1 = fully drawn), so CSS accents and JS-injected SVG accents stay in lockstep
+  under both the "play once in view" and "scroll scrub" triggers. When JS is
+  absent, --accent-progress defaults to 1 so accents render fully (no flash of
+  hidden text).
+
+  ------------------------------------------------------------------------------
+
+  SCHEMA CONTRACT — copy-paste into the caller's {% schema %} settings array.
+  Ids and visible_if conditions must stay exactly as written; this snippet reads
+  them by name. Swap `block.settings` for `section.settings` in a section.
+
+  Shape of the group: the header and the two always-on controls
+  (`accent_effect`, `use_custom_accent_typography`) carry NO visible_if; every
+  control below the gate carries `{{ block.settings.use_custom_accent_typography }}`,
+  and `accent_threshold` / `accent_loop` / `accent_loop_mode` append their own
+  term to it. A header that only labels custom controls carries the gate too, so
+  the group collapses cleanly when the override is off.
+
+  Take `accent_effect` only if the caller drives the whole-element channel (a
+  Subtitle, a caption); a caller that only decorates bold/italic runs inside a
+  richtext field — Heading, Rich Text — omits it and keeps
+  accent_bold_style / accent_italic_style instead.
+
+  `accent_selected` is NOT part of this contract — it belongs to
+  snippets/accent-resolver.liquid — but a caller that can draw an accent effect
+  must leave it UNGATED (no `color_style == 'accent'` visible_if), because the
+  decoration reads --color-accent whatever colour the text itself takes.
+
+    {
+      "type": "header",
+      "content": "Accent Typography",
+      "info": "Uses Theme settings > Typography > Accent Typography unless the override below is enabled."
+    },
+    {
+      "type": "select",
+      "id": "accent_effect",
+      "label": "Accent Style",
+      "info": "Applies the accent engine to the complete text.",
+      "options": [
+        { "value": "none", "label": "None" },
+        { "value": "color", "label": "Color" },
+        { "value": "italic", "label": "Italic" },
+        { "value": "highlight", "label": "Highlight" },
+        { "value": "highlight_marker", "label": "Highlight (marker)" },
+        { "value": "underline", "label": "Underline" },
+        { "value": "underline_sketch", "label": "Underline (hand-drawn)" },
+        { "value": "underline_wavy", "label": "Underline (wavy)" },
+        { "value": "circle", "label": "Circle" },
+        { "value": "circle_sketch", "label": "Circle (hand-drawn)" },
+        { "value": "oval", "label": "Oval" },
+        { "value": "oval_sketch", "label": "Oval (hand-drawn)" }
+      ],
+      "default": "none"
+    },
+    {
+      "type": "checkbox",
+      "id": "use_custom_accent_typography",
+      "label": "Use Custom Accent Typography",
+      "default": false
+    },
+    {
+      "type": "checkbox",
+      "id": "accent_use_font",
+      "label": "Use Accent Font",
+      "info": "Renders bold and italic text in the Accent Font. Set it in Theme settings > Accent Typography > Accent Font.",
+      "default": false,
+      "visible_if": "{{ block.settings.use_custom_accent_typography }}"
+    },
+    {
+      "type": "select",
+      "id": "accent_bold_style",
+      "label": "Bold text accent",
+      "info": "Applied to bold runs inside the text.",
+      "options": [
+        { "value": "none", "label": "None" },
+        { "value": "color", "label": "Color" },
+        { "value": "italic", "label": "Italic" },
+        { "value": "highlight", "label": "Highlight" },
+        { "value": "highlight_marker", "label": "Highlight (marker)" },
+        { "value": "underline", "label": "Underline" },
+        { "value": "underline_sketch", "label": "Underline (hand-drawn)" },
+        { "value": "underline_wavy", "label": "Underline (wavy)" },
+        { "value": "circle", "label": "Circle" },
+        { "value": "circle_sketch", "label": "Circle (hand-drawn)" },
+        { "value": "oval", "label": "Oval" },
+        { "value": "oval_sketch", "label": "Oval (hand-drawn)" }
+      ],
+      "default": "color",
+      "visible_if": "{{ block.settings.use_custom_accent_typography }}"
+    },
+    {
+      "type": "select",
+      "id": "accent_italic_style",
+      "label": "Italic text accent",
+      "info": "Applied to italic runs inside the text.",
+      "options": [
+        { "value": "none", "label": "None" },
+        { "value": "color", "label": "Color" },
+        { "value": "italic", "label": "Italic" },
+        { "value": "highlight", "label": "Highlight" },
+        { "value": "highlight_marker", "label": "Highlight (marker)" },
+        { "value": "underline", "label": "Underline" },
+        { "value": "underline_sketch", "label": "Underline (hand-drawn)" },
+        { "value": "underline_wavy", "label": "Underline (wavy)" },
+        { "value": "circle", "label": "Circle" },
+        { "value": "circle_sketch", "label": "Circle (hand-drawn)" },
+        { "value": "oval", "label": "Oval" },
+        { "value": "oval_sketch", "label": "Oval (hand-drawn)" }
+      ],
+      "default": "underline_sketch",
+      "visible_if": "{{ block.settings.use_custom_accent_typography }}"
+    },
+    {
+      "type": "select",
+      "id": "accent_trigger",
+      "label": "Accent trigger",
+      "options": [
+        { "value": "in_view", "label": "Play once in view" },
+        { "value": "scrub", "label": "Scroll scrub" }
+      ],
+      "default": "in_view",
+      "visible_if": "{{ block.settings.use_custom_accent_typography }}"
+    },
+    {
+      "type": "range",
+      "id": "accent_threshold",
+      "label": "Scroll threshold",
+      "min": 0,
+      "max": 1,
+      "step": 0.05,
+      "default": 0.8,
+      "visible_if": "{{ block.settings.use_custom_accent_typography and block.settings.accent_trigger == 'scrub' }}"
+    },
+    {
+      "type": "range",
+      "id": "accent_stroke_width",
+      "label": "Accent stroke width",
+      "info": "For underline / circle / oval accents.",
+      "min": 1,
+      "max": 10,
+      "step": 1,
+      "unit": "px",
+      "default": 3,
+      "visible_if": "{{ block.settings.use_custom_accent_typography }}"
+    },
+    {
+      "type": "range",
+      "id": "accent_duration",
+      "label": "Accent duration",
+      "min": 200,
+      "max": 2000,
+      "step": 100,
+      "unit": "ms",
+      "default": 700,
+      "visible_if": "{{ block.settings.use_custom_accent_typography }}"
+    },
+    {
+      "type": "select",
+      "id": "accent_reverse",
+      "label": "Accent direction",
+      "options": [
+        { "value": "normal", "label": "Draw (start to end)" },
+        { "value": "opposite", "label": "Draw (end to start)" },
+        { "value": "erase", "label": "Erase" }
+      ],
+      "default": "normal",
+      "visible_if": "{{ block.settings.use_custom_accent_typography }}"
+    },
+    {
+      "type": "checkbox",
+      "id": "accent_loop",
+      "label": "Loop accent",
+      "default": false,
+      "visible_if": "{{ block.settings.use_custom_accent_typography and block.settings.accent_trigger == 'in_view' }}"
+    },
+    {
+      "type": "select",
+      "id": "accent_loop_mode",
+      "label": "Loop mode",
+      "options": [
+        { "value": "yoyo", "label": "Draw and undraw" },
+        { "value": "restart", "label": "Restart" }
+      ],
+      "default": "yoyo",
+      "visible_if": "{{ block.settings.use_custom_accent_typography and block.settings.accent_loop and block.settings.accent_trigger == 'in_view' }}"
+    }
+
+{%- endcomment -%}
+
+{% stylesheet %}
+  /* Shared accent CSS, keyed on the data-accent-* attributes the attributes mode
+     stamps on the scope element. The :not(#\#) part matches every element; it
+     only keeps these rules at the ID-level weight the old per-heading scope had. */
+  @property --accent-progress {
+    syntax: '<number>';
+    inherits: true;
+    initial-value: 1;
+  }
+
+  [data-accent-scope]:not(#\#) {
+    --accent-progress: 1;
+    position: relative;
+  }
+
+  /* Reveal state machine (scope-level). JS adds .accent--pending to hide, then
+     .accent--animate to run the keyframes; scrub mode sets --accent-progress
+     inline instead. The @keyframes + direction/iteration support reverse + loop. */
+  [data-accent-scope]:not(#\#).accent--pending {
+    --accent-progress: 0;
+  }
+  [data-accent-scope]:not(#\#).accent--animate {
+    animation: accent-draw var(--accent-duration) linear var(--accent-iteration, 1) var(--accent-direction, normal) forwards;
+  }
+  @keyframes accent-draw {
+    from { --accent-progress: 0; }
+    to { --accent-progress: 1; }
+  }
+
+  /* Accent font channel. Independent of the decoration styles: the accented runs
+     switch to the theme's Accent Font family while whatever decoration is chosen
+     still draws over them. Family only — weight and style stay with the run so a
+     <strong> keeps reading as bold. */
+  [data-accent-font]:not(#\#) strong,
+  [data-accent-font]:not(#\#) em,
+  [data-accent-font]:not(#\#) [data-accent-target] {
+    font-family: var(--font-accent-family);
+  }
+
+  [data-accent-bold='color']:not(#\#) strong {
+    color: var(--color-accent);
+    font-weight: bolder;
+    opacity: calc(0.3 + 0.7 * var(--accent-progress));
+  }
+  [data-accent-italic='color']:not(#\#) em,
+  [data-accent-target-style='color']:not(#\#) [data-accent-target] {
+    color: var(--color-accent);
+    font-weight: inherit;
+    opacity: calc(0.3 + 0.7 * var(--accent-progress));
+  }
+
+  [data-accent-bold='italic']:not(#\#) strong,
+  [data-accent-italic='italic']:not(#\#) em,
+  [data-accent-target-style='italic']:not(#\#) [data-accent-target] {
+    font-style: italic;
+    color: var(--color-accent);
+    opacity: calc(0.3 + 0.7 * var(--accent-progress));
+  }
+
+  [data-accent-bold='highlight']:not(#\#) strong,
+  [data-accent-italic='highlight']:not(#\#) em,
+  [data-accent-target-style='highlight']:not(#\#) [data-accent-target] {
+    background-image: linear-gradient(
+      color-mix(in srgb, var(--color-accent) 90%, transparent),
+      color-mix(in srgb, var(--color-accent) 90%, transparent)
+    );
+    background-repeat: no-repeat;
+    background-position: var(--accent-wipe-x, 0) 90%;
+    background-size: calc(var(--accent-progress) * 100%) 55%;
+    box-decoration-break: clone;
+    -webkit-box-decoration-break: clone;
+    padding-inline: 0.06em;
+    border-radius: 0.1em;
+  }
+
+  [data-accent-bold='underline']:not(#\#) strong,
+  [data-accent-italic='underline']:not(#\#) em,
+  [data-accent-target-style='underline']:not(#\#) [data-accent-target] {
+    background-image: linear-gradient(var(--color-accent), var(--color-accent));
+    background-repeat: no-repeat;
+    background-position: var(--accent-wipe-x, 0) 100%;
+    background-size: calc(var(--accent-progress) * 100%) var(--accent-stroke-width);
+    box-decoration-break: clone;
+    -webkit-box-decoration-break: clone;
+    padding-bottom: 0.12em;
+  }
+
+  /* SVG-injected variants (highlight_marker, *_sketch, circle, oval): no per-span
+     text CSS; these overlay rules style the paths accent-typography.js injects. */
+  [data-accent-scope]:not(#\#) .accent-svg {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    overflow: visible;
+    pointer-events: none;
+    z-index: 0;
+  }
+  /* Stroked shapes (sketch underline, circle, oval) draw via dashoffset. */
+  [data-accent-scope]:not(#\#) .accent-svg path.accent-stroke {
+    fill: none;
+    stroke: var(--accent-decoration-color, var(--color-accent));
+    stroke-width: var(--accent-stroke-width);
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    /* No fallback on --path-length: until JS measures it, the calc is invalid
+       and the stroke renders solid (fully drawn) rather than dashed. */
+    stroke-dasharray: var(--path-length);
+    stroke-dashoffset: calc(var(--path-length) * (1 - var(--accent-progress)));
+  }
+  [data-accent-reverse='opposite']:not(#\#) .accent-svg path.accent-stroke {
+    stroke-dashoffset: calc(var(--path-length) * (var(--accent-progress) - 1));
+  }
+  /* Filled shapes (marker highlight) reveal via a clip wipe. */
+  [data-accent-scope]:not(#\#) .accent-svg path.accent-fill {
+    fill: color-mix(in srgb, var(--accent-decoration-color, var(--color-accent)) 85%, transparent);
+    stroke: none;
+    clip-path: inset(0 calc((1 - var(--accent-progress)) * 100%) 0 0);
+  }
+  [data-accent-reverse='opposite']:not(#\#) .accent-svg path.accent-fill {
+    clip-path: inset(0 0 0 calc((1 - var(--accent-progress)) * 100%));
+  }
+  /* Keep the drawn strokes visually behind the text. */
+  :is([data-accent-bold='highlight_marker'], [data-accent-bold='underline_sketch'], [data-accent-bold='underline_wavy'], [data-accent-bold='circle'], [data-accent-bold='circle_sketch'], [data-accent-bold='oval'], [data-accent-bold='oval_sketch'], [data-accent-italic='highlight_marker'], [data-accent-italic='underline_sketch'], [data-accent-italic='underline_wavy'], [data-accent-italic='circle'], [data-accent-italic='circle_sketch'], [data-accent-italic='oval'], [data-accent-italic='oval_sketch'], [data-accent-target-style='highlight_marker'], [data-accent-target-style='underline_sketch'], [data-accent-target-style='underline_wavy'], [data-accent-target-style='circle'], [data-accent-target-style='circle_sketch'], [data-accent-target-style='oval'], [data-accent-target-style='oval_sketch']):not(#\#) strong,
+  :is([data-accent-bold='highlight_marker'], [data-accent-bold='underline_sketch'], [data-accent-bold='underline_wavy'], [data-accent-bold='circle'], [data-accent-bold='circle_sketch'], [data-accent-bold='oval'], [data-accent-bold='oval_sketch'], [data-accent-italic='highlight_marker'], [data-accent-italic='underline_sketch'], [data-accent-italic='underline_wavy'], [data-accent-italic='circle'], [data-accent-italic='circle_sketch'], [data-accent-italic='oval'], [data-accent-italic='oval_sketch'], [data-accent-target-style='highlight_marker'], [data-accent-target-style='underline_sketch'], [data-accent-target-style='underline_wavy'], [data-accent-target-style='circle'], [data-accent-target-style='circle_sketch'], [data-accent-target-style='oval'], [data-accent-target-style='oval_sketch']):not(#\#) em,
+  :is([data-accent-bold='highlight_marker'], [data-accent-bold='underline_sketch'], [data-accent-bold='underline_wavy'], [data-accent-bold='circle'], [data-accent-bold='circle_sketch'], [data-accent-bold='oval'], [data-accent-bold='oval_sketch'], [data-accent-italic='highlight_marker'], [data-accent-italic='underline_sketch'], [data-accent-italic='underline_wavy'], [data-accent-italic='circle'], [data-accent-italic='circle_sketch'], [data-accent-italic='oval'], [data-accent-italic='oval_sketch'], [data-accent-target-style='highlight_marker'], [data-accent-target-style='underline_sketch'], [data-accent-target-style='underline_wavy'], [data-accent-target-style='circle'], [data-accent-target-style='circle_sketch'], [data-accent-target-style='oval'], [data-accent-target-style='oval_sketch']):not(#\#) [data-accent-target] {
+    position: relative;
+    z-index: 1;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    [data-accent-scope]:not(#\#).accent--pending {
+      --accent-progress: 1;
+    }
+    [data-accent-scope]:not(#\#).accent--animate {
+      animation: none;
+    }
+  }
+{% endstylesheet %}
+
+{%- liquid
+  # ---------------------------------------------------------------------------
+  # 1. Resolution — theme Typography settings, then the caller's own settings
+  #    when its "Use Custom Accent Typography" checkbox is on. Each step only
+  #    applies to keys that actually exist, so
+  #    a caller that stores half the ids keeps inheriting the rest.
+  # ---------------------------------------------------------------------------
+  assign ac_bold = settings.accent_bold_style | default: 'color'
+  assign ac_italic = settings.accent_italic_style | default: 'underline_sketch'
+  assign ac_trigger = settings.accent_trigger | default: 'in_view'
+  assign ac_threshold = settings.accent_threshold | default: 0.8
+  assign ac_stroke = settings.accent_stroke_width | default: 3
+  assign ac_duration = settings.accent_duration | default: 700
+  assign ac_reverse = settings.accent_reverse | default: 'normal'
+  assign ac_loop = settings.accent_loop | default: false
+  assign ac_loop_mode = settings.accent_loop_mode | default: 'yoyo'
+  assign ac_target = source.accent_effect | default: 'none'
+
+  # Accent font is its own channel: it restyles the accented runs in the theme's
+  # Accent Font without needing any decoration to be on.
+  assign ac_font = settings.accent_use_font | default: false
+
+  assign ac_use_custom = source.use_custom_accent_typography
+
+  if ac_use_custom
+    if source.accent_bold_style != blank
+      assign ac_bold = source.accent_bold_style
+    endif
+    if source.accent_italic_style != blank
+      assign ac_italic = source.accent_italic_style
+    endif
+    if source.accent_trigger != blank
+      assign ac_trigger = source.accent_trigger
+    endif
+    if source.accent_threshold != nil
+      assign ac_threshold = source.accent_threshold
+    endif
+    if source.accent_stroke_width != nil
+      assign ac_stroke = source.accent_stroke_width
+    endif
+    if source.accent_duration != nil
+      assign ac_duration = source.accent_duration
+    endif
+    if source.accent_reverse != blank
+      assign ac_reverse = source.accent_reverse
+    endif
+    if source.accent_loop != nil
+      assign ac_loop = source.accent_loop
+    endif
+    if source.accent_loop_mode != blank
+      assign ac_loop_mode = source.accent_loop_mode
+    endif
+    if source.accent_use_font != nil
+      assign ac_font = source.accent_use_font
+    endif
+  endif
+
+  # ---------------------------------------------------------------------------
+  # 2. Gate — nothing to emit when every channel is off, or the caller opted out.
+  # ---------------------------------------------------------------------------
+  assign ac_on = false
+  if ac_bold != 'none' or ac_italic != 'none' or ac_target != 'none' or ac_font
+    assign ac_on = true
+  endif
+  if enabled == false
+    assign ac_on = false
+  endif
+  assign ac_mode = mode | default: 'css'
+
+  # Timed playback: iteration count + direction from loop + reverse.
+  assign accent_iteration = '1'
+  if ac_loop
+    assign accent_iteration = 'infinite'
+  endif
+  assign accent_direction = 'normal'
+  if ac_loop and ac_loop_mode == 'yoyo'
+    assign accent_direction = 'alternate'
+    if ac_reverse == 'erase'
+      assign accent_direction = 'alternate-reverse'
+    endif
+  elsif ac_reverse == 'erase'
+    assign accent_direction = 'reverse'
+  endif
+
+-%}
+
+{%- comment -%} Attributes mode: stamp the scope element, nothing else. {%- endcomment -%}
+{%- if ac_mode == 'attributes' -%}
+  {%- if ac_on -%}
+    data-accent-scope data-accent-bold="{{ ac_bold }}" data-accent-italic="{{ ac_italic }}"{% if ac_target != 'none' %} data-accent-target-style="{{ ac_target }}"{% endif %} data-accent-trigger="{{ ac_trigger }}" data-accent-threshold="{{ ac_threshold }}" data-accent-reverse="{{ ac_reverse }}"{% if ac_font %} data-accent-font{% endif %}
+  {%- endif -%}
+
+{%- elsif ac_on -%}
+{%- comment -%} Per-scope values; the rules are in the stylesheet tag at the top. {%- endcomment -%}
+{%- style -%}
+  {{ selector }} {
+    --accent-stroke-width: {{ ac_stroke }}px;
+    --accent-duration: {{ ac_duration }}ms;
+    --accent-iteration: {{ accent_iteration }};
+    --accent-direction: {{ accent_direction }};
+    {%- if ac_reverse == 'opposite' %} --accent-wipe-x: 100%;{% endif %}
+  }
+{%- endstyle -%}
+
+{%- comment -%}
+  The scope element is inert until assets/accent-typography.js measures the
+  spans and injects the SVG overlays, so the loader ships with the CSS. The
+  first accent on a page injects the script; every later one is a no-op.
+{%- endcomment -%}
+{%- if assets != false -%}
+  <script>
+    (function () {
+      if (window.__accentAssets) return;
+      window.__accentAssets = {
+        gsap: {{ 'gsap.min.js' | asset_url | json }},
+        scrollTrigger: {{ 'ScrollTrigger.min.js' | asset_url | json }}
+      };
+      var script = document.createElement('script');
+      script.src = {{ 'accent-typography.js' | asset_url | json }};
+      document.head.appendChild(script);
+    })();
+  </script>
+{%- endif -%}
+{%- endif -%}

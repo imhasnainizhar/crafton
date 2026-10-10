@@ -1,0 +1,94 @@
+{%- comment -%}
+  Collections list — every collection as Elewind's Collection List Card
+  (snippets/collection-list-card.liquid, `clc-`), shaped by --clc-ratio, in a
+  grid inside the shared page shell (assets/base.css). The card owns its own
+  hover: the image zooms and an arrow grows in at the start of the plate.
+{%- endcomment -%}
+{% style %}
+  .main-collections--{{ section.id }} {
+    --clc-ratio: {{ section.settings.card_ratio | default: '1/1' }};
+  }
+{% endstyle %}
+
+<div class="page-shell color-{{ section.settings.color_scheme }}">
+  <div class="page-shell__inner main-collections main-collections--{{ section.id }}">
+    <h1 class="page-shell__title">{{ 'collections.title' | t }}</h1>
+
+    <ul class="main-collections__grid" role="list">
+      {%- for collection in collections -%}
+        {%- liquid
+          assign subtitle = blank
+          if section.settings.show_product_count
+            assign subtitle = 'theme.components.collection_card.products_count' | t: count: collection.all_products_count
+          endif
+        -%}
+        <li>{% render 'collection-list-card', collection: collection, subtitle: subtitle %}</li>
+      {%- endfor -%}
+    </ul>
+  </div>
+</div>
+
+{% stylesheet %}
+  .main-collections {
+    display: flex;
+    flex-direction: column;
+    gap: var(--ds-layout-gap-mobile);
+  }
+
+  .main-collections__grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--ds-item-gap-mobile);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  @media (min-width: 768px) {
+    .main-collections {
+      gap: var(--ds-layout-gap-desktop);
+    }
+
+    .main-collections__grid {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: var(--ds-item-gap-desktop);
+    }
+  }
+{% endstylesheet %}
+
+{% schema %}
+{
+  "name": "Collections list",
+  "tag": "section",
+  "class": "shopify-section--main",
+  "settings": [
+    {
+      "type": "select",
+      "id": "card_ratio",
+      "label": "Card shape",
+      "options": [
+        { "value": "1/1", "label": "Square (1:1)" },
+        { "value": "4/5", "label": "Portrait (4:5)" },
+        { "value": "3/4", "label": "Portrait (3:4)" },
+        { "value": "2/3", "label": "Tall (2:3)" },
+        { "value": "4/3", "label": "Landscape (4:3)" },
+        { "value": "3/2", "label": "Landscape (3:2)" },
+        { "value": "16/9", "label": "Wide (16:9)" }
+      ],
+      "default": "1/1"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_product_count",
+      "label": "Show product count",
+      "default": false
+    },
+    {
+      "type": "color_scheme",
+      "id": "color_scheme",
+      "label": "Color scheme",
+      "default": "scheme_1"
+    }
+  ]
+}
+{% endschema %}

@@ -1,0 +1,51 @@
+{%- comment -%}
+  Question Text — an optional nested block that replaces an FAQ Item's plain
+  question with styled text. It inherits the summary's color; the Bold
+  setting adds the bold modifier.
+{%- endcomment -%}
+<span
+  class="faq-question{% if block.settings.bold %} faq-question--bold{% endif %}"
+  {{ block.shopify_attributes }}
+>
+  {{- block.settings.text | escape -}}
+</span>
+
+{% stylesheet %}
+  .faq-question {
+    color: inherit;
+    font-family: var(--font-body-family);
+    font-size: var(--fs-body);
+    font-weight: 400;
+    line-height: 1.4;
+  }
+
+  .faq-question--bold {
+    font-weight: 700;
+  }
+{% endstylesheet %}
+
+{% schema %}
+{
+  "name": "Question Text",
+  "tag": null,
+  "settings": [
+    {
+      "type": "text",
+      "id": "text",
+      "label": "Question",
+      "default": "Are your products suitable for sensitive skin?"
+    },
+    {
+      "type": "checkbox",
+      "id": "bold",
+      "label": "Bold text",
+      "default": false
+    }
+  ],
+  "presets": [
+    {
+      "name": "Question Text"
+    }
+  ]
+}
+{% endschema %}

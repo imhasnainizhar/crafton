@@ -1,0 +1,139 @@
+{% comment %}
+  Accent Resolver
+  ------------------------------------------------------------------------------
+
+  Purpose:
+  Converts a semantic accent setting into inherited local CSS custom properties.
+
+  This snippet does NOT output a complete style attribute or HTML element.
+  It only outputs CSS declarations, so it can safely be used inside `style=""`
+  or inside a component-specific CSS rule.
+
+  ------------------------------------------------------------------------------
+
+  CONTRACT
+
+  Required argument:
+    source {Object}: caller settings object containing `accent_selected`.
+      Expected values: "neutral", "soft", or "strong".
+
+  Optional arguments:
+    prefix {String}: the property family to emit, without the leading `--`.
+      Defaults to `color-accent`, i.e. the shared roles every component reads.
+      Pass a component-local family (`surface-accent`) when the caller needs the
+      resolved palette for its OWN surface while separately repointing the
+      shared roles for its children -- see snippets/color-role-resolver.liquid.
+
+    accent {String}: the palette to resolve, bypassing `source.accent_selected`.
+      For the rare block that owns TWO independent accent choices and therefore
+      cannot put them both on the shared `accent_selected` id -- Table resolves
+      its accent band this way while its cells keep reading the shared roles.
+      Prefer the shared id; reach for this only when one settings object has to
+      carry a second, differently-scoped accent.
+
+  Usage:
+    {% render 'accent-resolver', source: block.settings %}
+    {% render 'accent-resolver', source: block.settings, prefix: 'surface-accent' %}
+    {% render 'accent-resolver', accent: block.settings.band_accent, prefix: 'tbx-band' %}
+
+  ------------------------------------------------------------------------------
+
+  EXPECTED GLOBAL COLOR TOKENS
+
+  The active color scheme should expose:
+
+    --color-accent-neutral
+    --color-accent-neutral-contrast
+    --color-accent-neutral-border
+
+    --color-accent-soft
+    --color-accent-soft-contrast
+    --color-accent-soft-border
+
+    --color-accent-strong
+    --color-accent-strong-contrast
+    --color-accent-strong-border
+
+  ------------------------------------------------------------------------------
+
+  OUTPUT CONTRACT
+
+  Given:
+
+    accent: "soft"
+
+  This snippet outputs:
+
+    --color-accent-contrast: var(--color-accent-soft-contrast);
+    --color-accent: var(--color-accent-soft);
+    --color-accent-border: var(--color-accent-soft-border);
+
+  These variables inherit naturally into nested elements unless a child
+  establishes its own accent scope.
+
+  ------------------------------------------------------------------------------
+
+  USAGE
+
+    <div
+      class="card"
+      style="
+        {% render 'accent-resolver',
+          source: section/block.settings
+        %}
+      "
+    >
+      ...
+    </div>
+
+  Nested components can consume:
+
+    color: var(--color-accent-contrast);
+    background-color: var(--color-accent);
+    border-color: var(--color-accent-border);
+
+  Schema fragment for callers:
+    {
+      "type": "select",
+      "id": "accent_selected",
+      "label": "Accent",
+      "options": [
+        { "value": "neutral", "label": "Neutral" },
+        { "value": "soft", "label": "Soft" },
+        { "value": "strong", "label": "Strong" }
+      ],
+      "default": "neutral"
+    }
+
+  ------------------------------------------------------------------------------
+
+  DESIGN RULE
+
+  "neutral", "soft", and "strong" resolve the currently selected
+  semantic accent into the common local accent variables.
+
+  Nested elements inherit the resolved accent automatically.
+
+{% endcomment %}
+
+{% liquid
+  assign resolved_accent = accent | default: source.accent_selected | default: 'neutral'
+  assign out = prefix | default: 'color-accent'
+
+  case resolved_accent
+    when 'soft'
+      assign palette = 'soft'
+    when 'strong'
+      assign palette = 'strong'
+    else
+      assign palette = 'neutral'
+  endcase
+
+  assign accent = 'var(--color-accent-' | append: palette | append: ')'
+  assign accent_contrast = 'var(--color-accent-' | append: palette | append: '-contrast)'
+  assign accent_border = 'var(--color-accent-' | append: palette | append: '-border)'
+%}
+
+--{{ out }}: {{ accent }};
+--{{ out }}-contrast: {{ accent_contrast }};
+--{{ out }}-border: {{ accent_border }};

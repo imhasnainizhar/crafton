@@ -1,0 +1,156 @@
+{%- comment -%}
+  Minutes Read — estimated reading time of the closest article
+  (`closest.article`): its word count divided by a reading speed, rounded up,
+  never under one minute. Optional clock icon drawn in the text colour.
+  Text-role type through snippets/typography-resolver.liquid, colour through
+  snippets/color-role-resolver.liquid.
+{%- endcomment -%}
+
+{% stylesheet %}
+  .art-read {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4em;
+    margin: 0;
+    white-space: nowrap;
+  }
+
+  .art-read svg {
+    flex: 0 0 auto;
+    width: 1.05em;
+    height: 1.05em;
+  }
+{% endstylesheet %}
+
+{%- liquid
+  assign art = closest.article
+  assign wpm = block.settings.words_per_minute | default: 200
+  assign minutes = 4
+  if art != blank
+    assign word_total = art.content | strip_html | split: ' ' | size
+    assign minutes = word_total | plus: wpm | minus: 1 | divided_by: wpm
+    if minutes < 1
+      assign minutes = 1
+    endif
+  endif
+  assign label = 'theme.components.article_card.minutes_read' | t: count: minutes
+-%}
+
+{% style %}
+  .art-read--{{ block.id }} {
+    {% render 'typography-resolver', role: 'text', source: block.settings %}
+    {% render 'color-role-resolver', mode: 'color', role: 'soft', source: block.settings %}
+  }
+{% endstyle %}
+
+<p class="art-read art-read--{{ block.id }}" {{ block.shopify_attributes }}>
+  {%- if block.settings.show_icon -%}
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+  {%- endif -%}
+  <span>{{ label }}</span>
+</p>
+
+{% schema %}
+{
+  "name": "Minutes Read",
+  "tag": null,
+  "settings": [
+    {
+      "type": "header",
+      "content": "Minutes Read",
+      "info": "An estimate of how long the article takes to read."
+    },
+    {
+      "type": "range",
+      "id": "words_per_minute",
+      "label": "Reading speed",
+      "info": "Words a reader gets through in a minute. Most people read around 200.",
+      "min": 100,
+      "max": 400,
+      "step": 10,
+      "default": 200
+    },
+    {
+      "type": "checkbox",
+      "id": "show_icon",
+      "label": "Show clock icon",
+      "default": true
+    },
+    {
+      "type": "header",
+      "content": "Typography"
+    },
+    {
+      "type": "select",
+      "id": "font_size",
+      "label": "Size",
+      "options": [
+        { "value": "xxs", "label": "Extra small" },
+        { "value": "xs", "label": "Small" },
+        { "value": "sm", "label": "Medium" },
+        { "value": "md", "label": "Body" }
+      ],
+      "default": "xs"
+    },
+    {
+      "type": "select",
+      "id": "font_weight",
+      "label": "Font Weight",
+      "options": [
+        { "value": "normal", "label": "Normal" },
+        { "value": "medium", "label": "Medium" },
+        { "value": "semibold", "label": "Semi-bold" },
+        { "value": "bold", "label": "Bold" }
+      ],
+      "default": "normal"
+    },
+    {
+      "type": "checkbox",
+      "id": "override_line_height",
+      "label": "Override Theme Line Height",
+      "default": false
+    },
+    {
+      "type": "range",
+      "id": "line_height",
+      "label": "Line Height",
+      "min": 0.8,
+      "max": 2.4,
+      "step": 0.1,
+      "default": 1.4,
+      "visible_if": "{{ block.settings.override_line_height }}"
+    },
+    {
+      "type": "select",
+      "id": "text_casing",
+      "label": "Text Casing",
+      "info": "On None, the text renders exactly as typed.",
+      "options": [
+        { "value": "theme", "label": "Theme" },
+        { "value": "none", "label": "None" }
+      ],
+      "default": "theme"
+    },
+    {
+      "type": "select",
+      "id": "text_color",
+      "label": "Color",
+      "info": "Automatic follows this block's own role, so a card set to Accent recolors it.",
+      "options": [
+        { "value": "auto", "label": "Automatic" },
+        { "value": "heading", "label": "Heading" },
+        { "value": "text", "label": "Text" },
+        { "value": "soft", "label": "Soft Text" },
+        { "value": "accent", "label": "Accent" },
+        { "value": "parent", "label": "Inherit From Parent" }
+      ],
+      "default": "auto"
+    }
+  ],
+  "presets": [
+    {
+      "name": "Minutes Read"
+    }
+  ]
+}
+{% endschema %}

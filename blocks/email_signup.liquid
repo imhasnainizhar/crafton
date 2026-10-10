@@ -1,0 +1,419 @@
+{%- comment -%}
+  Email Signup — wraps Shopify's customer form so an email capture can be
+  placed as a theme block (statically, e.g. in the Newsletter section, or in
+  the block tree). Colors come only from the section's color scheme tokens.
+
+  Layout has four variants, independently selectable per breakpoint:
+  - Stacked: field above button, full width, each with its own radius.
+  - Row - Separate: field and button side by side with a gap, each with its
+    own radius (all four corners).
+  - Row - Joint: field and button merged into one seamless control, no gap.
+    Radius is applied explicitly per element (left corners on the field,
+    right corners on the button) rather than via a wrapper + overflow:hidden,
+    so shadows/focus rings on either element are never clipped.
+  - Row - Equal Width: field and button share the row 50/50 instead of the
+    field growing to fill and the button hugging its label.
+{%- endcomment -%}
+
+{%- liquid
+  assign layout_m = block.settings.layout_mobile | default: 'stacked'
+  assign layout_d = block.settings.layout_desktop | default: 'joint'
+  assign alignment_m = block.settings.alignment_mobile | default: 'center'
+  assign alignment_d = block.settings.alignment_desktop | default: alignment_m
+  assign input_background = 'var(--color-surface)'
+  case block.settings.input_background
+    when 'primary'
+      assign input_background = 'var(--color-base)'
+    when 'secondary'
+      assign input_background = 'var(--color-surface)'
+  endcase
+  assign radius = block.settings.border_radius
+-%}
+
+{% style %}
+  .email-signup--{{ block.id }} {
+    width: 100%;
+    {% render 'accent-resolver', source: block.settings %}
+  }
+
+  .email-signup--{{ block.id }} .email-signup__form {
+    width: 100%;
+    max-width: {{ block.settings.max_width }}px;
+    margin-inline: 0;
+    display: flex;
+    flex-direction: column;
+    gap: {{ block.settings.spacing }}px;
+    {% if alignment_m == 'center' %}
+      margin-inline: auto;
+    {% elsif alignment_m == 'right' %}
+      margin-inline-start: auto;
+    {% endif %}
+  }
+
+  .email-signup--{{ block.id }} .email-signup__input,
+  .email-signup--{{ block.id }} .email-signup__btn {
+    font-family: var(--font-body-family);
+    font-size: var(--fs-body);
+    border: none;
+    box-sizing: border-box;
+    min-width: 0;
+  }
+  .email-signup--{{ block.id }} .email-signup__input {
+    background: {{ input_background }};
+    color: var(--color-text);
+    border: 1px solid var(--color-border, var(--color-card-border));
+    padding: 1rem 1.5rem;
+    outline: none;
+  }
+  .email-signup--{{ block.id }} .email-signup__input:focus {
+    border-color: var(--color-accent-border);
+    box-shadow: 0 0 0 1px var(--color-accent-border);
+  }
+  .email-signup--{{ block.id }} .email-signup__input::placeholder {
+    color: var(--color-text);
+    opacity: 0.7;
+  }
+  .email-signup--{{ block.id }} .email-signup__btn {
+    background: var(--color-accent);
+    color: var(--color-accent-contrast);
+    padding: 0.9rem 2rem;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+    transition: opacity 0.3s ease;
+  }
+  .email-signup--{{ block.id }} .email-signup__btn:hover {
+    opacity: 0.9;
+  }
+  .email-signup--{{ block.id }} .email-signup__message {
+    font-size: var(--fs-body-sm);
+    margin: 0;
+    text-align: left;
+    {% if alignment_d == 'center' %}
+      margin-inline: auto;
+      text-align: center;
+    {% elsif alignment_d == 'right' %}
+      margin-inline-start: auto;
+      text-align: right;
+    {% endif %}
+    color: var(--color-text);
+  }
+  .email-signup--{{ block.id }} .email-signup__disclaimer {
+    font-size: var(--fs-caption);
+    opacity: 0.7;
+    margin: 0;
+    text-align: left;
+    {% if alignment_d == 'center' %}
+      margin-inline: auto;
+      text-align: center;
+    {% elsif alignment_d == 'right' %}
+      margin-inline-start: auto;
+      text-align: right;
+    {% endif %}
+    color: var(--color-text);
+  }
+
+  {%- comment -%} ---------- Mobile layout (base) ---------- {%- endcomment -%}
+  .email-signup--{{ block.id }} .email-signup__group {
+    display: flex;
+    {% if layout_m == 'stacked' %}
+      flex-direction: column;
+      gap: {{ block.settings.spacing }}px;
+    {% elsif layout_m == 'joint' %}
+      flex-direction: row;
+      gap: 0;
+      background: {{ input_background }};
+      border-top-left-radius: {{ radius }}px;
+      border-bottom-left-radius: {{ radius }}px;
+    {% else %}
+      flex-direction: row;
+      gap: 10px;
+    {% endif %}
+  }
+
+  {% if layout_m == 'joint' %}
+    .email-signup--{{ block.id }} .email-signup__input {
+      background: transparent;
+      border-top-left-radius: {{ radius }}px;
+      border-bottom-left-radius: {{ radius }}px;
+      border-top-right-radius: 0;
+      border-bottom-right-radius: 0;
+    }
+    .email-signup--{{ block.id }} .email-signup__btn {
+      border-top-right-radius: {{ radius }}px;
+      border-bottom-right-radius: {{ radius }}px;
+      border-top-left-radius: 0;
+      border-bottom-left-radius: 0;
+    }
+  {% else %}
+    .email-signup--{{ block.id }} .email-signup__input,
+    .email-signup--{{ block.id }} .email-signup__btn {
+      border-radius: {{ radius }}px;
+    }
+  {% endif %}
+
+  {% if layout_m == 'equal' %}
+    .email-signup--{{ block.id }} .email-signup__input,
+    .email-signup--{{ block.id }} .email-signup__btn {
+      flex: 1 1 50%;
+      width: 50%;
+    }
+  {% else %}
+    .email-signup--{{ block.id }} .email-signup__input {
+      flex: 1 1 auto;
+      width: 100%;
+    }
+    .email-signup--{{ block.id }} .email-signup__btn {
+      flex: 0 0 auto;
+    }
+  {% endif %}
+
+  {%- comment -%} ---------- Desktop layout (override) ---------- {%- endcomment -%}
+  @media (min-width: 768px) {
+    .email-signup--{{ block.id }} .email-signup__form {
+      margin-inline: 0;
+      {% if alignment_d == 'center' %}
+        margin-inline: auto;
+      {% elsif alignment_d == 'right' %}
+        margin-inline-start: auto;
+      {% endif %}
+    }
+
+    .email-signup--{{ block.id }} .email-signup__group {
+      {% if layout_d == 'stacked' %}
+        flex-direction: column;
+        gap: {{ block.settings.spacing }}px;
+        background: none;
+      {% elsif layout_d == 'joint' %}
+        flex-direction: row;
+        gap: 0;
+        background: {{ input_background }};
+        border-top-left-radius: {{ radius }}px;
+        border-bottom-left-radius: {{ radius }}px;
+      {% else %}
+        flex-direction: row;
+        gap: 10px;
+        background: none;
+      {% endif %}
+    }
+
+    {% if layout_d == 'joint' %}
+      .email-signup--{{ block.id }} .email-signup__input {
+        background: transparent;
+        border-top-left-radius: {{ radius }}px;
+        border-bottom-left-radius: {{ radius }}px;
+        border-top-right-radius: 0;
+        border-bottom-right-radius: 0;
+      }
+      .email-signup--{{ block.id }} .email-signup__btn {
+        border-top-right-radius: {{ radius }}px;
+        border-bottom-right-radius: {{ radius }}px;
+        border-top-left-radius: 0;
+        border-bottom-left-radius: 0;
+      }
+    {% else %}
+      .email-signup--{{ block.id }} .email-signup__input {
+        background: {{ input_background }};
+      }
+      .email-signup--{{ block.id }} .email-signup__input,
+      .email-signup--{{ block.id }} .email-signup__btn {
+        border-radius: {{ radius }}px;
+      }
+    {% endif %}
+
+    {% if layout_d == 'equal' %}
+      .email-signup--{{ block.id }} .email-signup__input,
+      .email-signup--{{ block.id }} .email-signup__btn {
+        flex: 1 1 50%;
+        width: 50%;
+      }
+    {% else %}
+      .email-signup--{{ block.id }} .email-signup__input {
+        flex: 1 1 auto;
+        width: 100%;
+      }
+      .email-signup--{{ block.id }} .email-signup__btn {
+        flex: 0 0 auto;
+      }
+    {% endif %}
+  }
+{% endstyle %}
+
+<div class="email-signup--{{ block.id }}" {{ block.shopify_attributes }}>
+  {% form 'customer', class: 'email-signup__form' %}
+    <input type="hidden" name="contact[tags]" value="newsletter">
+    <div class="email-signup__group">
+      <input
+        id="EmailSignup-{{ block.id }}"
+        type="email"
+        name="contact[email]"
+        class="email-signup__input"
+        value="{{ form.email }}"
+        aria-required="true"
+        autocorrect="off"
+        autocapitalize="off"
+        autocomplete="email"
+        placeholder="{{ block.settings.placeholder }}"
+        required
+      >
+      <button type="submit" class="email-signup__btn" name="commit" aria-label="{{ block.settings.button_label }}">
+        {{ block.settings.button_label }}
+      </button>
+    </div>
+
+    {%- if form.posted_successfully? -%}
+      <p class="email-signup__message">{{ block.settings.success_text }}</p>
+    {%- endif -%}
+    {%- if form.errors -%}
+      <p class="email-signup__message">
+        {{ form.errors.translated_fields.email | capitalize }}
+        {{ form.errors.messages.email }}
+      </p>
+    {%- endif -%}
+
+    {%- if block.settings.disclaimer != blank -%}
+      <p class="email-signup__disclaimer">{{ block.settings.disclaimer }}</p>
+    {%- endif -%}
+  {% endform %}
+</div>
+
+{% schema %}
+{
+  "name": "Email Signup",
+  "tag": null,
+  "settings": [
+    {
+      "type": "header",
+      "content": "Form",
+      "info": "An email capture form wired to Shopify customer signup."
+    },
+    {
+      "type": "text",
+      "id": "placeholder",
+      "label": "Input Placeholder",
+      "default": "E-mail"
+    },
+    {
+      "type": "text",
+      "id": "button_label",
+      "label": "Button Label",
+      "default": "Subscribe"
+    },
+    {
+      "type": "text",
+      "id": "success_text",
+      "label": "Success Message",
+      "default": "Thank you for subscribing!"
+    },
+    {
+      "type": "text",
+      "id": "disclaimer",
+      "label": "Disclaimer",
+      "default": "By signing up, you agree with our privacy policy."
+    },
+    {
+      "type": "header",
+      "content": "Layout",
+      "info": "Stacked: field above button. Separate: field and button in a row with a gap, each rounded on its own. Joint: merged into one seamless control, no gap. Equal Width: field and button share the row 50/50."
+    },
+    {
+      "type": "select",
+      "id": "input_background",
+      "label": "Input Background",
+      "options": [
+        { "value": "primary", "label": "Primary" },
+        { "value": "secondary", "label": "Secondary" },
+        { "value": "input", "label": "Input" }
+      ],
+      "default": "input"
+    },
+    {
+      "type": "select",
+      "id": "accent_selected",
+      "label": "Button color scheme accent",
+      "info": "Uses the selected accent from the Newsletter section's color scheme.",
+      "options": [
+        { "value": "neutral", "label": "Neutral" },
+        { "value": "soft", "label": "Soft" },
+        { "value": "strong", "label": "Strong" }
+      ],
+      "default": "neutral"
+    },
+    {
+      "type": "select",
+      "id": "layout_mobile",
+      "label": "Layout (Mobile)",
+      "options": [
+        { "value": "stacked", "label": "Stacked" },
+        { "value": "separate", "label": "Row — Separate" },
+        { "value": "joint", "label": "Row — Joint" },
+        { "value": "equal", "label": "Row — Equal Width" }
+      ],
+      "default": "stacked"
+    },
+    {
+      "type": "select",
+      "id": "layout_desktop",
+      "label": "Layout (Desktop)",
+      "options": [
+        { "value": "stacked", "label": "Stacked" },
+        { "value": "separate", "label": "Row — Separate" },
+        { "value": "joint", "label": "Row — Joint" },
+        { "value": "equal", "label": "Row — Equal Width" }
+      ],
+      "default": "joint"
+    },
+    {
+      "type": "range",
+      "id": "border_radius",
+      "min": 0,
+      "max": 50,
+      "step": 2,
+      "unit": "px",
+      "label": "Border Radius",
+      "default": 30
+    },
+    {
+      "type": "range",
+      "id": "spacing",
+      "min": 0,
+      "max": 40,
+      "step": 2,
+      "unit": "px",
+      "label": "Spacing",
+      "info": "Controls the space above the caption and, in Stacked layout, between the email field and button.",
+      "default": 10
+    },
+    {
+      "type": "range",
+      "id": "max_width",
+      "min": 300,
+      "max": 750,
+      "step": 10,
+      "unit": "px",
+      "label": "Newsletter field max width",
+      "info": "Caps the email field and button while its wrapper remains full width. Most relevant for the Equal Width and Joint row layouts.",
+      "default": 550
+    },
+    {
+      "type": "text_alignment",
+      "id": "alignment_mobile",
+      "label": "Newsletter field alignment (Mobile)",
+      "default": "center"
+    },
+    {
+      "type": "text_alignment",
+      "id": "alignment_desktop",
+      "label": "Newsletter field alignment (Desktop)",
+      "default": "center"
+    }
+  ],
+  "presets": [
+    {
+      "name": "Email Signup"
+    }
+  ]
+}
+{% endschema %}

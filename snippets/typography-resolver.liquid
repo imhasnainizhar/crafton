@@ -1,0 +1,186 @@
+{%- comment -%}
+  Typography Resolver
+
+  The single owner of role-based typography resolution. Emits bare CSS
+  declarations — no selector, no braces — so the output drops straight into a
+  {% style %} rule or a style="" attribute, exactly like accent-resolver.
+
+  Parameters:
+  - role {String} Required. 'heading' | 'subtitle' | 'text'.
+  - source {Object} Required. The caller's settings object (block.settings or
+    section.settings).
+
+  Global theme settings are read directly, so there is no third parameter.
+
+  ----------------------------------------------------------------------------
+  SCOPE OF EACH PROPERTY — this is the contract, and it is deliberately narrow.
+
+    size            block only    source.font_size picks a ladder step.
+                                  There is no inherit branch.
+    weight          block only    source.font_weight: normal|medium|semibold|bold
+    font style      block only    source.font_style: normal|italic
+                                  (only subtitle exposes it)
+    letter spacing  global only   var(--ls-<role>). Never read from source.
+    line height     global, block may override via source.override_line_height
+    casing          block         source.text_casing: 'theme' | 'none'
+
+  Only line height has an inherit-vs-override branch.
+  ----------------------------------------------------------------------------
+
+  Usage:
+    {% style %}
+      .thing--{{ block.id }} {
+        {% render 'typography-resolver', role: 'heading', source: block.settings %}
+      }
+    {% endstyle %}
+
+  Schema fragment for callers (see docs; font_style only for role 'subtitle'):
+
+    { "type": "header", "content": "Typography" },
+    {
+      "type": "select",
+      "id": "font_size",
+      "label": "Size",
+      "info": "Approximate sizes are shown at Size Factor 1.",
+      "options": [
+        { "value": "xxs", "label": "XXS (~16px)" },
+        { "value": "xs", "label": "XS (~18px)" },
+        { "value": "sm", "label": "SM (~22px)" },
+        { "value": "md", "label": "MD (~28px)" },
+        { "value": "lg", "label": "LG (~36px)" },
+        { "value": "xl", "label": "XL (~48px)" },
+        { "value": "xxl", "label": "XXL (~64px)" }
+      ],
+      "default": "md"
+    },
+    {
+      "type": "select",
+      "id": "font_weight",
+      "label": "Font Weight",
+      "options": [
+        { "value": "normal", "label": "Normal" },
+        { "value": "medium", "label": "Medium" },
+        { "value": "semibold", "label": "Semi-bold" },
+        { "value": "bold", "label": "Bold" }
+      ],
+      "default": "normal"
+    },
+    {
+      "type": "select",
+      "id": "font_style",
+      "label": "Font Style",
+      "options": [
+        { "value": "normal", "label": "Normal" },
+        { "value": "italic", "label": "Italic" }
+      ],
+      "default": "normal"
+    },
+    {
+      "type": "checkbox",
+      "id": "override_line_height",
+      "label": "Override Theme Line Height",
+      "default": false
+    },
+    {
+      "type": "range",
+      "id": "line_height",
+      "label": "Line Height",
+      "min": 0.8,
+      "max": 2.4,
+      "step": 0.1,
+      "default": 1.2,
+      "visible_if": "{{ block.settings.override_line_height }}"
+    },
+    {
+      "type": "select",
+      "id": "text_casing",
+      "label": "Text Casing",
+      "info": "On None, the text renders exactly as typed.",
+      "options": [
+        { "value": "theme", "label": "Theme" },
+        { "value": "none", "label": "None" }
+      ],
+      "default": "theme"
+    }
+{%- endcomment -%}
+{%- liquid
+  assign tr_role = role | default: 'text'
+
+  case tr_role
+    when 'heading'
+      assign tr_family = '--font-heading-family'
+      assign tr_style_var = '--font-heading-style'
+      assign tr_weight_var = '--font-heading-weight'
+      assign tr_lh_var = '--lh-heading'
+      assign tr_casing_var = '--heading-text-transform'
+    when 'subtitle'
+      assign tr_family = '--font-subtitle-family'
+      assign tr_style_var = '--font-subtitle-style'
+      assign tr_weight_var = '--font-subtitle-weight'
+      assign tr_lh_var = '--lh-subtitle'
+      assign tr_casing_var = '--subtitle-text-transform'
+    else
+      assign tr_role = 'text'
+      assign tr_family = '--font-body-family'
+      assign tr_style_var = '--font-body-style'
+      assign tr_weight_var = '--font-body-weight'
+      assign tr_lh_var = '--lh-body'
+      assign tr_casing_var = '--body-text-transform'
+  endcase
+
+  # Size. Every role states its own step.
+  assign tr_step = source.font_size | default: 'md'
+
+  # Guard against a step that is not on the ladder — a value saved by an
+  # earlier version of a block, or a caller passing nothing. An unknown step
+  # would build an undefined custom property and drop font-size entirely.
+  assign tr_steps = 'xxs,xs,sm,md,lg,xl,xxl' | split: ','
+  unless tr_steps contains tr_step
+    assign tr_step = 'md'
+  endunless
+
+  assign tr_size_var = '--fs-' | append: tr_role | append: '-' | append: tr_step
+
+  # Weight. A friendly select in every typo block; falls back to the font
+  # picker's own weight when unset.
+  case source.font_weight
+    when 'normal'
+      assign tr_weight = '400'
+    when 'medium'
+      assign tr_weight = '500'
+    when 'semibold'
+      assign tr_weight = '600'
+    when 'bold'
+      assign tr_weight = '700'
+    else
+      assign tr_weight = 'var(' | append: tr_weight_var | append: ', 400)'
+  endcase
+
+  # Font style. Only subtitle and accent expose the setting.
+  if source.font_style == 'italic'
+    assign tr_style = 'italic'
+  else
+    assign tr_style = 'var(' | append: tr_style_var | append: ', normal)'
+  endif
+
+  # Line height. Global default unless the block overrides it.
+  if source.override_line_height and source.line_height != blank
+    assign tr_lh = source.line_height
+  else
+    assign tr_lh = 'var(' | append: tr_lh_var | append: ')'
+  endif
+
+  # Casing. 'none' renders exactly as typed.
+  if source.text_casing == 'none'
+    assign tr_casing = 'none'
+  else
+    assign tr_casing = 'var(' | append: tr_casing_var | append: ', none)'
+  endif
+-%}
+font-family: var({{ tr_family }});
+font-size: var({{ tr_size_var }});
+font-style: {{ tr_style }};
+font-weight: {{ tr_weight }};
+letter-spacing: var(--ls-{{ tr_role }});
+line-height: {{ tr_lh }};
+text-transform: {{ tr_casing }};

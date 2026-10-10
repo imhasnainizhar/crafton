@@ -1,0 +1,186 @@
+{%- comment -%}
+  Vertical Divider (private) — a vertical rule for separating siblings in a
+  row. Colour follows the active scheme's text colour (var(--color-text)) with
+  an opacity control — no raw colour picker. A stretching flex wrapper hosts
+  the line, so the parent can force the block's width while the visible line
+  keeps its own height (Fill / Fixed / Percent) and vertical alignment.
+  Line only: no overlay text.
+{%- endcomment -%}
+
+{%- liquid
+  assign valign = 'center'
+  if block.settings.align_v == 'top'
+    assign valign = 'flex-start'
+  elsif block.settings.align_v == 'bottom'
+    assign valign = 'flex-end'
+  endif
+-%}
+
+{%- style -%}
+  .vdivider-wrap--{{ block.id }} {
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    flex: 0 0 auto;
+    align-self: stretch;
+    align-items: center;
+    justify-content: {{ valign }};
+    margin-inline: {{ block.settings.spacing_inline }}rem;
+  }
+  .vdivider--{{ block.id }} {
+    box-sizing: border-box;
+    width: 0;
+    border: none;
+    border-inline-start: {{ block.settings.thickness }}px {{ block.settings.line_style }} var(--color-text);
+    opacity: {{ block.settings.opacity | divided_by: 100.0 }};
+    {% case block.settings.height_mode %}
+      {% when 'fixed' %}
+    flex: 0 0 auto;
+    height: {{ block.settings.height }}px;
+    max-height: 100%;
+      {% when 'percent' %}
+    flex: 0 0 auto;
+    height: {{ block.settings.height_percent }}%;
+      {% else %}
+    flex: 1 1 auto;
+    height: 100%;
+    {% endcase %}
+  }
+{%- endstyle -%}
+
+<div class="vdivider-wrap--{{ block.id }}" {{ block.shopify_attributes }}>
+  <div class="vdivider--{{ block.id }}" role="separator" aria-orientation="vertical"></div>
+</div>
+
+{% schema %}
+{
+  "name": "Vertical Divider",
+  "tag": null,
+  "settings": [
+    {
+      "type": "header",
+      "content": "Divider",
+      "info": "A vertical separator line for row layouts."
+    },
+    {
+      "type": "select",
+      "id": "height_mode",
+      "label": "Height Mode",
+      "options": [
+        {
+          "value": "fill",
+          "label": "Fill"
+        },
+        {
+          "value": "fixed",
+          "label": "Fixed"
+        },
+        {
+          "value": "percent",
+          "label": "Percentage"
+        }
+      ],
+      "default": "fill"
+    },
+    {
+      "type": "range",
+      "id": "height",
+      "min": 16,
+      "max": 600,
+      "step": 8,
+      "unit": "px",
+      "label": "Height",
+      "default": 120,
+      "visible_if": "{{ block.settings.height_mode == 'fixed' }}"
+    },
+    {
+      "type": "range",
+      "id": "height_percent",
+      "min": 5,
+      "max": 100,
+      "step": 5,
+      "unit": "%",
+      "label": "Height",
+      "default": 50,
+      "visible_if": "{{ block.settings.height_mode == 'percent' }}"
+    },
+    {
+      "type": "select",
+      "id": "align_v",
+      "label": "Vertical Alignment",
+      "info": "Positions a shorter line within the row height.",
+      "options": [
+        {
+          "value": "top",
+          "label": "Top"
+        },
+        {
+          "value": "center",
+          "label": "Center"
+        },
+        {
+          "value": "bottom",
+          "label": "Bottom"
+        }
+      ],
+      "default": "center",
+      "visible_if": "{{ block.settings.height_mode != 'fill' }}"
+    },
+    {
+      "type": "range",
+      "id": "thickness",
+      "min": 0,
+      "max": 10,
+      "step": 1,
+      "unit": "px",
+      "label": "Thickness",
+      "default": 1
+    },
+    {
+      "type": "select",
+      "id": "line_style",
+      "label": "Style",
+      "options": [
+        {
+          "value": "solid",
+          "label": "Solid"
+        },
+        {
+          "value": "dashed",
+          "label": "Dashed"
+        },
+        {
+          "value": "dotted",
+          "label": "Dotted"
+        }
+      ],
+      "default": "solid"
+    },
+    {
+      "type": "range",
+      "id": "opacity",
+      "min": 0,
+      "max": 100,
+      "step": 5,
+      "unit": "%",
+      "label": "Opacity",
+      "default": 100
+    },
+    {
+      "type": "range",
+      "id": "spacing_inline",
+      "min": 0,
+      "max": 4,
+      "step": 0.1,
+      "unit": "rem",
+      "label": "Horizontal Spacing",
+      "default": 0
+    }
+  ],
+  "presets": [
+    {
+      "name": "Vertical Divider"
+    }
+  ]
+}
+{% endschema %}

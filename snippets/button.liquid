@@ -1,0 +1,123 @@
+{%- comment -%}
+  Button — the theme's single button primitive (§11).
+
+  Accepts:
+  - id         {String}  Unique id (block.id / section.id) for scoped styles
+  - text       {String}  Label
+  - link       {String}  URL; without one the button renders as a disabled link
+  - style      {String}  solid (default) | outline | secondary | link
+  - size       {String}  Font size token key: sm | body (default) | lg
+  - padding_x / padding_y {Number} px
+  - radius     {Number}  px corner radius
+  - uppercase  {Boolean} Uppercase + tracking
+  - full_width {Boolean} Stretch to the container width
+  - icon       {String}  Optional raw SVG rendered after the label
+  - class      {String}  Extra classes
+  - attributes {String}  block.shopify_attributes
+  - button_type {String} Render a native button of this type instead of a link
+
+  Colors come from the inherited local accent contract — never from scheme
+  button settings or pickers. A parent may establish that contract with
+  snippets/accent-resolver.liquid.
+{%- endcomment -%}
+
+{%- liquid
+  assign b_style = style | default: 'solid'
+  assign b_radius = radius | default: 0
+  assign b_px = padding_x | default: 24
+  assign b_py = padding_y | default: 12
+
+  case size
+    when 'sm'
+      assign b_fs = '--fs-body-sm'
+    when 'lg'
+      assign b_fs = '--fs-body-lg'
+    else
+      assign b_fs = '--fs-body'
+  endcase
+-%}
+
+{% style %}
+  .button--{{ id }} {
+    display: {% if full_width %}flex{% else %}inline-flex{% endif %};
+    {%- if full_width %}
+    width: 100%;
+    {%- endif %}
+    align-items: center;
+    justify-content: center;
+    gap: 0.5em;
+    text-align: center;
+    text-decoration: none;
+    cursor: pointer;
+    font-family: var(--font-body-family);
+    font-size: var({{ b_fs }});
+    font-weight: 600;
+    line-height: 1;
+    padding: {{ b_py }}px {{ b_px }}px;
+    border-radius: {{ b_radius }}px;
+    transition: opacity 0.3s ease, background-color 0.3s ease, color 0.3s ease;
+    {%- if uppercase %}
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    {%- endif %}
+
+    {%- case b_style %}
+      {%- when 'outline' %}
+    background-color: transparent;
+    color: var(--color-accent-contrast, var(--color-accent-neutral-contrast));
+    border: 1px solid var(--color-accent-border, var(--color-accent-neutral-border));
+      {%- when 'secondary' %}
+    background-color: var(--color-accent, var(--color-accent-soft));
+    color: var(--color-accent-contrast, var(--color-accent-soft-contrast));
+    border: 1px solid var(--color-accent-border, var(--color-accent-soft-border));
+      {%- when 'link' %}
+    background-color: transparent;
+    color: var(--color-text);
+    border: none;
+    border-block-end: 1px solid currentColor;
+    padding: 0 0 0.25em;
+    border-radius: 0;
+      {%- else %}
+    background-color: var(--color-accent, var(--color-accent-neutral));
+    color: var(--color-accent-contrast, var(--color-accent-neutral-contrast));
+    border: 1px solid var(--color-accent-border, var(--color-accent-neutral-border));
+    {%- endcase %}
+  }
+
+  .button--{{ id }}:hover {
+    opacity: 0.85;
+  }
+
+  {%- if b_style == 'outline' %}
+  .button--{{ id }}:hover {
+    background-color: var(--color-accent, var(--color-accent-neutral));
+    color: var(--color-accent-contrast, var(--color-accent-neutral-contrast));
+    opacity: 1;
+  }
+  {%- endif %}
+
+  .button--{{ id }} svg {
+    width: 1.25em;
+    height: 1.25em;
+    flex: 0 0 auto;
+  }
+{% endstyle %}
+
+{% if button_type != blank %}
+<button
+  type="{{ button_type }}"
+  class="button button--{{ id }}{% if class %} {{ class }}{% endif %}"
+  {{ attributes }}
+>
+{% else %}
+<a
+  class="button button--{{ id }}{% if class %} {{ class }}{% endif %}"
+  {% if link != blank %}href="{{ link }}"{% else %}role="link" aria-disabled="true"{% endif %}
+  {{ attributes }}
+>
+{% endif %}
+  {{- text | escape -}}
+  {%- if icon != blank -%}
+    {{ icon }}
+  {%- endif -%}
+{% if button_type != blank %}</button>{% else %}</a>{% endif %}

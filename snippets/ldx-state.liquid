@@ -1,0 +1,347 @@
+{%- comment -%}
+  LOAD STATE — shared busy / offline / error block.
+
+  One block, three modes, driven entirely by assets/loader-state.js:
+
+    data-ldx-mode="busy"     spinner + optional message
+    data-ldx-mode="offline"  offline icon + "Internet Connection Error" + Retry
+    data-ldx-mode="error"    error icon + generic message + Retry
+
+  It is ALWAYS centred, whatever the host's button alignment is: a failed
+  request is a state of the region, not of the button that triggered it, so it
+  must not drift left or right with a merchant alignment setting.
+
+  Consumers render this once per loading region and hand the element to
+  window.Loader.State. Nothing here knows what is being loaded.
+
+  Accepts:
+  - uid           {String}  unique id fragment (section/block id)
+  - retry_label   {String}  Retry button text
+  - retry_icon    {Boolean} show the retry glyph
+  - offline_title {String}  heading shown when the connection is down
+  - offline_msg   {String}  supporting line for the offline state
+  - error_msg     {String}  message for every non-connectivity failure
+  - busy_msg      {String}  optional text beside the spinner
+{%- endcomment -%}
+
+{% stylesheet %}
+/* ==========================================================================
+ * LOAD STATE — shared busy / offline / error block (snippets/ldx-state.liquid)
+ *
+ * A shared primitive: its CSS lives in this snippet's stylesheet tag and is
+ * compiled once into the theme stylesheet, so no consumer links a file.
+ *
+ * It is always centred on purpose. See the snippet's comment.
+ * ========================================================================== */
+
+.ldx-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: var(--ldx-state-gap, 0.75rem);
+  width: 100%;
+  margin-block-start: var(--ldx-state-margin, 2rem);
+  padding-block: var(--ldx-state-pad, 1rem);
+  color: var(--color-text, currentColor);
+}
+
+.ldx-state[hidden] {
+  display: none !important;
+}
+
+/* --- what each mode shows ------------------------------------------------ */
+
+.ldx-state__spinner,
+.ldx-state__icon,
+.ldx-state__glyph {
+  display: none;
+}
+
+.ldx-state[data-ldx-mode='busy'] .ldx-state__spinner {
+  display: block;
+}
+
+.ldx-state[data-ldx-mode='offline'] .ldx-state__icon,
+.ldx-state[data-ldx-mode='error'] .ldx-state__icon {
+  display: block;
+}
+
+.ldx-state[data-ldx-mode='offline'] .ldx-state__glyph--offline,
+.ldx-state[data-ldx-mode='error'] .ldx-state__glyph--error {
+  display: block;
+}
+
+.ldx-state:not([data-ldx-mode='offline']):not([data-ldx-mode='error']) .ldx-state__msg:empty {
+  display: none;
+}
+
+/* --- pieces -------------------------------------------------------------- */
+
+.ldx-state__spinner {
+  width: var(--ldx-spinner-size, 1.75rem);
+  height: var(--ldx-spinner-size, 1.75rem);
+  border-radius: 50%;
+  border: 2px solid currentColor;
+  border-top-color: transparent;
+  opacity: 0.7;
+  animation: ldx-spin 0.7s linear infinite;
+}
+
+.ldx-state__glyph {
+  width: var(--ldx-icon-size, 2rem);
+  height: var(--ldx-icon-size, 2rem);
+  opacity: 0.75;
+}
+
+.ldx-state__msg {
+  margin: 0;
+  font-family: var(--font-body-family);
+  font-size: var(--fs-body-sm);
+  line-height: 1.5;
+  max-width: 34ch;
+}
+
+/* The first line of the offline copy carries the headline weight. */
+.ldx-state__msg strong {
+  display: block;
+  font-size: var(--fs-body);
+  font-weight: 600;
+  margin-block-end: 0.25em;
+}
+
+.ldx-state__retry {
+  appearance: none;
+  -webkit-appearance: none;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5em;
+  cursor: pointer;
+  padding: var(--ldx-retry-pad-y, 0.7rem) var(--ldx-retry-pad-x, 1.6rem);
+  border-radius: var(--ldx-retry-radius, 0px);
+  border: 1px solid var(--color-button-border);
+  background-color: var(--color-button);
+  color: var(--color-button-text);
+  font-family: var(--font-body-family);
+  font-size: var(--fs-body-sm);
+  line-height: 1;
+  transition: opacity 0.25s ease;
+}
+
+.ldx-state__retry:not([hidden]) {
+  display: inline-flex;
+}
+
+.ldx-state__retry:hover {
+  opacity: 0.85;
+}
+
+.ldx-state__retry:focus-visible {
+  outline: 2px solid var(--color-text);
+  outline-offset: 2px;
+}
+
+.ldx-state__retry[aria-busy='true'] {
+  cursor: default;
+  opacity: 0.7;
+  pointer-events: none;
+}
+
+.ldx-state__retry-glyph {
+  width: 1.1em;
+  height: 1.1em;
+}
+
+@keyframes ldx-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ldx-state__spinner {
+    animation-duration: 2s;
+  }
+}
+
+/* --------------------------------------------------------------------------
+ * Skeleton slide (LEGACY `fcx-` layer only — Collection Showcase and the
+ * Featured Collection feed) — the placeholder a carousel parks at the end of
+ * its track while a preload batch is still in flight. The rebuilt collection
+ * family uses card-shaped placeholders through window.Loader.Skeleton instead
+ * (entrance styles at the end of this file).
+ *
+ * It is a solid BLACK slide with the spinner dead centre, and it keeps
+ * spinning for as long as the fetch lasts. That is the point: on a slow
+ * connection a user can swipe well past the preload threshold before the
+ * batch lands, and this slide has to read unambiguously as "still loading"
+ * rather than as an empty or broken card. It is not a shimmer placeholder
+ * pretending to be a product.
+ * -------------------------------------------------------------------------- */
+
+.ldx-skeleton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: var(--ldx-skeleton-min-h, 12rem);
+  border-radius: var(--ds-item-radius-mobile, 0px);
+  background-color: var(--ldx-skeleton-bg, #000);
+  color: var(--ldx-skeleton-fg, #fff);
+  overflow: hidden;
+}
+
+.ldx-skeleton[hidden] {
+  display: none !important;
+}
+
+.ldx-skeleton__spinner {
+  width: var(--ldx-spinner-size, 1.75rem);
+  height: var(--ldx-spinner-size, 1.75rem);
+  border-radius: 50%;
+  border: 2px solid currentColor;
+  border-top-color: transparent;
+  opacity: 0.85;
+  animation: ldx-spin 0.7s linear infinite;
+}
+
+@media (min-width: 768px) {
+  .ldx-skeleton {
+    border-radius: var(--ds-item-radius-desktop, 0px);
+  }
+}
+
+/* --------------------------------------------------------------------------
+ * Entrance — window.Loader.Skeleton (loader-state.js)
+ *
+ * Placeholders and loaded cards wait invisible (.ldx-pending) until they are
+ * in view, then enter: fade (cross-fade) or rise (fade up), staggered by
+ * --ldx-i. Only the element's children animate, so a Swiper slide's own box
+ * is never transformed. A cross-fade lays the placeholder's card over the new
+ * one (.ldx-ghost) and fades it out. Keep the timings in step with the
+ * ENTER_MS / STAGGER_MS constants in the script.
+ * -------------------------------------------------------------------------- */
+
+.ldx-pending > * {
+  opacity: 0;
+}
+
+.ldx-enter > :not(.ldx-ghost) {
+  animation-duration: var(--ldx-enter-duration, 500ms);
+  animation-timing-function: cubic-bezier(0.2, 0.7, 0.2, 1);
+  animation-fill-mode: both;
+  animation-delay: calc(var(--ldx-i, 0) * var(--ldx-enter-stagger, 60ms));
+}
+
+.ldx-enter--fade > :not(.ldx-ghost) {
+  animation-name: ldx-in-fade;
+}
+
+.ldx-enter--rise > :not(.ldx-ghost) {
+  animation-name: ldx-in-rise;
+}
+
+.ldx-crossing {
+  position: relative;
+}
+
+.ldx-ghost {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+  animation: ldx-out-fade var(--ldx-enter-duration, 500ms) ease calc(var(--ldx-i, 0) * var(--ldx-enter-stagger, 60ms)) both;
+}
+
+@keyframes ldx-in-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes ldx-in-rise {
+  from {
+    opacity: 0;
+    transform: translateY(var(--ldx-enter-distance, 1.5rem));
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes ldx-out-fade {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ldx-pending > * {
+    opacity: 1;
+  }
+
+  .ldx-enter > :not(.ldx-ghost) {
+    animation: none;
+  }
+
+  .ldx-ghost {
+    display: none;
+  }
+}
+{% endstylesheet %}
+
+{%- liquid
+  assign ldx_retry_label = retry_label | default: 'Retry'
+  assign ldx_offline_title = offline_title | default: 'Internet Connection Error'
+  assign ldx_offline_msg = offline_msg | default: 'Check your connection and try again.'
+  assign ldx_error_msg = error_msg | default: 'Something went wrong. Please try again.'
+-%}
+
+<div
+  class="ldx-state"
+  id="ldx-state-{{ uid }}"
+  data-ldx-state
+  data-offline-title="{{ ldx_offline_title | escape }}"
+  data-offline-msg="{{ ldx_offline_msg | escape }}"
+  data-error-msg="{{ ldx_error_msg | escape }}"
+  {% if busy_msg != blank %}data-busy-msg="{{ busy_msg | escape }}"{% endif %}
+  role="status"
+  aria-live="polite"
+  hidden
+>
+  <span class="ldx-state__spinner" data-ldx-spinner aria-hidden="true"></span>
+
+  <span class="ldx-state__icon" data-ldx-icon aria-hidden="true">
+    {%- comment -%} Offline: a cloud with a slash. {%- endcomment -%}
+    <svg class="ldx-state__glyph ldx-state__glyph--offline" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" focusable="false">
+      <path d="M5.5 19a4 4 0 0 1-.6-7.95A6 6 0 0 1 15.6 8.2 3.75 3.75 0 0 1 19.9 13"/>
+      <path d="M3 3l18 18"/>
+    </svg>
+    {%- comment -%} Generic failure: an alert triangle. {%- endcomment -%}
+    <svg class="ldx-state__glyph ldx-state__glyph--error" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" focusable="false">
+      <path d="M12 4.5 21 20H3z"/>
+      <path d="M12 10v4"/>
+      <path d="M12 17h.01"/>
+    </svg>
+  </span>
+
+  <p class="ldx-state__msg" data-ldx-msg></p>
+
+  <button type="button" class="ldx-state__retry" data-ldx-retry hidden>
+    {%- if retry_icon -%}
+      <svg class="ldx-state__retry-glyph" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+        <path d="M20 12a8 8 0 1 1-2.34-5.66"/>
+        <path d="M20 4v4.5h-4.5"/>
+      </svg>
+    {%- endif -%}
+    <span>{{ ldx_retry_label | escape }}</span>
+  </button>
+</div>

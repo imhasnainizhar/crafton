@@ -1,0 +1,14 @@
+{%- comment -%}
+  Maps a Design System cap key to a max-width value.
+  Keys: none | wide | max | tv
+
+  TV cap increased to 160rem (from 144rem) to accommodate font growth
+  on ultra-wide displays (>2300px). Fonts grow to ~5rem via --tv-font-bump;
+  160rem width (2560px) maintains readability at these scales.
+{%- endcomment -%}
+{%- case key -%}
+  {%- when 'wide' -%}90rem
+  {%- when 'max' -%}120rem
+  {%- when 'tv' -%}clamp(64rem, 88vw, 160rem)
+  {%- else -%}none
+{%- endcase -%}

@@ -1,0 +1,176 @@
+{% doc %}
+  Classic Head (`cls-`) — the heading row shared by the classic sections
+  (Featured Products, Featured Collection, Classic Collection Tabs, Featured
+  Articles, Featured Blogs). The section
+  heading and, when the section has tabs, one tab button per tab block, in one
+  row spaced apart. The heading size is the Heading role's ladder step or a
+  custom pair interpolated by snippets/fluid-clamp.liquid. The tab buttons are
+  plain buttons until assets/classic-tabs.js turns the row into a real tablist.
+
+  Schema fragment for callers (section settings):
+    heading (inline_richtext), heading_alignment (left | center | right),
+    font_size (xxs … xxl | custom), font_size_mobile, font_size_desktop,
+    font_weight (normal | medium | semibold | bold), tab_style (underline | pill).
+  Each tab block carries a `title` text setting, used as its button label.
+
+  @param {string} id - section.id, scopes the heading size rule
+  @param {object} source - section.settings holding the fragment above
+  @param {object} [tabs] - section.blocks; each block becomes one tab button
+  @param {string} [link] - URL of a "View all" link shown at the row's end
+  @param {string} [link_label] - label of that link
+  @param {string} [motion] - entrance classes for the row (snippets/motion-reveal.liquid, part 'class')
+
+  @example
+  {% render 'classic-head', id: section.id, source: section.settings, tabs: section.blocks %}
+  {% render 'classic-head', id: section.id, source: section.settings, link: collection.url, link_label: label %}
+{% enddoc %}
+{%- liquid
+  assign ch_align = source.heading_alignment | default: 'left'
+  assign ch_tab_style = source.tab_style | default: 'underline'
+  assign ch_has_tabs = false
+  if tabs.size > 0
+    assign ch_has_tabs = true
+  endif
+-%}
+
+{% style %}
+  .cls--{{ id }} .cls-head__heading {
+    {% render 'typography-resolver', role: 'heading', source: source %}
+    {%- if source.font_size == 'custom' %}
+      font-size: {% render 'fluid-clamp', min: source.font_size_mobile, max: source.font_size_desktop %};
+    {%- endif %}
+  }
+{% endstyle %}
+
+{%- if source.heading != blank or ch_has_tabs or link != blank -%}
+  <div class="cls-head cls-head--{{ ch_align }} {{ motion }}">
+    {%- if source.heading != blank -%}
+      <h2 class="cls-head__heading">{{ source.heading }}</h2>
+    {%- endif -%}
+
+    {%- if ch_has_tabs -%}
+      <div class="cls-tabs cls-tabs--{{ ch_tab_style }}" data-cls-tablist>
+        {%- for tab in tabs -%}
+          {%- liquid
+            assign ch_label = tab.settings.title | default: tab.settings.collection.title | default: tab.settings.blog.title
+            if ch_label == blank
+              assign ch_label = 'theme.sections.classic.tab_label' | t: number: forloop.index
+            endif
+          -%}
+          <button
+            type="button"
+            class="cls-tab{% if forloop.first %} is-active{% endif %}"
+            id="cls-tab-{{ id }}-{{ forloop.index0 }}"
+            data-cls-tab
+            {{ tab.shopify_attributes }}
+          >
+            {{- ch_label | escape -}}
+          </button>
+        {%- endfor -%}
+      </div>
+    {%- endif -%}
+
+    {%- if link != blank and link_label != blank -%}
+      <a class="cls-head__link" href="{{ link }}">{{ link_label | escape }}</a>
+    {%- endif -%}
+  </div>
+{%- endif -%}
+
+{% stylesheet %}
+  .cls-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem 1.5rem;
+    min-width: 0;
+  }
+
+  .cls-head--center {
+    flex-direction: column;
+    justify-content: center;
+    text-align: center;
+  }
+
+  .cls-head--right {
+    flex-direction: row-reverse;
+    text-align: right;
+  }
+
+  .cls-head__heading {
+    margin: 0;
+    min-width: 0;
+    color: var(--color-heading);
+  }
+
+  .cls-head__link {
+    flex: 0 0 auto;
+    color: var(--color-link);
+    font-size: var(--fs-text-sm);
+    text-decoration: underline;
+    text-underline-offset: 0.25em;
+  }
+
+  .cls-head__link:hover {
+    color: var(--color-heading);
+  }
+
+  .cls-tabs {
+    display: flex;
+    gap: 1.5rem;
+    max-width: 100%;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .cls-tabs::-webkit-scrollbar {
+    display: none;
+  }
+
+  .cls-tabs--pill {
+    gap: 0.5rem;
+  }
+
+  .cls-tab {
+    flex: 0 0 auto;
+    margin: 0;
+    padding: 0.5rem 0;
+    font-family: var(--font-body-family);
+    font-size: var(--fs-text-sm);
+    line-height: 1.2;
+    white-space: nowrap;
+    color: var(--color-soft-text);
+    background: none;
+    border: 0;
+    border-block-end: 2px solid transparent;
+    cursor: pointer;
+    transition: color 0.2s ease, border-color 0.2s ease, background-color 0.2s ease;
+  }
+
+  .cls-tab:hover,
+  .cls-tab.is-active {
+    color: var(--color-heading);
+  }
+
+  .cls-tab.is-active {
+    border-block-end-color: currentColor;
+  }
+
+  .cls-tabs--pill .cls-tab {
+    padding: 0.6rem 1.1rem;
+    color: var(--color-text);
+    border: 1px solid var(--color-border);
+    border-radius: 999px;
+  }
+
+  .cls-tabs--pill .cls-tab.is-active {
+    color: var(--color-accent-contrast);
+    background-color: var(--color-accent);
+    border-color: var(--color-accent-border);
+  }
+
+  .cls-tab:focus-visible {
+    outline: 2px solid var(--color-heading);
+    outline-offset: 2px;
+  }
+{% endstylesheet %}

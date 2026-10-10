@@ -1,0 +1,26 @@
+{%- comment -%}
+  Page — the page title and its rich text content inside the shared page shell
+  (assets/base.css, .page-shell).
+{%- endcomment -%}
+<div class="page-shell page-shell--narrow color-{{ section.settings.color_scheme }}">
+  <div class="page-shell__inner">
+    <h1 class="page-shell__title">{{ page.title | escape }}</h1>
+    <div class="page-shell__rte">{{ page.content }}</div>
+  </div>
+</div>
+
+{% schema %}
+{
+  "name": "Page",
+  "tag": "section",
+  "class": "shopify-section--main",
+  "settings": [
+    {
+      "type": "color_scheme",
+      "id": "color_scheme",
+      "label": "Color scheme",
+      "default": "scheme_1"
+    }
+  ]
+}
+{% endschema %}

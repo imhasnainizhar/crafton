@@ -1,0 +1,786 @@
+{%- comment -%}
+  Rich Content
+
+  - Public content-layout block: hosts heading, subtitle, text, button, icon,
+    and divider blocks.
+  - Owns alignment, content width, spacing, the optional panel surface
+    (background and border), and entrance motion.
+  - `scheme_source` (Section | Block) decides where colours come from: Section
+    inherits the parent section's scheme, Block paints `color-<scheme>` on the
+    panel. It is a select, not an inheritance checkbox.
+  - The surface is a SEPARATE axis from the scheme source. Background, Solid /
+    Glass style, every glass control and the border are available on both
+    values — a block on the section's scheme can still be a glass panel, and a
+    block on its own scheme can stay transparent.
+  - Owns its horizontal text padding through the block's padding dropdown.
+  - The panel's corner radius reads --ds-layout-radius-* and has no block-level
+    override.
+{%- endcomment -%}
+
+{% stylesheet %}
+  /* Panel: full width of the parent. Optional background and border use the
+     active color-scheme tokens. Corner radius follows the Design System's
+     Layout radius token. */
+  .rich-content-panel {
+    box-sizing: border-box;
+    width: 100%;
+    border-radius: var(--ds-layout-radius-mobile);
+    display: flex;
+    justify-content: var(--align-x-mobile, flex-start);
+  }
+
+  .rich-content-panel--hide-mobile { display: none; }
+
+  .rich-content-panel--bg { background-color: var(--rc-bg); }
+
+  .rich-content-panel--glass {
+    background-color: var(--rc-glass-bg);
+    -webkit-backdrop-filter: blur(var(--rc-glass-blur));
+    backdrop-filter: blur(var(--rc-glass-blur));
+    box-shadow: 0 8px 32px var(--rc-glass-shadow);
+  }
+
+  .rich-content-panel--border { border: 1px solid var(--rc-border); }
+
+  /* Fill Parent Height: `align-self: stretch` fills a flex or grid parent and
+     `min-height: 100%` fills a block parent with a real height; `height: 100%`
+     would opt out of the parent's stretch. */
+  .rich-content-panel--full {
+    align-self: stretch;
+    min-height: 100%;
+  }
+
+  /* Content rail: full width until the block's Content Width cap. In full
+     height it becomes a column so the stack can flex into that height. */
+  .rich-content-align {
+    box-sizing: border-box;
+    width: 100%;
+    max-width: var(--rc-max-width);
+  }
+
+  .rich-content-panel--full .rich-content-align {
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* Content stack: owns child alignment, gap and text padding; its vertical
+     margins provide the optional spacing behaviour. */
+  .rich-content {
+    display: flex;
+    flex-direction: column;
+    box-sizing: border-box;
+    gap: var(--rc-gap);
+    width: 100%;
+    padding-inline: var(--rc-pad-x);
+    padding-block: var(--rc-pad-y);
+    align-items: var(--align-x-mobile, flex-start);
+    text-align: var(--rc-text-align-mobile);
+    margin-block-start: var(--rc-margin);
+    margin-block-end: var(--rc-margin);
+  }
+
+  .rich-content-panel--full .rich-content {
+    flex: 1 1 auto;
+    justify-content: var(--align-y-mobile, flex-start);
+  }
+
+  @media screen and (min-width: 768px) {
+    .rich-content-panel {
+      display: flex;
+      justify-content: var(--align-x-desktop, flex-start);
+      border-radius: var(--ds-layout-radius-desktop);
+    }
+
+    .rich-content--split-align {
+      align-items: var(--align-x-desktop);
+      text-align: var(--rc-text-align-desktop);
+    }
+
+    .rich-content-panel--full .rich-content {
+      justify-content: var(--align-y-desktop, flex-start);
+    }
+  }
+{% endstylesheet %}
+
+{%- liquid
+  # Inner text padding is separate from the parent wrapper's gutter and is
+  # always owned by this block.
+  capture rc_padding
+    render 'space-token', key: block.settings.padding_horizontal
+  endcapture
+  assign rc_padding_mobile = rc_padding
+
+  assign margin_scale_mode = block.settings.margin_scale_mode | default: 'auto'
+  if margin_scale_mode == 'auto'
+    assign margin_scale = 'auto'
+  else
+    assign margin_scale = block.settings.margin_scale_factor | default: 1
+  endif
+
+  assign max_width_css = block.settings.content_width | default: 768 | append: 'px'
+
+  # The surface is independent of where the colour scheme comes from: a block
+  # on the section's scheme can still paint a background, and a block on its own
+  # scheme can stay transparent.
+  assign background_active = block.settings.en_bg
+
+  # Motion is independent of any animating parent: panel animates the stack and
+  # lines its direct children (snippets/motion-reveal, CSS).
+  assign rc_anim_on = block.settings.animation_enabled
+  assign rc_scope = block.settings.animation_scope | default: 'panel'
+  assign rc_lines = false
+  if rc_scope == 'lines'
+    assign rc_lines = true
+  endif
+  assign rc_reveal = false
+  if rc_anim_on
+    assign rc_reveal = true
+  endif
+  assign rc_order = block.settings.animation_play_mode
+  case rc_order
+    when 'row_by_row'
+      assign rc_order = 'rows'
+    when 'random'
+      assign rc_order = 'scatter'
+  endcase
+-%}
+
+{% style %}
+  .rich-content-panel-{{ block.id }} {
+    {% render 'alignments', source: block.settings %}
+    --rc-max-width: {{ max_width_css }};
+    --rc-gap: {% render 'space-token', key: block.settings.gap %};
+    --rc-pad-x: {{ rc_padding_mobile }};
+    --rc-pad-y: {% render 'space-token', key: block.settings.padding_vertical %};
+    --rc-text-align-mobile: {{ block.settings.align_x_mobile }};
+    --rc-text-align-desktop: {{ block.settings.align_x_desktop }};
+    --rc-margin: {% if margin_scale == 'auto' %}auto{% else %}calc({{ margin_scale }} * 1rem){% endif %};
+    {% if background_active %}
+      --rc-bg: {% render 'background-role-token', key: block.settings.background_role %};
+      {% if block.settings.background_style == 'glass' %}
+        --rc-glass-bg: color-mix(in srgb, {% render 'background-role-token', key: block.settings.background_role %} {{ block.settings.glass_tint_opacity }}%, transparent);
+        --rc-glass-blur: {{ block.settings.glass_blur }}px;
+        --rc-glass-shadow: color-mix(in srgb, var(--color-shadow) {{ block.settings.glass_shadow_opacity }}%, transparent);
+      {% endif %}
+    {% endif %}
+    {% if block.settings.en_br %}
+      --rc-border: {% if background_active and block.settings.background_style == 'glass' %}color-mix(in srgb, var(--color-border) {{ block.settings.glass_border_opacity }}%, transparent){% else %}var(--color-border){% endif %};
+    {% endif %}
+  }
+
+  {%- if rc_reveal -%}
+    /* Entrance timing for snippets/motion-reveal. Text reveal wipes in from the
+       edge the text is aligned to. */
+    .rich-content-{{ block.id }} {
+      {% render 'motion-reveal', part: 'vars', from: block.settings %}
+      --motion-reveal-clip: {% if block.settings.align_x_mobile == 'right' %}inset(0 0 0 100%){% else %}inset(0 100% 0 0){% endif %};
+    }
+
+    @media (min-width: 768px) {
+      .rich-content-{{ block.id }} { --motion-reveal-clip: {% if block.settings.align_x_desktop == 'right' %}inset(0 0 0 100%){% else %}inset(0 100% 0 0){% endif %}; }
+    }
+  {%- endif -%}
+{% endstyle %}
+
+<div
+  class="rich-content-panel-{{ block.id }} rich-content-panel{% if block.settings.hide_on_mobile %} rich-content-panel--hide-mobile{% endif %}{% if background_active %}{% if block.settings.background_style == 'glass' %} rich-content-panel--glass{% else %} rich-content-panel--bg{% endif %}{% endif %}{% if block.settings.en_br %} rich-content-panel--border{% endif %}{% if block.settings.full_height %} rich-content-panel--full{% endif %}{% if block.settings.scheme_source == 'block' %} color-{{ block.settings.color_scheme }}{% endif %}"
+  {{ block.shopify_attributes }}
+>
+  <div class="rich-content-align-{{ block.id }} rich-content-align">
+    <div
+      class="rich-content-{{ block.id }} rich-content{% if block.settings.align_x_desktop != block.settings.align_x_mobile %} rich-content--split-align{% endif %} {% render 'motion-reveal', part: 'class', from: block.settings, enabled: rc_reveal, group: rc_lines %}"
+    >
+      {% content_for 'blocks' %}
+    </div>
+  </div>
+</div>
+
+{% schema %}
+{
+  "name": "Rich Content",
+  "tag": null,
+  "settings": [
+    {
+      "type": "header",
+      "content": "Alignment"
+    },
+    {
+      "type": "text_alignment",
+      "id": "align_x_mobile",
+      "label": "Horizontal Alignment (Mobile)",
+      "default": "left"
+    },
+    {
+      "type": "text_alignment",
+      "id": "align_x_desktop",
+      "label": "Horizontal Alignment (Desktop)",
+      "default": "left"
+    },
+    {
+      "type": "select",
+      "id": "align_y_mobile",
+      "label": "Vertical Alignment (Mobile)",
+      "options": [
+        {
+          "value": "none",
+          "label": "Default (in flow)"
+        },
+        {
+          "value": "top",
+          "label": "Top"
+        },
+        {
+          "value": "center",
+          "label": "Center"
+        },
+        {
+          "value": "bottom",
+          "label": "Bottom"
+        }
+      ],
+      "default": "none",
+      "visible_if": "{{ block.settings.full_height }}"
+    },
+    {
+      "type": "select",
+      "id": "align_y_desktop",
+      "label": "Vertical Alignment (Desktop)",
+      "options": [
+        {
+          "value": "none",
+          "label": "Default (in flow)"
+        },
+        {
+          "value": "top",
+          "label": "Top"
+        },
+        {
+          "value": "center",
+          "label": "Center"
+        },
+        {
+          "value": "bottom",
+          "label": "Bottom"
+        }
+      ],
+      "default": "none",
+      "visible_if": "{{ block.settings.full_height }}"
+    },
+    {
+      "type": "header",
+      "content": "Layout"
+    },
+    {
+      "type": "select",
+      "id": "content_width",
+      "label": "Content Width",
+      "options": [
+        {
+          "value": "480",
+          "label": "Narrow (480px)"
+        },
+        {
+          "value": "640",
+          "label": "Medium (640px)"
+        },
+        {
+          "value": "760",
+          "label": "Default (760px)"
+        },
+        {
+          "value": "960",
+          "label": "Wide (960px)"
+        },
+        {
+          "value": "1200",
+          "label": "Extra Wide (1200px)"
+        },
+        {
+          "value": "1600",
+          "label": "Max (1600px)"
+        }
+      ],
+      "default": "760"
+    },
+    {
+      "type": "select",
+      "id": "gap",
+      "label": "Gap Between Items",
+      "options": [
+        {
+          "value": "none",
+          "label": "None"
+        },
+        {
+          "value": "xs",
+          "label": "XS"
+        },
+        {
+          "value": "sm",
+          "label": "SM"
+        },
+        {
+          "value": "md",
+          "label": "MD"
+        },
+        {
+          "value": "lg",
+          "label": "LG"
+        },
+        {
+          "value": "xl",
+          "label": "XL"
+        }
+      ],
+      "default": "sm"
+    },
+    {
+      "type": "checkbox",
+      "id": "full_height",
+      "label": "Fill Parent Height",
+      "info": "Stretches the block to fill all available height instead of sizing to content. Enable when this block sits inside a container with a defined height.",
+      "default": false
+    },
+    {
+      "type": "header",
+      "content": "Color Scheme",
+      "info": "Where this block and its nested content take their colours from. The surface controls below apply either way."
+    },
+    {
+      "type": "select",
+      "id": "scheme_source",
+      "label": "Color Scheme Source",
+      "options": [
+        {
+          "value": "section",
+          "label": "Section"
+        },
+        {
+          "value": "block",
+          "label": "Block"
+        }
+      ],
+      "default": "section"
+    },
+    {
+      "type": "color_scheme",
+      "id": "color_scheme",
+      "label": "Color Scheme",
+      "default": "scheme_1",
+      "visible_if": "{{ block.settings.scheme_source == 'block' }}"
+    },
+    {
+      "type": "header",
+      "content": "Visual Appearance"
+    },
+    {
+      "type": "checkbox",
+      "id": "en_bg",
+      "label": "Enable background color",
+      "info": "Apply the resolved color scheme's background role. Available on both scheme sources.",
+      "default": false
+    },
+    {
+      "type": "select",
+      "id": "background_style",
+      "label": "Background Style",
+      "options": [
+        {
+          "value": "solid",
+          "label": "Solid"
+        },
+        {
+          "value": "glass",
+          "label": "Glass"
+        }
+      ],
+      "default": "solid",
+      "visible_if": "{{ block.settings.en_bg }}"
+    },
+    {
+      "type": "select",
+      "id": "background_role",
+      "label": "Content Surface",
+      "options": [
+        {
+          "value": "base",
+          "label": "Base"
+        },
+        {
+          "value": "surface",
+          "label": "Surface"
+        }
+      ],
+      "default": "surface",
+      "visible_if": "{{ block.settings.en_bg }}"
+    },
+    {
+      "type": "range",
+      "id": "glass_tint_opacity",
+      "label": "Glass tint strength",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "%",
+      "default": 8,
+      "visible_if": "{{ block.settings.background_style == 'glass' and block.settings.en_bg }}"
+    },
+    {
+      "type": "range",
+      "id": "glass_blur",
+      "label": "Glass blur",
+      "min": 0,
+      "max": 40,
+      "step": 1,
+      "unit": "px",
+      "default": 20,
+      "visible_if": "{{ block.settings.background_style == 'glass' and block.settings.en_bg }}"
+    },
+    {
+      "type": "range",
+      "id": "glass_shadow_opacity",
+      "label": "Glass shadow strength",
+      "min": 0,
+      "max": 40,
+      "step": 1,
+      "unit": "%",
+      "default": 12,
+      "visible_if": "{{ block.settings.background_style == 'glass' and block.settings.en_bg }}"
+    },
+    {
+      "type": "checkbox",
+      "id": "en_br",
+      "label": "Enable border",
+      "info": "Apply the color scheme's border color",
+      "default": false
+    },
+    {
+      "type": "range",
+      "id": "glass_border_opacity",
+      "label": "Glass border strength",
+      "min": 0,
+      "max": 100,
+      "step": 5,
+      "unit": "%",
+      "default": 15,
+      "visible_if": "{{ block.settings.background_style == 'glass' and block.settings.en_bg and block.settings.en_br }}"
+    },
+    {
+      "type": "header",
+      "content": "Animation",
+      "info": "This block's own entrance, independent of any animating parent. Leave off if a parent Container/Carousel already animates this block in."
+    },
+    {
+      "type": "checkbox",
+      "id": "animation_enabled",
+      "label": "Enable animation",
+      "default": true
+    },
+    {
+      "type": "select",
+      "id": "animation_scope",
+      "label": "What animates",
+      "options": [
+        {
+          "value": "panel",
+          "label": "Whole panel"
+        },
+        {
+          "value": "lines",
+          "label": "Stagger lines"
+        }
+      ],
+      "default": "lines",
+      "info": "Whole panel fades/reveals the content stack as one. Stagger lines reveals heading, text and button one by one.",
+      "visible_if": "{{ block.settings.animation_enabled }}"
+    },
+    {
+      "type": "select",
+      "id": "animation_effect",
+      "label": "Effect",
+      "options": [
+        {
+          "value": "fade",
+          "label": "Fade"
+        },
+        {
+          "value": "fade-up",
+          "label": "Fade Up"
+        },
+        {
+          "value": "fade-down",
+          "label": "Fade Down"
+        },
+        {
+          "value": "slide",
+          "label": "Slide"
+        },
+        {
+          "value": "scale",
+          "label": "Scale"
+        },
+        {
+          "value": "text-reveal",
+          "label": "Text Reveal (Mask)"
+        }
+      ],
+      "default": "fade-up",
+      "info": "Text Reveal wipes the content in via a clip mask — left-to-right for left-aligned text, right-to-left for right-aligned.",
+      "visible_if": "{{ block.settings.animation_enabled }}"
+    },
+    {
+      "type": "select",
+      "id": "animation_play_mode",
+      "label": "Playback",
+      "options": [
+        {
+          "value": "stagger",
+          "label": "One by one"
+        },
+        {
+          "value": "together",
+          "label": "Together"
+        },
+        {
+          "value": "row_by_row",
+          "label": "Row by row"
+        },
+        {
+          "value": "random",
+          "label": "Random"
+        }
+      ],
+      "default": "stagger",
+      "visible_if": "{{ block.settings.animation_enabled and block.settings.animation_scope == 'lines' }}"
+    },
+    {
+      "type": "range",
+      "id": "animation_duration",
+      "label": "Duration",
+      "min": 0.2,
+      "max": 1.5,
+      "step": 0.1,
+      "unit": "s",
+      "default": 0.6,
+      "info": "For text effects this is how long the whole reveal takes.",
+      "visible_if": "{{ block.settings.animation_enabled }}"
+    },
+    {
+      "type": "range",
+      "id": "animation_delay",
+      "label": "Initial delay",
+      "min": 0,
+      "max": 2,
+      "step": 0.1,
+      "unit": "s",
+      "default": 0,
+      "visible_if": "{{ block.settings.animation_enabled }}"
+    },
+    {
+      "type": "range",
+      "id": "animation_stagger",
+      "label": "Stagger between lines",
+      "min": 0,
+      "max": 300,
+      "step": 10,
+      "unit": "ms",
+      "default": 120,
+      "visible_if": "{{ block.settings.animation_enabled and block.settings.animation_scope == 'lines' and block.settings.animation_play_mode != 'together' }}"
+    },
+    {
+      "type": "range",
+      "id": "animation_distance",
+      "label": "Move distance",
+      "min": 0,
+      "max": 100,
+      "step": 4,
+      "unit": "px",
+      "default": 24,
+      "visible_if": "{{ block.settings.animation_enabled and block.settings.animation_effect != 'fade' and block.settings.animation_effect != 'scale' and block.settings.animation_effect != 'text-reveal' }}"
+    },
+    {
+      "type": "select",
+      "id": "animation_ease",
+      "label": "Easing",
+      "options": [
+        {
+          "value": "out",
+          "label": "Smooth (ease out)"
+        },
+        {
+          "value": "out-strong",
+          "label": "Strong ease out"
+        },
+        {
+          "value": "back",
+          "label": "Overshoot (back)"
+        },
+        {
+          "value": "in-out",
+          "label": "Ease in-out"
+        },
+        {
+          "value": "linear",
+          "label": "Linear"
+        }
+      ],
+      "default": "out",
+      "visible_if": "{{ block.settings.animation_enabled }}"
+    },
+    {
+      "type": "checkbox",
+      "id": "animation_once",
+      "label": "Play once",
+      "info": "Turn off to reverse when the block leaves the viewport and replay on re-entry.",
+      "default": true,
+      "visible_if": "{{ block.settings.animation_enabled }}"
+    },
+    {
+      "type": "header",
+      "content": "Padding and Margin"
+    },
+    {
+      "type": "select",
+      "id": "margin_scale_mode",
+      "label": "Margin Scale Mode",
+      "options": [
+        {
+          "value": "auto",
+          "label": "Auto"
+        },
+        {
+          "value": "manual",
+          "label": "Manual"
+        }
+      ],
+      "default": "auto"
+    },
+    {
+      "type": "range",
+      "id": "margin_scale_factor",
+      "min": 0,
+      "max": 10,
+      "step": 0.5,
+      "unit": "rem",
+      "label": "Margin Scale Factor",
+      "info": "Multiplier for margin spacing. Only applies when Manual Factor mode is selected.",
+      "default": 1
+    },
+    {
+      "type": "select",
+      "id": "padding_horizontal",
+      "label": "Horizontal Padding",
+      "options": [
+        {
+          "value": "none",
+          "label": "None"
+        },
+        {
+          "value": "xs",
+          "label": "XS"
+        },
+        {
+          "value": "sm",
+          "label": "SM"
+        },
+        {
+          "value": "md",
+          "label": "MD"
+        },
+        {
+          "value": "lg",
+          "label": "LG"
+        },
+        {
+          "value": "xl",
+          "label": "XL"
+        }
+      ],
+      "default": "sm"
+    },
+    {
+      "type": "select",
+      "id": "padding_vertical",
+      "label": "Vertical Padding",
+      "info": "Useful when a custom color scheme paints the block as a panel.",
+      "options": [
+        {
+          "value": "none",
+          "label": "None"
+        },
+        {
+          "value": "xs",
+          "label": "XS"
+        },
+        {
+          "value": "sm",
+          "label": "SM"
+        },
+        {
+          "value": "md",
+          "label": "MD"
+        },
+        {
+          "value": "lg",
+          "label": "LG"
+        },
+        {
+          "value": "xl",
+          "label": "XL"
+        }
+      ],
+      "default": "sm"
+    },
+    {
+      "type": "checkbox",
+      "id": "hide_on_mobile",
+      "label": "Hide on mobile",
+      "info": "Hides this Rich Content block and all nested content below 768px.",
+      "default": false
+    }
+  ],
+  "blocks": [
+    {
+      "type": "heading"
+    },
+    {
+      "type": "subtitle"
+    },
+    {
+      "type": "text"
+    },
+    {
+      "type": "button"
+    },
+    {
+      "type": "_accent_line"
+    }
+  ],
+  "presets": [
+    {
+      "name": "Rich Content",
+      "blocks": [
+        {
+          "type": "subtitle",
+          "settings": {
+            "text": "Section label"
+          }
+        },
+        {
+          "type": "heading",
+          "settings": {
+            "heading_text": "A clear, confident headline",
+            "heading_tag": "h2"
+          }
+        },
+        {
+          "type": "text",
+          "settings": {
+            "paragraph_text": "<p>Use this space for a supporting sentence or two that explains the value in plain language.</p>"
+          }
+        }
+      ]
+    }
+  ]
+}
+{% endschema %}

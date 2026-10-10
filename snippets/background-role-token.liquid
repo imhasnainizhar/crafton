@@ -1,0 +1,11 @@
+{%- comment -%}
+  Render contract:
+  - key: base or surface. Resolves a background role from the
+    active color scheme.
+  Schema: none
+{%- endcomment -%}
+{%- if key == 'surface' -%}
+  var(--color-surface)
+{%- else -%}
+  var(--color-base)
+{%- endif -%}

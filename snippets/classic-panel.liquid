@@ -1,0 +1,269 @@
+{% doc %}
+  Classic Panel (`cls-`) — one panel of cards in a classic section (Featured
+  Products, Featured Collection, Classic Collection Tabs, Featured Articles,
+  Featured Blogs): a grid or a native scroll-snap carousel per breakpoint,
+  plus previous / next arrows for a desktop carousel. The section captures its
+  cards (each wrapped in `.cls-slide`) and passes them in as `items`. Layout is
+  decided by the host's `cls--m-*` / `cls--d-*` classes and its
+  --cls-cols-* / --cls-view-mobile properties; assets/classic-tabs.js opens the
+  panel and drives the arrows. This file also holds the family's static
+  layout styles.
+
+  @param {string} id - section.id, makes the panel id unique
+  @param {number} index - 0-based position of the panel in the section
+  @param {string} items - the captured `.cls-slide` elements
+  @param {boolean} [active] - true renders the panel open (the first one)
+  @param {boolean} [arrows] - true renders the desktop previous / next arrows
+  @param {string} [motion] - entrance classes for the card track (snippets/motion-reveal.liquid, part 'class', group)
+
+  @example
+  {% render 'classic-panel', id: section.id, index: 0, items: items, active: true, arrows: arrows, motion: motion %}
+{% enddoc %}
+<div
+  class="cls-panel{% if active %} is-active{% endif %}"
+  id="cls-panel-{{ id }}-{{ index }}"
+  data-cls-panel
+>
+  <div class="cls-viewport" data-cls-viewport>
+    <div class="cls-track {{ motion }}" data-cls-track>
+      {{- items -}}
+    </div>
+  </div>
+
+  {%- if arrows -%}
+    <div class="cls-arrows" data-cls-arrows hidden>
+      <button
+        type="button"
+        class="cls-arrow cls-arrow--prev"
+        data-cls-prev
+        aria-label="{{ 'general.slider.previous_slide' | t }}"
+      >
+        {{- 'icon-arrow.svg' | inline_asset_content -}}
+      </button>
+      <button
+        type="button"
+        class="cls-arrow cls-arrow--next"
+        data-cls-next
+        aria-label="{{ 'general.slider.next_slide' | t }}"
+      >
+        {{- 'icon-arrow.svg' | inline_asset_content -}}
+      </button>
+    </div>
+  {%- endif -%}
+</div>
+
+{% stylesheet %}
+  .cls {
+    --cls-hover-room: 0.75rem;
+    display: block;
+    position: relative;
+    background-color: var(--color-base);
+    color: var(--color-text);
+    padding-block: var(--ds-section-padding-mobile);
+    overflow-x: clip;
+    overflow-y: visible;
+  }
+
+  .cls__inner {
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    gap: var(--ds-layout-gap-mobile);
+    width: 100%;
+    max-width: var(--ds-section-width-mobile);
+    margin-inline: auto;
+    padding-inline: var(--ds-layout-gutter-mobile);
+  }
+
+  .cls-stage {
+    min-width: 0;
+  }
+
+  .cls-panel {
+    display: none;
+    position: relative;
+    min-width: 0;
+  }
+
+  .cls-panel.is-active {
+    display: block;
+  }
+
+  .cls-panel.is-switched {
+    animation: cls-panel-in 0.35s ease both;
+  }
+
+  @keyframes cls-panel-in {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .cls-panel.is-switched {
+      animation: none;
+    }
+  }
+
+  .cls-track {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+  }
+
+  .cls-slide {
+    box-sizing: border-box;
+    min-width: 0;
+  }
+
+  .cls-viewport {
+    scrollbar-width: none;
+  }
+
+  .cls-viewport::-webkit-scrollbar {
+    display: none;
+  }
+
+  .cls--m-grid .cls-track {
+    display: grid;
+    grid-template-columns: repeat(var(--cls-cols-mobile, 2), minmax(0, 1fr));
+    gap: var(--ds-item-gap-mobile);
+  }
+
+  /* A scroller clips its overflow, so a carousel gets room around its cards
+     for the hover lift: padding, taken back by an equal negative margin so the
+     cards still line up with the content edge at rest. */
+  .cls--m-carousel .cls-viewport {
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scroll-snap-type: x mandatory;
+    padding: var(--cls-hover-room);
+    margin: calc(-1 * var(--cls-hover-room));
+    scroll-padding-inline: var(--cls-hover-room);
+  }
+
+  .cls--m-carousel .cls-track {
+    display: flex;
+    gap: var(--ds-item-gap-mobile);
+  }
+
+  .cls--m-carousel .cls-slide {
+    flex: 0 0 calc((100% - (var(--cls-view-mobile, 1.15) - 1) * var(--ds-item-gap-mobile)) / var(--cls-view-mobile, 1.15));
+    scroll-snap-align: start;
+  }
+
+  .cls-arrows {
+    display: none;
+  }
+
+  .cls-arrow {
+    position: absolute;
+    top: 50%;
+    z-index: 2;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.75rem;
+    height: 2.75rem;
+    padding: 0;
+    color: var(--color-heading);
+    background-color: var(--color-base);
+    border: 1px solid var(--color-border);
+    border-radius: 999px;
+    cursor: pointer;
+    transform: translateY(-50%);
+    transition: opacity 0.2s ease, color 0.2s ease, background-color 0.2s ease, border-color 0.2s ease;
+  }
+
+  .cls-arrow--prev {
+    inset-inline-start: 0.75rem;
+  }
+
+  .cls-arrow:hover {
+    color: var(--color-accent-contrast);
+    background-color: var(--color-accent);
+    border-color: var(--color-accent-border);
+  }
+
+  .cls-arrow--next {
+    inset-inline-end: 0.75rem;
+  }
+
+  .cls-arrow svg {
+    width: 0.875rem;
+    height: auto;
+  }
+
+  .cls-arrow--prev svg {
+    transform: rotate(180deg);
+  }
+
+  .cls-arrow:disabled {
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .cls-arrow:focus-visible {
+    outline: 2px solid var(--color-heading);
+    outline-offset: 2px;
+  }
+
+  @media (min-width: 768px) {
+    .cls {
+      padding-block: var(--ds-section-padding-desktop);
+    }
+
+    .cls__inner {
+      gap: var(--ds-layout-gap-desktop);
+      max-width: var(--ds-section-width-desktop);
+      padding-inline: var(--ds-layout-gutter-desktop);
+    }
+
+    .cls--d-grid .cls-viewport {
+      overflow: visible;
+      scroll-snap-type: none;
+      padding: 0;
+      margin: 0;
+    }
+
+    .cls--d-grid .cls-track {
+      display: grid;
+      grid-template-columns: repeat(var(--cls-cols-desktop, 4), minmax(0, 1fr));
+      gap: var(--ds-item-gap-desktop);
+    }
+
+    .cls--d-grid .cls-slide {
+      flex: none;
+    }
+
+    .cls--d-carousel .cls-viewport {
+      overflow-x: auto;
+      overscroll-behavior-x: contain;
+      scroll-snap-type: x mandatory;
+      padding: var(--cls-hover-room);
+      margin: calc(-1 * var(--cls-hover-room));
+      scroll-padding-inline: var(--cls-hover-room);
+    }
+
+    .cls--d-carousel .cls-track {
+      display: flex;
+      gap: var(--ds-item-gap-desktop);
+    }
+
+    .cls--d-carousel .cls-slide {
+      flex: 0 0 calc((100% - (var(--cls-cols-desktop, 4) - 1) * var(--ds-item-gap-desktop)) / var(--cls-cols-desktop, 4));
+      scroll-snap-align: start;
+    }
+
+    .cls--d-carousel .cls-arrows {
+      display: block;
+    }
+
+    .cls--d-carousel .cls-arrows[hidden] {
+      display: none;
+    }
+  }
+{% endstylesheet %}

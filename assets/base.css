@@ -1,213 +1,485 @@
-/** Hello world block */
-.welcome {
-  display: grid;
-  grid-template-columns: var(--content-grid);
-  background-color: #f6f6f7;
-  padding: 72px 0;
+:root {
+  --heading-size-factor: 1;
+  --subtitle-size-factor: 1;
+  --text-size-factor: 1;
+
+  /* TV / wide-screen enhancement. It is zero below 1920px, so the existing
+     phone and desktop typography scale remains unchanged. */
+  --tv-font-bump: clamp(0px, calc((100vw - 1920px) / 100), 2rem);
+  --tv-content-gutter: clamp(1rem, 2vw, 4rem);
+
+  /* Alignment defaults — inherited by child blocks, overridable per-section.
+     Layout blocks consume these with fallbacks: align-items/justify-content
+     use --align-x, text-align uses --text-align. Blocks may override via
+     alignment inherit checkbox + alignment setting. */
+  --align-x: center;
+  --text-align: center;
+
+  --spacing-factor-vertical: 1;
+  --spacing-factor-horizontal: 1;
+
+  /* Mode-aware multipliers. design-system-vars.liquid re-emits these per
+     section scope; Minimal mode zeroes them. Gutters and section width are
+     no longer mirrored here -- consume --ds-layout-gutter-* and
+     --ds-section-width-* directly. */
+  --layout-padding-scale-mobile: 1;
+  --layout-padding-scale-desktop: 1;
+  --layout-gap-grid-mobile: 1;
+  --layout-gap-grid-desktop: 1;
+  --layout-gap-swiper-mobile: 1;
+  --layout-gap-swiper-desktop: 1;
+
+  /* Design System resolved-token fallbacks. layout/theme.liquid supplies the
+     active preset values and sections may override the same variables. */
+  --ds-section-padding-mobile: var(--space-lg);
+  --ds-section-padding-desktop: var(--space-xl);
+  --ds-layout-gap-mobile: var(--space-sm);
+  --ds-layout-gap-desktop: var(--space-md);
+  --ds-layout-gutter-mobile: var(--space-md);
+  --ds-layout-gutter-desktop: var(--space-lg);
+  /* Cap is opt-in (Theme settings > Layout > Enable Section Width, off by default), so the
+     fallback must not cap either — otherwise a scope that renders without
+     theme.liquid's :root gets a width limit nobody asked for. */
+  --ds-section-width-mobile: none;
+  --ds-section-width-desktop: none;
+  --ds-carousel-cap-mobile: none;
+  --ds-carousel-cap-desktop: none;
+  --ds-item-gap-mobile: 16px;
+  --ds-item-gap-desktop: 24px;
+  --ds-item-radius-mobile: 12px;
+  --ds-item-radius-desktop: 12px;
+  --ds-layout-radius-mobile: 16px;
+  --ds-layout-radius-desktop: 24px;
+  --ds-item-shadow-mobile: none;
+  --ds-item-shadow-desktop: none;
+  --ds-item-border-width-mobile: 1px;
+  --ds-item-border-width-desktop: 1px;
+  --ds-layout-border-width-mobile: 1px;
+  --ds-layout-border-width-desktop: 1px;
+  --ds-item-border-width: var(--ds-item-border-width-mobile);
+  --ds-layout-border-width: var(--ds-layout-border-width-mobile);
+  --ds-section-padding: var(--ds-section-padding-mobile);
+  --ds-layout-spacing: var(--ds-layout-gap-mobile);
+  --ds-layout-gutter: var(--ds-layout-gutter-mobile);
+  --ds-layout-cap: var(--ds-section-width-mobile);
+  --ds-item-gap: var(--ds-item-gap-mobile);
+  --ds-item-radius: var(--ds-item-radius-mobile);
+  --ds-layout-radius: var(--ds-layout-radius-mobile);
+  --ds-item-shadow: var(--ds-item-shadow-mobile);
+
+  /* Fluid spacing scale — one clamp() per token, declared once here. Dynamic
+     blocks reference var(--space-*) directly (no per-block factor). Each token
+     interpolates from a mobile floor to a desktop ceiling with viewport, so a
+     single control value scales responsively without a 768px step. */
+  --space-xs: clamp(0.5rem, 0.4rem + 0.3vw, 0.75rem);
+  --space-sm: clamp(0.75rem, 0.6rem + 0.5vw, 1rem);
+  --space-md: clamp(1rem, 0.8rem + 0.8vw, 1.5rem);
+  --space-lg: clamp(1.5rem, 1.2rem + 1vw, 2.5rem);
+  --space-xl: clamp(2rem, 1.5rem + 2vw, 4rem);
+  --space-2xl: clamp(3rem, 2rem + 3vw, 6rem);
+
+  /* Card constants — declared once so card and Card Styles
+     (and snippets/shadow-token.liquid) share one definition instead of
+     duplicating the literal strings. Shadow colour comes from the active
+     scheme's --color-card-shadow role. */
+  --card-hover-lift: translateY(-5px) scale(1.02);
+  --card-shadow-sm: 0 2px 8px
+    color-mix(in srgb, var(--color-card-shadow, #121212) 12%, transparent);
+  --card-shadow-md: 0 6px 20px
+    color-mix(in srgb, var(--color-card-shadow, #121212) 15%, transparent);
+  --card-shadow-lg: 0 12px 34px
+    color-mix(in srgb, var(--color-card-shadow, #121212) 22%, transparent);
+
 }
 
-.welcome-content {
-  grid-column: 2;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 1rem;
-  width: 100%;
-  padding: 0 24px;
+/* Carousel hover bleed — the permanent fix for hovered cards getting cut.
+   CSS Overflow 3 lets visible/clip pair per axis: clip horizontally (hide
+   off-screen slides) while --card-hover-lift / shadows escape vertically.
+   One rule covers every current and future <container-carousel>; no
+   per-container padding compensation needed. Local styles must NOT redeclare
+   overflow on .swiper (higher specificity would override this).
+   overflow-clip-margin gives side headroom for scale, capped by the gap so
+   the next slide never peeks when snapped; progressive (Safari drops it —
+   worst case a ~3px side clip on edge-flush slides mid-scale).
+   Browsers without `clip` drop both declarations and keep swiper-bundle's
+   overflow: hidden (previous behavior).
+   Known limit: a .layout-wrapper with border-radius clips via its own
+   overflow: hidden for the radius — inherent, unaffected here. */
+container-carousel .swiper {
+  overflow-x: clip;
+  overflow-y: visible;
+  overflow-clip-margin: min(var(--carousel-gap, 0px), 12px);
+}
+/* Opt-in full-bleed carousel mode. The hosting section remains responsible
+   for the viewport clip; this only lets the scroller cross its layout rail. */
+container-carousel[data-carousel-bleed="true"] .swiper,
+dynamic-carousel[data-carousel-bleed="true"] .swiper {
+  overflow: visible;
+  overflow-clip-margin: 0;
+}
+/* A lifted card overlaps its neighbours instead of sliding under them. */
+container-carousel .swiper-slide:hover {
+  z-index: 2;
 }
 
-.welcome-description {
-  max-width: 80ch;
-  line-height: 1.4;
-  margin-top: 1.5rem;
-}
-
-.icon {
-  width: 300px;
-}
-
-.highlights {
-  display: grid;
-  gap: 2rem;
-  grid-template-columns: repeat(4, 1fr);
-  margin-top: 50px;
-}
-
-@media (max-width: 1100px) {
-  .highlights {
-    grid-template-columns: 1fr;
+/* Mobile fallback defaults for the spacing factors. Theme settings override
+   these in layout/theme.liquid; the password page (which loads base.css
+   without that override) relies on these. */
+@media screen and (max-width: 768px) {
+  :root {
+    --spacing-factor-vertical: 1;
+    --spacing-factor-horizontal: 1;
   }
 }
 
-.highlight {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-  padding: 24px;
-  border-radius: 8px;
-  background-color: #eef3ff;
-  color: rgb(92, 95, 98);
-  line-height: 1.4;
+/* ---------------------------------------------------------------------------
+   Type scale — a 7-step ladder per role, in absolute pixels.
+
+   Every step is sized by linear interpolation between two viewport anchors
+   (375px and 1440px), matching snippets/fluid-clamp.liquid. There is no
+   merchant-facing growth factor: the middle term is pure maths.
+
+   Role size factors scale the already-clamped result, so they move the whole
+   curve without distorting either anchor. Accent deliberately has no factor.
+
+   Heading tags do NOT pick a step — blocks choose their own via a Size
+   dropdown. The --fs-h1..h6 aliases below exist for bare HTML and for the
+   many components that still read the legacy token names.
+   --------------------------------------------------------------------------- */
+:root {
+  /* heading */
+  --fs-heading-xxs: calc(
+    clamp(14px, calc(14px + 2 * ((100vw - 375px) / 1065)), 16px) *
+      var(--heading-size-factor, 1) + var(--tv-font-bump, 0px)
+  );
+  --fs-heading-xs: calc(
+    clamp(16px, calc(16px + 2 * ((100vw - 375px) / 1065)), 18px) *
+      var(--heading-size-factor, 1) + var(--tv-font-bump, 0px)
+  );
+  --fs-heading-sm: calc(
+    clamp(18px, calc(18px + 4 * ((100vw - 375px) / 1065)), 22px) *
+      var(--heading-size-factor, 1) + var(--tv-font-bump, 0px)
+  );
+  --fs-heading-md: calc(
+    clamp(22px, calc(22px + 6 * ((100vw - 375px) / 1065)), 28px) *
+      var(--heading-size-factor, 1) + var(--tv-font-bump, 0px)
+  );
+  --fs-heading-lg: calc(
+    clamp(26px, calc(26px + 10 * ((100vw - 375px) / 1065)), 36px) *
+      var(--heading-size-factor, 1) + var(--tv-font-bump, 0px)
+  );
+  --fs-heading-xl: calc(
+    clamp(32px, calc(32px + 16 * ((100vw - 375px) / 1065)), 48px) *
+      var(--heading-size-factor, 1) + var(--tv-font-bump, 0px)
+  );
+  --fs-heading-xxl: calc(
+    clamp(40px, calc(40px + 24 * ((100vw - 375px) / 1065)), 64px) *
+      var(--heading-size-factor, 1) + var(--tv-font-bump, 0px)
+  );
+
+  /* subtitle */
+  --fs-subtitle-xxs: calc(
+    clamp(10px, calc(10px + 1 * ((100vw - 375px) / 1065)), 11px) *
+      var(--subtitle-size-factor, 1) + var(--tv-font-bump, 0px)
+  );
+  --fs-subtitle-xs: calc(
+    clamp(11px, calc(11px + 1 * ((100vw - 375px) / 1065)), 12px) *
+      var(--subtitle-size-factor, 1) + var(--tv-font-bump, 0px)
+  );
+  --fs-subtitle-sm: calc(
+    clamp(13px, calc(13px + 1 * ((100vw - 375px) / 1065)), 14px) *
+      var(--subtitle-size-factor, 1) + var(--tv-font-bump, 0px)
+  );
+  --fs-subtitle-md: calc(
+    clamp(15px, calc(15px + 1 * ((100vw - 375px) / 1065)), 16px) *
+      var(--subtitle-size-factor, 1) + var(--tv-font-bump, 0px)
+  );
+  --fs-subtitle-lg: calc(
+    clamp(17px, calc(17px + 1 * ((100vw - 375px) / 1065)), 18px) *
+      var(--subtitle-size-factor, 1) + var(--tv-font-bump, 0px)
+  );
+  --fs-subtitle-xl: calc(
+    clamp(20px, calc(20px + 4 * ((100vw - 375px) / 1065)), 24px) *
+      var(--subtitle-size-factor, 1) + var(--tv-font-bump, 0px)
+  );
+  --fs-subtitle-xxl: calc(
+    clamp(26px, calc(26px + 6 * ((100vw - 375px) / 1065)), 32px) *
+      var(--subtitle-size-factor, 1) + var(--tv-font-bump, 0px)
+  );
+
+  /* text */
+  --fs-text-xxs: calc(
+    clamp(10px, calc(10px + 1 * ((100vw - 375px) / 1065)), 11px) *
+      var(--text-size-factor, 1) + var(--tv-font-bump, 0px)
+  );
+  --fs-text-xs: calc(
+    clamp(11px, calc(11px + 1 * ((100vw - 375px) / 1065)), 12px) *
+      var(--text-size-factor, 1) + var(--tv-font-bump, 0px)
+  );
+  --fs-text-sm: calc(
+    clamp(13px, calc(13px + 1 * ((100vw - 375px) / 1065)), 14px) *
+      var(--text-size-factor, 1) + var(--tv-font-bump, 0px)
+  );
+  --fs-text-md: calc(
+    clamp(15px, calc(15px + 1 * ((100vw - 375px) / 1065)), 16px) *
+      var(--text-size-factor, 1) + var(--tv-font-bump, 0px)
+  );
+  --fs-text-lg: calc(
+    clamp(17px, calc(17px + 1 * ((100vw - 375px) / 1065)), 18px) *
+      var(--text-size-factor, 1) + var(--tv-font-bump, 0px)
+  );
+  --fs-text-xl: calc(
+    clamp(20px, calc(20px + 4 * ((100vw - 375px) / 1065)), 24px) *
+      var(--text-size-factor, 1) + var(--tv-font-bump, 0px)
+  );
+  --fs-text-xxl: calc(
+    clamp(26px, calc(26px + 6 * ((100vw - 375px) / 1065)), 32px) *
+      var(--text-size-factor, 1) + var(--tv-font-bump, 0px)
+  );
+
+  /* Legacy aliases — many components still read these names. Keep them. */
+  --fs-h1: var(--fs-heading-xxl);
+  --fs-h2: var(--fs-heading-xl);
+  --fs-h3: var(--fs-heading-lg);
+  --fs-h4: var(--fs-heading-md);
+  --fs-h5: var(--fs-heading-sm);
+  --fs-h6: var(--fs-heading-xs);
+  --fs-display: var(--fs-heading-xxl);
+
+  --fs-subtitle: var(--fs-subtitle-md);
+
+  --fs-body-lg: var(--fs-text-lg);
+  --fs-body: var(--fs-text-md);
+  --fs-body-sm: var(--fs-text-sm);
+  --fs-caption: var(--fs-text-xs);
+
+  /* Line height — global per role; blocks may override their own. */
+  --lh-heading: 1.2;
+  --lh-subtitle: 1.3;
+  --lh-body: 1.5;
+
+  /* Letter spacing — role based, global only, never overridable per block. */
+  --ls-heading: 0em;
+  --ls-subtitle: 0em;
+  --ls-text: 0em;
 }
 
-.highlight > * + * {
-  margin-top: 1rem;
+h1 {
+  font-size: var(--fs-h1);
 }
 
-.highlight h3 {
-  font-size: 1rem;
-  color: rgb(32, 34, 35);
-}
-
-.highlight-description {
-  flex: 1 1;
-}
-
-/**
- * Flashes a liquid-tip after the "show another tip" button swaps in fresh
- * content through partial rendering. The brief highlight pulse draws the
- * eye to the new tip so the change is noticeable without a page reload.
- */
-@keyframes highlight-flash {
-  from {
-    background-color: #c9d9ff;
+@media (min-width: 768px) {
+  :root {
+    --ds-section-padding: var(--ds-section-padding-desktop);
+    --ds-layout-spacing: var(--ds-layout-gap-desktop);
+    --ds-layout-gutter: var(--ds-layout-gutter-desktop);
+    --ds-layout-cap: var(--ds-section-width-desktop);
+    --ds-item-gap: var(--ds-item-gap-desktop);
+    --ds-item-radius: var(--ds-item-radius-desktop);
+    --ds-layout-radius: var(--ds-layout-radius-desktop);
+    --ds-item-shadow: var(--ds-item-shadow-desktop);
+    --ds-item-border-width: var(--ds-item-border-width-desktop);
+    --ds-layout-border-width: var(--ds-layout-border-width-desktop);
   }
-  to {
-    background-color: transparent;
-  }
 }
 
-.highlight-description--flash {
-  animation: highlight-flash 0.6s ease-out;
-  border-radius: 4px;
+h2 {
+  font-size: var(--fs-h2);
 }
 
-.highlight a,
-.welcome-content a {
-  display: flex;
-  width: fit-content;
-  background-color: rgb(250, 251, 251);
-  box-shadow: rgba(0, 0, 0, 0.2) 0px -3px 0px 0px inset, rgba(255, 255, 255, 0.9) 0px 2px 0px 0px inset;
-  border: 1px solid rgb(140, 145, 150);
-  border-radius: 4px;
-  color: rgb(92, 95, 98);
-  padding: 3px 10px 5px;
-  text-decoration: none;
-  cursor: pointer;
+h3 {
+  font-size: var(--fs-h3);
 }
 
-/** Text block */
-.text {
-  text-align: var(--text-align);
-}
-.text--title {
-  font-size: 2rem;
-  font-weight: 700;
-}
-.text--subtitle {
-  font-size: 1.5rem;
+h4 {
+  font-size: var(--fs-h4);
 }
 
-/** Collection page */
-.collection-products {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(500px, 1fr));
+h5 {
+  font-size: var(--fs-h5);
 }
 
-/** Collections list page */
-.collections {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(min(var(--collection-card-size), 100%), 1fr));
-  gap: var(--grid-gap);
+h6 {
+  font-size: var(--fs-h6);
 }
-.collections--compact {
-  --collection-card-size: 160px;
+
+p {
+  font-size: var(--fs-body);
 }
-.collections--full {
-  --collection-card-size: 280px;
+
+.user-select-none {
+  user-select: none;
+  -webkit-user-select: none;
 }
-.collection-card {
-  display: flex;
-  flex-direction: column;
+
+/* Placeholder no-block */
+.placeholder-noblocks {
   width: 100%;
-}
-
-/** Search page */
-.search-results {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-}
-.search-results .prev,
-.search-results .page,
-.search-results .next {
-  grid-column: 1 / -1;
-}
-
-/** Header */
-header {
-  height: 5rem;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-header a {
-  position: relative;
-  text-decoration: none;
-  color: var(--color-foreground);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-header a sup {
-  position: absolute;
-  left: 100%;
-  overflow: hidden;
-  max-width: var(--page-margin);
-}
-header svg {
-  width: 2rem;
-}
-header .header__menu,
-header .header__icons {
-  display: flex;
-  gap: 1rem;
-}
-
-/** Footer */
-footer {
-  display: flex;
-  justify-content: space-between;
-  margin-top: 2rem;
-}
-footer a {
-  text-decoration: none;
-  color: var(--color-foreground);
-}
-footer .footer__links,
-footer .footer__payment {
-  display: flex;
-  gap: 1rem;
-}
-
-/** Image snippet */
-.image {
-  display: block;
-  position: relative;
-  overflow: hidden;
-  width: 100%;
-  height: auto;
-}
-
-.image > img {
-  width: 100%;
-  height: auto;
-}
-
-/** Gift card template */
-.template-gift-card main {
+  padding: calc(var(--ds-layout-gutter-mobile) / 2);
   text-align: center;
 }
 
-.template-gift-card main img {
-  display: unset;
+@media (min-width: 786px) {
+  /* Placeholder no-block */
+  .placeholder-noblocks {
+    width: 100%;
+    padding: calc(var(--ds-layout-gutter-desktop) / 2);
+    text-align: center;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Page shell — the wrapper of the main-* template sections (product, cart,
+   blog, search …). Vertical padding, width cap and gutter come from the
+   resolved Design System; the color scheme class sits on the same element.
+   --------------------------------------------------------------------------- */
+.page-shell {
+  padding-block: var(--ds-section-padding-mobile);
+  background-color: var(--color-base);
+  color: var(--color-text);
+}
+
+.page-shell__inner {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: var(--ds-section-width-mobile);
+  margin-inline: auto;
+  padding-inline: var(--ds-layout-gutter-mobile);
+}
+
+.page-shell--narrow .page-shell__inner {
+  max-width: min(48rem, var(--ds-section-width-mobile));
+}
+
+.page-shell--center .page-shell__inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  text-align: center;
+}
+
+.page-shell__title {
+  margin-block-end: 1rem;
+  color: var(--color-heading);
+  font-size: var(--fs-heading-lg);
+  letter-spacing: var(--ls-heading);
+  text-transform: var(--heading-text-transform);
+}
+
+.page-shell__rte {
+  color: var(--color-text);
+  line-height: var(--lh-body);
+}
+
+.page-shell__rte > * + * {
+  margin-block-start: 1em;
+}
+
+.page-shell__rte a,
+.page-shell__link {
+  color: var(--color-link);
+  text-underline-offset: 0.2em;
+}
+
+.page-shell__form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  width: 100%;
+  max-width: 32rem;
+}
+
+.page-shell__form :is(input, textarea) {
+  padding: 0.75rem 1rem;
+  font: inherit;
+  color: var(--color-text);
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--ds-item-radius-mobile);
+}
+
+.page-shell__button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 3rem;
+  padding: 0.75rem 1.5rem;
+  font: inherit;
+  font-weight: 600;
+  color: var(--color-accent-contrast);
+  background-color: var(--color-accent);
+  border: 1px solid var(--color-accent-border);
+  border-radius: var(--ds-item-radius-mobile);
+  cursor: pointer;
+}
+
+.page-shell__button--secondary {
+  color: var(--color-heading);
+  background-color: transparent;
+  border-color: var(--color-border-strong);
+}
+
+.page-shell__button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.page-shell__pagination {
+  display: flex;
+  justify-content: center;
+  gap: 0.75rem;
+  margin-block-start: var(--ds-layout-gap-mobile);
+}
+
+.page-shell__pagination a {
+  color: var(--color-link);
+}
+
+@media (min-width: 768px) {
+  .page-shell {
+    padding-block: var(--ds-section-padding-desktop);
+  }
+
+  .page-shell__inner {
+    max-width: var(--ds-section-width-desktop);
+    padding-inline: var(--ds-layout-gutter-desktop);
+  }
+
+  .page-shell--narrow .page-shell__inner {
+    max-width: min(48rem, var(--ds-section-width-desktop));
+  }
+
+  .page-shell__title {
+    font-size: var(--fs-heading-xl);
+  }
+
+  .page-shell__button,
+  .page-shell__form :is(input, textarea) {
+    border-radius: var(--ds-item-radius-desktop);
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Card hover — one hover layer over the card components, kept here so the
+   Elewind card files stay untouched. The visible item lifts with the shared
+   --card-hover-lift and casts a soft shadow in the scheme's shadow colour;
+   each card keeps its own image zoom (and the collection card its arrow).
+     Product card (.opc-card), collection card (.clc-card): the card.
+     Article / blog cover cards: the card when framed (surface or overlay),
+     the thumbnail when bare.
+   Pointer devices only; off under reduced motion and "Disable all animations".
+   --------------------------------------------------------------------------- */
+@media (hover: hover) and (prefers-reduced-motion: no-preference) {
+  :is(.opc-card, .clc-card, .arc--framed, .bcc--framed, .arc--bare .arc__media, .bcc--bare .bcc__media) {
+    transition:
+      transform 0.45s cubic-bezier(0.2, 0.7, 0.2, 1),
+      box-shadow 0.45s cubic-bezier(0.2, 0.7, 0.2, 1);
+  }
+
+  html:not(.motion-disabled) :is(.opc-card, .clc-card, .arc--framed, .bcc--framed):is(:hover, :focus-within),
+  html:not(.motion-disabled) :is(.arc--bare, .bcc--bare):is(:hover, :focus-within) :is(.arc__media, .bcc__media) {
+    transform: var(--card-hover-lift);
+    box-shadow: 0 1rem 2rem -1rem color-mix(in srgb, var(--color-shadow) 45%, transparent);
+  }
 }
