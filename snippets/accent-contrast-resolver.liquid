@@ -1,0 +1,89 @@
+{% comment %}
+  Accent Contrast Resolver
+  -----------------------------------------------------------------------------
+
+  Purpose:
+  Applies the currently resolved accent pair to the element as foreground
+  and background colors.
+
+  This snippet expects the parent/current scope to already expose:
+
+    --color-accent
+    --color-accent-contrast
+
+  These are created by `accent-resolver`.
+
+  -----------------------------------------------------------------------------
+  REQUIRED ARGUMENT
+
+    source {Object}
+      Settings object containing `accent_contrast`.
+
+      Supported values:
+        "subtle"
+        "filled"
+
+  -----------------------------------------------------------------------------
+  TREATMENTS
+
+    subtle:
+      foreground → --color-accent
+      background → --color-accent-contrast
+
+    filled:
+      foreground → --color-accent-contrast
+      background → --color-accent
+
+  -----------------------------------------------------------------------------
+
+  SCHEMA:
+
+    {
+        "type": "select",
+        "id": "accent_contrast",
+        "label": "Accent Contrast",
+        "options": [
+            {
+                "label": "Subtle",
+                "value": "subtle"
+            },
+            {
+                "label": "Filled",
+                "value": "filled"
+            }
+        ],
+        "default": "subtle"
+    },
+
+  EXAMPLES
+
+    <div style="
+      {% render 'accent-contrast-resolver',
+        source: block.settings,
+      %}
+    ">
+        {{ label }}
+    </div>
+{% endcomment %}
+
+{% liquid
+  assign treatment = source.accent_contrast | default: 'subtle'
+
+  case treatment
+    when 'filled'
+      assign resolved_background = 'var(--color-accent)'
+      assign resolved_foreground = 'var(--color-accent-contrast)'
+
+    when 'subtle'
+      assign resolved_background = 'var(--color-accent-contrast)'
+      assign resolved_foreground = 'var(--color-accent)'
+
+    else
+      assign resolved_background = 'var(--color-accent-contrast)'
+      assign resolved_foreground = 'var(--color-accent)'
+  endcase
+%}
+
+background-color: {{ resolved_background }};
+
+color: {{ resolved_foreground }};

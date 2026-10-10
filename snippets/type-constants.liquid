@@ -1,0 +1,21 @@
+{%- comment -%}
+  Type Constants
+
+  Single source for the viewport anchors used by every fluid size in the theme.
+  Change a value here and every clamp() in the theme re-derives from it.
+
+  Parameters:
+  - key {String} Required. 'min_viewport' | 'max_viewport'.
+
+  Usage:
+    {%- capture min_vw -%}{%- render 'type-constants', key: 'min_viewport' -%}{%- endcapture -%}
+
+  Only snippets/fluid-clamp.liquid should need these directly; callers pass a
+  min/max pair and let that snippet do the interpolation.
+
+  Schema: none.
+{%- endcomment -%}
+{%- case key -%}
+  {%- when 'max_viewport' -%}1440
+  {%- else -%}375
+{%- endcase -%}

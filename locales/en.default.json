@@ -17,7 +17,10 @@
     "checkout": "Checkout",
     "title": "Cart",
     "update": "Update",
-    "remove": "Remove"
+    "remove": "Remove",
+    "quantity": "Quantity",
+    "subtotal": "Subtotal",
+    "empty": "Your cart is empty."
   },
   "customers": {
     "login": {
@@ -28,7 +31,8 @@
     }
   },
   "collections": {
-    "title": "Collections"
+    "title": "Collections",
+    "empty": "No products found in this collection."
   },
   "gift_card": {
     "add_to_apple_wallet": "Add to Apple Wallet",
@@ -36,25 +40,6 @@
     "expired": "This gift card has expired",
     "expires_on": "Expires on {{ expires_on }}",
     "use_at_checkout": "Use this gift card at checkout"
-  },
-  "hello_world": {
-    "title": "Hello, World!",
-    "intro": "The Skeleton theme is a minimal, carefully structured Shopify theme designed to help you quickly get started. Designed with modularity, maintainability, and Shopify's best practices in mind.",
-    "description": "Themes shape the online store experience for merchants and their customers. Build fast, flexible themes at scale using Liquid, Shopify's theme templating language, along with HTML, CSS, JavaScript, and JSON.",
-    "key_concepts_title": "Key Concepts",
-    "key_concepts_body": "Shopify themes are a package of template files, building blocks, and supporting assets. Use these building blocks to create modular, customizable themes.",
-    "key_concepts_link": "Learn more about key concepts",
-    "liquid_title": "Liquid",
-    "liquid_body": "The Liquid templating language is the backbone of Shopify themes, and is used to load dynamic content on storefronts. Extend Liquid objects to store and present custom data using metafields.",
-    "liquid_link": "View the Liquid reference",
-    "best_practices_title": "Best Practices",
-    "best_practices_body": "To optimize your theme development experience, Shopify has established a set of best practices that you can refer to when developing your theme and setting up your toolchains and processes.",
-    "best_practices_link": "Follow best practices",
-    "liquid_tips_title": "Liquid tips",
-    "liquid_tips_refresh": "Show another tip",
-    "liquid_tips_1": "Prefer whitespace control with {%- -%} to keep rendered markup clean",
-    "liquid_tips_2": "Reach for the render tag instead of include so each snippet gets its own scope",
-    "liquid_tips_3": "Assign expensive lookups to a variable once and reuse it across the template"
   },
   "password": {
     "title": "This shop is private",
@@ -67,5 +52,92 @@
     "submit": "Search",
     "no_results_html": "No results found for {{ terms }}",
     "results_for_html": "{{ count }} results found for {{ terms }}"
+  },
+  "accessibility": {
+    "skip_to_content": "Skip to content"
+  },
+  "general": {
+    "meta": {
+      "tagged": "tagged \"{{ tags }}\"",
+      "page": "Page {{ page }}"
+    },
+    "header": {
+      "menu": "Main menu",
+      "account": "Account",
+      "cart": "Cart",
+      "cart_count": {
+        "one": "{{ count }} item",
+        "other": "{{ count }} items"
+      }
+    },
+    "footer": {
+      "menu": "Footer menu"
+    },
+    "pagination": {
+      "label": "Pagination"
+    },
+    "slider": {
+      "previous_slide": "Slide left",
+      "next_slide": "Slide right"
+    }
+  },
+  "products": {
+    "product": {
+      "variant": "Variant",
+      "quantity": "Quantity",
+      "add_to_cart": "Add to cart",
+      "sold_out": "Sold out"
+    }
+  },
+  "onboarding": {
+    "product_title": "Example product title",
+    "collection_title": "Your collection's name"
+  },
+  "theme": {
+    "components": {
+      "product_card": {
+        "add_to_cart": "Add {{ title }} to cart"
+      },
+      "collection_card": {
+        "products_count": {
+          "one": "{{ count }} product",
+          "other": "{{ count }} products"
+        }
+      },
+      "article_card": {
+        "minutes_read": {
+          "one": "{{ count }} min read",
+          "other": "{{ count }} min read"
+        },
+        "placeholder_title": "Your article title",
+        "placeholder_excerpt": "A short summary of your article appears here, pulled from its excerpt or opening lines.",
+        "placeholder_author": "Author name",
+        "read_article": "Read {{ title }}"
+      },
+      "blog_card": {
+        "placeholder_title": "Your blog",
+        "placeholder_description": "Stories, guides and news from your store.",
+        "placeholder_author": "Editorial team",
+        "posts_count": {
+          "one": "{{ count }} post",
+          "other": "{{ count }} posts"
+        },
+        "open_blog": "Open {{ title }}"
+      }
+    },
+    "sections": {
+      "classic": {
+        "tab_label": "Tab {{ number }}",
+        "sample_article_title": "Your article title",
+        "sample_article_excerpt": "Pick a blog to show your own posts here.",
+        "sample_blog_title": "Your blog title",
+        "sample_blog_excerpt": "Pick a blog for this card to show its newest post here.",
+        "articles_count": {
+          "one": "{{ count }} article",
+          "other": "{{ count }} articles"
+        },
+        "latest_article": "Latest: {{ title }}"
+      }
+    }
   }
 }

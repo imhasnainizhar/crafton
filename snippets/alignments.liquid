@@ -1,0 +1,153 @@
+{% comment %}
+  This snippet manipulates the css alignment variable tokens with breakpoint-specific support.
+  This helps a block to change alignment values for its children with separate mobile/desktop controls.
+  Because children can read only section settings not parent block settings, breaking alignment 
+  consistency through out block nesting is strictly discouraged unless necessary.
+
+  Here we use `text_alignment` type for horizontal alignment, it gives us consistent 'left', 'right' 
+  and 'center' values, and gives good setting UI to user.
+
+  BREAKPOINT-SPECIFIC SCHEMA CONTRACT:
+
+  {
+    "type": "text_alignment",
+    "id": "align_x",
+    "label": "Horizontal Alignment",
+    "default": "left"
+  },
+  {
+    "type": "select",
+    "id": "align_y",
+    "label": "Vertical Alignment",
+    "default": "top",
+    "options": [
+      { "value": "flex-start", "label": "Top" },
+      { "value": "center", "label": "Center" },
+      { "value": "flex-end", "label": "Bottom" }
+    ]
+  },
+  {
+    "type": "text_alignment",
+    "id": "align_x_mobile",
+    "label": "Horizontal Alignment (Mobile)",
+    "default": "left"
+  },
+  {
+    "type": "text_alignment", 
+    "id": "align_x_desktop",
+    "label": "Horizontal Alignment (Desktop)",
+    "default": "left"
+  },
+  {
+    "type": "select",
+    "id": "align_y_mobile",
+    "label": "Vertical Alignment (Mobile)",
+    "default": "top",
+    "options": [
+      { "value": "top", "label": "Top" },
+      { "value": "center", "label": "Center" },
+      { "value": "bottom", "label": "Bottom" }
+    ]
+  },
+  {
+    "type": "select",
+    "id": "align_y_desktop", 
+    "label": "Vertical Alignment (Desktop)",
+    "default": "top",
+    "options": [
+      { "value": "top", "label": "Top" },
+      { "value": "center", "label": "Center" },
+      { "value": "bottom", "label": "Bottom" }
+    ]
+  }
+ {% endcomment %}
+
+{% comment %}
+  Every flex variable below falls back to 'flex-start' when the source has no
+  value, or a value this snippet does not map — 'none' ("Default (in flow)"),
+  a setting the calling block does not expose, or a blank. An EMPTY custom
+  property is not the same as an undefined one: `--align-y-desktop: ;` still
+  counts as declared, so `justify-content: var(--align-y-desktop, center)`
+  substitutes to nothing, becomes invalid at computed-value time and is
+  dropped entirely — the var()'s own fallback never runs. Emitting the value
+  keeps the declaration valid and says out loud what the browser was already
+  doing.
+
+  `--text-align*` deliberately keeps passing the raw source value through: its
+  consumers rely on inheriting when it is blank.
+{% endcomment %}
+
+{% assign flex_align_x = 'flex-start' %}
+{% assign flex_align_x_mobile = 'flex-start' %}
+{% assign flex_align_x_desktop = 'flex-start' %}
+{% assign flex_align_y = 'flex-start' %}
+{% assign flex_align_y_mobile = 'flex-start' %}
+{% assign flex_align_y_desktop = 'flex-start' %}
+
+{% comment %} Horizontal Alignment {% endcomment %}
+{% if source.align_x == 'left' %}
+  {% assign flex_align_x = 'flex-start' %}
+{% elsif source.align_x == 'center' %}
+  {% assign flex_align_x = 'center' %}
+{% elsif source.align_x == 'right' %}
+  {% assign flex_align_x = 'flex-end' %}
+{% endif %}  
+
+{% comment %} Mobile horizontal alignment {% endcomment %}
+{% if source.align_x_mobile == 'left' %}
+  {% assign flex_align_x_mobile = 'flex-start' %}
+{% elsif source.align_x_mobile == 'center' %}
+  {% assign flex_align_x_mobile = 'center' %}
+{% elsif source.align_x_mobile == 'right' %}
+  {% assign flex_align_x_mobile = 'flex-end' %}
+{% endif %}
+
+{% comment %} Desktop horizontal alignment {% endcomment %}
+{% if source.align_x_desktop == 'left' %}
+  {% assign flex_align_x_desktop = 'flex-start' %}
+{% elsif source.align_x_desktop == 'center' %}
+  {% assign flex_align_x_desktop = 'center' %}
+{% elsif source.align_x_desktop == 'right' %}
+  {% assign flex_align_x_desktop = 'flex-end' %}
+{% endif %}
+
+{% comment %} Vertical Alignment {% endcomment %}
+{% if source.align_y == 'top' %}
+  {% assign flex_align_y = 'flex-start' %}
+{% elsif source.align_y == 'center' %}
+  {% assign flex_align_y = 'center' %}
+{% elsif source.align_y == 'bottom' %}
+  {% assign flex_align_y = 'flex-end' %}
+{% endif %}  
+
+{% comment %} Mobile vertical alignment {% endcomment %}
+{% if source.align_y_mobile == 'top' %}
+  {% assign flex_align_y_mobile = 'flex-start' %}
+{% elsif source.align_y_mobile == 'center' %}
+  {% assign flex_align_y_mobile = 'center' %}
+{% elsif source.align_y_mobile == 'bottom' %}
+  {% assign flex_align_y_mobile = 'flex-end' %}
+{% endif %}
+
+{% comment %} Desktop vertical alignment {% endcomment %}
+{% if source.align_y_desktop == 'top' %}
+  {% assign flex_align_y_desktop = 'flex-start' %}
+{% elsif source.align_y_desktop == 'center' %}
+  {% assign flex_align_y_desktop = 'center' %}
+{% elsif source.align_y_desktop == 'bottom' %}
+  {% assign flex_align_y_desktop = 'flex-end' %}
+{% endif %}
+
+{% comment %} Output CSS variables {% endcomment %}
+--align-x: {{ flex_align_x }};
+--text-align: {{ source.align_x }};
+--align-y: {{ flex_align_y }};
+
+
+--align-x-mobile: {{ flex_align_x_mobile }};
+--text-align-mobile: {{ source.align_x_mobile }};
+--align-y-mobile: {{ flex_align_y_mobile }};
+
+--align-x-desktop: {{ flex_align_x_desktop }};
+--text-align-desktop: {{ source.align_x_desktop }};
+--align-y-desktop: {{ flex_align_y_desktop }};

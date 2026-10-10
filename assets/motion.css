@@ -1,0 +1,142 @@
+/* ============================================================================
+   MOTION — shared CSS (assets/motion.css)
+   ----------------------------------------------------------------------------
+   The one shared stylesheet behind the theme's basic entrances
+   (snippets/motion-reveal.liquid): CSS classes + keyframes, with
+   assets/motion-reveal.js only toggling .is-offscreen / .is-inview. Ends with
+   the theme-wide off switch. No scroll scrub, parallax or split text.
+   ============================================================================ */
+
+/* ---------------------------------------------------------------------------
+   1. BASIC ENTRANCES — .motion-reveal
+   Each effect only sets its hidden state as variables; one keyframe animates
+   from that state back to the element's own styles (fill: backwards), so a
+   finished entrance leaves nothing behind and never fights hover transitions.
+   Individual translate / scale compose with the element's own `transform`.
+   --------------------------------------------------------------------------- */
+/* Defaults on every reveal element, so one nested inside another never inherits
+   its effect or stagger slot. */
+.motion-reveal {
+  --motion-reveal-name: motion-reveal;
+  --motion-reveal-o: 1;
+  --motion-reveal-x: 0px;
+  --motion-reveal-y: 0px;
+  --motion-reveal-s: 1;
+  --motion-reveal-i: 0;
+}
+
+/* Effects set their whole hidden state, so one also works as a per-item override
+   on a group's child (e.g. an Editor item with its own effect). */
+.motion-reveal--fade { --motion-reveal-name: motion-reveal; --motion-reveal-o: 0; --motion-reveal-x: 0px; --motion-reveal-y: 0px; --motion-reveal-s: 1; }
+.motion-reveal--fade-up { --motion-reveal-name: motion-reveal; --motion-reveal-o: 0; --motion-reveal-x: 0px; --motion-reveal-y: var(--motion-reveal-distance, 24px); --motion-reveal-s: 1; }
+.motion-reveal--fade-down { --motion-reveal-name: motion-reveal; --motion-reveal-o: 0; --motion-reveal-x: 0px; --motion-reveal-y: calc(-1 * var(--motion-reveal-distance, 24px)); --motion-reveal-s: 1; }
+.motion-reveal--slide { --motion-reveal-name: motion-reveal; --motion-reveal-o: 0; --motion-reveal-x: var(--motion-reveal-distance, 24px); --motion-reveal-y: 0px; --motion-reveal-s: 1; }
+.motion-reveal--scale { --motion-reveal-name: motion-reveal; --motion-reveal-o: 0; --motion-reveal-x: 0px; --motion-reveal-y: 0px; --motion-reveal-s: 0.92; }
+.motion-reveal--media-zoom-out { --motion-reveal-name: motion-reveal; --motion-reveal-o: 1; --motion-reveal-x: 0px; --motion-reveal-y: 0px; --motion-reveal-s: 1.08; }
+.motion-reveal--text-reveal { --motion-reveal-name: motion-reveal-text; --motion-reveal-o: 0.4; --motion-reveal-clip: inset(0 100% 0 0); }
+.motion-reveal--rtl { --motion-reveal-clip: inset(0 0 0 100%); }
+
+/* Stagger slot of a group's items, capped at 12 steps so long lists never wait.
+   rows / cols / top / bottom / left / right / diagonal are measured or read by
+   motion-reveal.js; an item may also set its own --motion-reveal-i / -delay. */
+.motion-reveal--group > :nth-child(2 of :not(style, script, link, template)) { --motion-reveal-i: 1; }
+.motion-reveal--group > :nth-child(3 of :not(style, script, link, template)) { --motion-reveal-i: 2; }
+.motion-reveal--group > :nth-child(4 of :not(style, script, link, template)) { --motion-reveal-i: 3; }
+.motion-reveal--group > :nth-child(5 of :not(style, script, link, template)) { --motion-reveal-i: 4; }
+.motion-reveal--group > :nth-child(6 of :not(style, script, link, template)) { --motion-reveal-i: 5; }
+.motion-reveal--group > :nth-child(7 of :not(style, script, link, template)) { --motion-reveal-i: 6; }
+.motion-reveal--group > :nth-child(8 of :not(style, script, link, template)) { --motion-reveal-i: 7; }
+.motion-reveal--group > :nth-child(9 of :not(style, script, link, template)) { --motion-reveal-i: 8; }
+.motion-reveal--group > :nth-child(10 of :not(style, script, link, template)) { --motion-reveal-i: 9; }
+.motion-reveal--group > :nth-child(11 of :not(style, script, link, template)) { --motion-reveal-i: 10; }
+.motion-reveal--group > :nth-child(n + 12 of :not(style, script, link, template)) { --motion-reveal-i: 11; }
+/* scatter: a fixed order that reads as random. */
+.motion-reveal--scatter > :nth-child(5n + 1 of :not(style, script, link, template)) { --motion-reveal-i: 2; }
+.motion-reveal--scatter > :nth-child(5n + 2 of :not(style, script, link, template)) { --motion-reveal-i: 0; }
+.motion-reveal--scatter > :nth-child(5n + 3 of :not(style, script, link, template)) { --motion-reveal-i: 4; }
+.motion-reveal--scatter > :nth-child(5n + 4 of :not(style, script, link, template)) { --motion-reveal-i: 1; }
+.motion-reveal--scatter > :nth-child(5n of :not(style, script, link, template)) { --motion-reveal-i: 3; }
+.motion-reveal--together > :nth-child(n of :not(style, script, link, template)) { --motion-reveal-i: 0; }
+
+/* A group's items: every child except stray tags, engine nodes ([data-motion], e.g.
+   a scroll-scrubbed item, animated by motion-engine.js) and opted-out items
+   (.motion-reveal--skip, e.g. an Editor item set to None). */
+@media (prefers-reduced-motion: no-preference) {
+  /* Hidden until in view. Only ever set by JS on content below the fold. */
+  .motion-reveal:not(.motion-reveal--group).is-offscreen,
+  .motion-reveal--group.is-offscreen > :not(style, script, link, template, [data-motion], .motion-reveal--skip) {
+    opacity: var(--motion-reveal-o, 1);
+    translate: var(--motion-reveal-x, 0px) var(--motion-reveal-y, 0px);
+    scale: var(--motion-reveal-s, 1);
+  }
+
+  .motion-reveal--text-reveal:not(.motion-reveal--group).is-offscreen,
+  .motion-reveal--text-reveal.motion-reveal--group.is-offscreen > :not(style, script, link, template, [data-motion], .motion-reveal--skip) {
+    clip-path: var(--motion-reveal-clip);
+  }
+
+  .motion-reveal:not(.motion-reveal--group).is-inview,
+  .motion-reveal--group.is-inview > :not(style, script, link, template, [data-motion], .motion-reveal--skip) {
+    animation: var(--motion-reveal-name, motion-reveal)
+      var(--motion-reveal-duration, 0.6s)
+      var(--motion-reveal-ease, cubic-bezier(0.22, 1, 0.36, 1))
+      calc(var(--motion-reveal-delay, 0s) + var(--motion-reveal-i, 0) * var(--motion-reveal-stagger, 0.12s))
+      backwards;
+  }
+
+  /* Hover reveal: pure CSS, and only where hover exists, so touch shows the content. */
+  @media (hover: hover) {
+    .motion-reveal--hover > :not(style, script, link, template) {
+      transition-property: opacity, translate, scale;
+      transition-duration: var(--motion-reveal-duration, 0.6s);
+      transition-timing-function: var(--motion-reveal-ease, cubic-bezier(0.22, 1, 0.36, 1));
+      transition-delay: calc(var(--motion-reveal-delay, 0s) + var(--motion-reveal-i, 0) * var(--motion-reveal-stagger, 0.12s));
+    }
+
+    .motion-reveal-host:not(:hover, :focus-within) .motion-reveal--hover > :not(style, script, link, template) {
+      opacity: var(--motion-reveal-o, 1);
+      translate: var(--motion-reveal-x, 0px) var(--motion-reveal-y, 0px);
+      scale: var(--motion-reveal-s, 1);
+      transition-delay: 0s;
+    }
+  }
+}
+
+@keyframes motion-reveal {
+  from {
+    opacity: var(--motion-reveal-o, 1);
+    translate: var(--motion-reveal-x, 0px) var(--motion-reveal-y, 0px);
+    scale: var(--motion-reveal-s, 1);
+  }
+}
+
+@keyframes motion-reveal-text {
+  from {
+    opacity: var(--motion-reveal-o, 1);
+    clip-path: var(--motion-reveal-clip, inset(0));
+    filter: blur(6px);
+  }
+  to {
+    clip-path: inset(0);
+    filter: blur(0);
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   2. GLOBAL THEME OVERRIDE
+   The root theme setting adds .motion-disabled before first paint, and the
+   motion scripts stop at bootstrap. These rules cover independent CSS
+   animations and transitions. Near-zero duration lets fill-mode animations
+   settle into their final frame instead of stranding hidden elements.
+   --------------------------------------------------------------------------- */
+html.motion-disabled,
+html.motion-disabled *,
+html.motion-disabled *::before,
+html.motion-disabled *::after {
+  scroll-behavior: auto !important;
+  animation-delay: 0s !important;
+  animation-duration: 0.001ms !important;
+  animation-iteration-count: 1 !important;
+  transition-delay: 0s !important;
+  transition-duration: 0s !important;
+}

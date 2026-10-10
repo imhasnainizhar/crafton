@@ -1,70 +1,576 @@
 {
-  "general": {
-    "404": "Not found",
-    "article": "Article",
-    "block": "Block",
-    "blog": "Blog",
-    "cart": "Cart",
-    "collection": "Collection",
-    "collections": "Collections",
-    "collection_card": "Collection card",
-    "collections_grid": "Collections grid",
-    "colors": "Colors",
-    "column": "Column",
-    "container": "Container",
-    "content": "Content",
-    "fonts": "Fonts",
-    "footer": "Footer",
-    "group": "Group",
-    "header": "Header",
-    "hello_world": "Hello world",
-    "layout": "Layout",
-    "liquid_tips": "Liquid tips",
-    "main": "Main",
-    "page": "Page",
-    "password": "Password",
-    "primary": "Primary",
-    "product": "Product",
-    "row": "Row",
-    "search": "Search",
-    "secondary": "Secondary",
-    "settings": "Settings",
-    "sidebar": "Sidebar",
-    "theme": "Theme",
-    "typography": "Typography"
-  },
-  "labels": {
-    "alignment": "Alignment",
-    "background": "Background",
-    "foreground": "Foreground",
-    "grid_gap": "Grid spacing",
-    "grid_item_width": "Grid item width",
-    "input_corner_radius": "Input corner radius",
-    "layout_direction": "Layout direction",
-    "menu": "Menu",
-    "customer_account_menu": "Customer account menu",
-    "padding": "Padding",
-    "page_margin": "Page margin",
-    "page_width": "Page width",
-    "show_payment_icons": "Show payment icons"
-  },
-  "options": {
-    "alignment": {
-      "left": "Left",
-      "center": "Center",
-      "right": "Right"
+  "settings_schema": {
+    "logo": {
+      "name": "Logo",
+      "settings": {
+        "logo": {
+          "label": "Logo image"
+        },
+        "logo_width": {
+          "label": "Custom logo width"
+        },
+        "favicon": {
+          "label": "Favicon image",
+          "info": "Will be scaled down to 32 x 32px"
+        }
+      }
     },
-    "direction": {
-      "horizontal": "Horizontal",
-      "vertical": "Vertical"
+    "colors": {
+      "name": "Colors",
+      "settings": {
+        "color_schemes": {
+          "info": "Each scheme defines Base, Surface, and three semantic Accents."
+        }
+      }
     },
-    "page_width": {
-      "narrow": "Narrow",
-      "wide": "Wide"
+    "typography": {
+      "name": "Typography",
+      "settings": {
+        "header__1": {
+          "content": "Heading"
+        },
+        "type_heading_font": {
+          "label": "Heading Font"
+        },
+        "heading_casing": {
+          "label": "Heading Text Case",
+          "options__1": {
+            "label": "None"
+          },
+          "options__2": {
+            "label": "Uppercase"
+          },
+          "options__3": {
+            "label": "Lowercase"
+          },
+          "options__4": {
+            "label": "Capitalize"
+          }
+        },
+        "heading_size_factor": {
+          "label": "Heading Size Factor"
+        },
+        "heading_line_height": {
+          "label": "Heading Line Height"
+        },
+        "header__2": {
+          "content": "Subtitle"
+        },
+        "type_subtitle_font": {
+          "label": "Subtitle Font"
+        },
+        "subtitle_casing": {
+          "label": "Subtitle Text Case",
+          "options__1": {
+            "label": "None"
+          },
+          "options__2": {
+            "label": "Uppercase"
+          },
+          "options__3": {
+            "label": "Lowercase"
+          },
+          "options__4": {
+            "label": "Capitalize"
+          }
+        },
+        "subtitle_size_factor": {
+          "label": "Subtitle Size Factor"
+        },
+        "header__3": {
+          "content": "Body Text",
+          "info": "These settings — font, casing, Size Factor and line height — drive every block on the Text role: the Text block, Marquee Text and Badge Text. Badges are built from the Badge Text block; the Text block can no longer be placed inside a Badge."
+        },
+        "type_body_font": {
+          "label": "Body Text Font"
+        },
+        "text_casing": {
+          "label": "Text Case",
+          "options__1": {
+            "label": "None"
+          },
+          "options__2": {
+            "label": "Uppercase"
+          },
+          "options__3": {
+            "label": "Lowercase"
+          },
+          "options__4": {
+            "label": "Capitalize"
+          }
+        },
+        "text_size_factor": {
+          "label": "Text Size Factor",
+          "info": "Scales every Text-role size step, so it moves paragraphs, Marquee Text and Badge Text together."
+        },
+        "body_line_height": {
+          "label": "Body Text Line Height"
+        },
+        "caption_label_casing": {
+          "label": "Caption & Label Casing",
+          "options__1": {
+            "label": "None"
+          },
+          "options__2": {
+            "label": "Uppercase"
+          },
+          "options__3": {
+            "label": "Lowercase"
+          },
+          "options__4": {
+            "label": "Capitalize"
+          }
+        }
+      }
     },
-    "size": {
-      "large": "Large",
-      "small": "Small"
+    "accent_typography": {
+      "name": "Accent Typography",
+      "settings": {
+        "header__1": {
+          "content": "Accent Font",
+          "info": "The decorative font family used by handwritten captions inside sections such as Personal Intro and Featured Playlist. Text roles (Heading, Subtitle, Body) have their own fonts under Typography."
+        },
+        "type_accent_font": {
+          "label": "Accent Font"
+        },
+        "header__2": {
+          "content": "Bold & Italic Accents",
+          "info": "Default decorations drawn around bold or italic markup, and around a whole Subtitle when its Accent Style is set. Individual blocks can opt into their own accent settings."
+        },
+        "accent_use_font": {
+          "label": "Use Accent Font",
+          "info": "Renders bold and italic runs in the Accent Font set above, on top of whatever accent decoration is chosen. Blocks can override this individually."
+        },
+        "accent_bold_style": {
+          "label": "Bold Text Accent",
+          "options__1": {
+            "label": "None"
+          },
+          "options__2": {
+            "label": "Bold color"
+          },
+          "options__3": {
+            "label": "Italic"
+          },
+          "options__4": {
+            "label": "Highlight"
+          },
+          "options__5": {
+            "label": "Highlight (marker)"
+          },
+          "options__6": {
+            "label": "Underline"
+          },
+          "options__7": {
+            "label": "Underline (hand-drawn)"
+          },
+          "options__8": {
+            "label": "Underline (wavy)"
+          },
+          "options__9": {
+            "label": "Circle"
+          },
+          "options__10": {
+            "label": "Circle (hand-drawn)"
+          },
+          "options__11": {
+            "label": "Oval"
+          },
+          "options__12": {
+            "label": "Oval (hand-drawn)"
+          }
+        },
+        "accent_italic_style": {
+          "label": "Italic Text Accent",
+          "options__1": {
+            "label": "None"
+          },
+          "options__2": {
+            "label": "Bold color"
+          },
+          "options__3": {
+            "label": "Italic"
+          },
+          "options__4": {
+            "label": "Highlight"
+          },
+          "options__5": {
+            "label": "Highlight (marker)"
+          },
+          "options__6": {
+            "label": "Underline"
+          },
+          "options__7": {
+            "label": "Underline (hand-drawn)"
+          },
+          "options__8": {
+            "label": "Underline (wavy)"
+          },
+          "options__9": {
+            "label": "Circle"
+          },
+          "options__10": {
+            "label": "Circle (hand-drawn)"
+          },
+          "options__11": {
+            "label": "Oval"
+          },
+          "options__12": {
+            "label": "Oval (hand-drawn)"
+          }
+        },
+        "header__3": {
+          "content": "Accent Animation"
+        },
+        "accent_trigger": {
+          "label": "Accent Animation Trigger",
+          "options__1": {
+            "label": "Play once in view"
+          },
+          "options__2": {
+            "label": "Scrub with scroll"
+          }
+        },
+        "accent_threshold": {
+          "label": "Accent Scroll Threshold"
+        },
+        "accent_stroke_width": {
+          "label": "Accent Stroke Width"
+        },
+        "accent_duration": {
+          "label": "Accent Animation Duration"
+        },
+        "accent_reverse": {
+          "label": "Accent Direction",
+          "options__1": {
+            "label": "Forward"
+          },
+          "options__2": {
+            "label": "From opposite end"
+          },
+          "options__3": {
+            "label": "Backward (erase)"
+          }
+        },
+        "accent_loop": {
+          "label": "Loop Accent"
+        },
+        "accent_loop_mode": {
+          "label": "Accent Loop Mode",
+          "options__1": {
+            "label": "Yoyo (draw and undraw)"
+          },
+          "options__2": {
+            "label": "Restart"
+          }
+        }
+      }
+    },
+    "overflow_text": {
+      "name": "Overflow Text",
+      "settings": {
+        "header__1": {
+          "content": "Overflow Text",
+          "info": "Used by collection-name plates and other reusable text tracks."
+        },
+        "overflow_text_fade": {
+          "label": "Fade width"
+        },
+        "overflow_text_duration": {
+          "label": "Loop duration"
+        }
+      }
+    },
+    "design_mode": {
+      "name": "Design Mode",
+      "settings": {
+        "header__1": {
+          "content": "Design Mode"
+        },
+        "design_mode_desktop": {
+          "label": "Desktop Design Mode",
+          "info": "Theme-style presets set the default. Section Design Mode uses Auto to inherit, Blend for section values with theme modes, or Custom for section modes and values.",
+          "options__1": {
+            "label": "Modern"
+          },
+          "options__2": {
+            "label": "Minimal"
+          }
+        },
+        "design_mode_mobile": {
+          "label": "Mobile Design Mode",
+          "info": "Mobile can use a different Design Mode from desktop.",
+          "options__1": {
+            "label": "Modern"
+          },
+          "options__2": {
+            "label": "Minimal"
+          }
+        }
+      }
+    },
+    "design_system": {
+      "name": "Design System",
+      "settings": {
+        "header__1": {
+          "content": "Spacing"
+        },
+        "design_section_padding_desktop": {
+          "label": "Section padding (desktop)",
+          "options__1": {
+            "label": "None"
+          },
+          "options__2": {
+            "label": "Small"
+          },
+          "options__3": {
+            "label": "Medium"
+          },
+          "options__4": {
+            "label": "Large"
+          },
+          "options__5": {
+            "label": "Extra large"
+          },
+          "options__6": {
+            "label": "Maximum"
+          }
+        },
+        "design_section_padding_mobile": {
+          "label": "Section padding (mobile)",
+          "options__1": {
+            "label": "None"
+          },
+          "options__2": {
+            "label": "Small"
+          },
+          "options__3": {
+            "label": "Medium"
+          },
+          "options__4": {
+            "label": "Large"
+          },
+          "options__5": {
+            "label": "Extra large"
+          },
+          "options__6": {
+            "label": "Maximum"
+          }
+        },
+        "design_layout_gap_desktop": {
+          "label": "Layout Gap (desktop)",
+          "info": "Gap between ordinary blocks inside sections and containers.",
+          "options__1": {
+            "label": "None"
+          },
+          "options__2": {
+            "label": "Extra small"
+          },
+          "options__3": {
+            "label": "Small"
+          },
+          "options__4": {
+            "label": "Medium"
+          },
+          "options__5": {
+            "label": "Large"
+          },
+          "options__6": {
+            "label": "Extra large"
+          }
+        },
+        "design_layout_gap_mobile": {
+          "label": "Layout Gap (mobile)",
+          "info": "Gap between ordinary blocks inside sections and containers.",
+          "options__1": {
+            "label": "None"
+          },
+          "options__2": {
+            "label": "Extra small"
+          },
+          "options__3": {
+            "label": "Small"
+          },
+          "options__4": {
+            "label": "Medium"
+          },
+          "options__5": {
+            "label": "Large"
+          },
+          "options__6": {
+            "label": "Extra large"
+          }
+        },
+        "header__2": {
+          "content": "Layout"
+        },
+        "design_enable_minimal_gutter": {
+          "label": "Enable gutter in Minimal mode"
+        },
+        "design_gutter_desktop": {
+          "label": "Gutter (desktop)",
+          "options__1": {
+            "label": "None"
+          },
+          "options__2": {
+            "label": "Small"
+          },
+          "options__3": {
+            "label": "Medium"
+          },
+          "options__4": {
+            "label": "Large"
+          },
+          "options__5": {
+            "label": "Extra large"
+          }
+        },
+        "design_gutter_mobile": {
+          "label": "Gutter (mobile)",
+          "options__1": {
+            "label": "None"
+          },
+          "options__2": {
+            "label": "Small"
+          },
+          "options__3": {
+            "label": "Medium"
+          },
+          "options__4": {
+            "label": "Large"
+          }
+        },
+        "design_layout_radius_desktop": {
+          "label": "Layout radius (desktop)"
+        },
+        "design_layout_radius_mobile": {
+          "label": "Layout radius (mobile)"
+        },
+        "header__4": {
+          "content": "Items Styling",
+          "info": "Styles apply on repeated items (cards, slides, tiles) except product, collection and blog cards."
+        },
+        "design_enable_minimal_layout_gap": {
+          "label": "Enable Layout gap in minimal mode"
+        },
+        "design_enable_minimal_items_gap": {
+          "label": "Enable Items Gap in Minimal Mode"
+        },
+        "design_items_gap_desktop": {
+          "label": "Items Gap (Desktop)"
+        },
+        "design_items_gap_mobile": {
+          "label": "Items Gap (Mobile)"
+        },
+        "design_item_radius_desktop": {
+          "label": "Item radius (desktop)"
+        },
+        "design_item_radius_mobile": {
+          "label": "Item radius (mobile)"
+        },
+        "design_item_shadow": {
+          "label": "Item shadow",
+          "options__1": {
+            "label": "None"
+          },
+          "options__2": {
+            "label": "Small"
+          },
+          "options__3": {
+            "label": "Medium"
+          },
+          "options__4": {
+            "label": "Large"
+          }
+        },
+        "design_surface_shadow": {
+          "label": "Surface shadow",
+          "info": "Applies shadow to big surfaces and blocks such as Newsletter, Before and After Slider, Classic Press, and FAQ.",
+          "options__1": {
+            "label": "None"
+          },
+          "options__2": {
+            "label": "Small"
+          },
+          "options__3": {
+            "label": "Medium"
+          },
+          "options__4": {
+            "label": "Large"
+          }
+        },
+        "header__5": {
+          "content": "Borders",
+          "info": "For sections and blocks which want to align their borders with Design System."
+        },
+        "design_enable_minimal_borders": {
+          "label": "Enable borders in Minimal mode"
+        },
+        "design_item_border_width": {
+          "label": "Item border width"
+        },
+        "design_layout_border_width": {
+          "label": "Layout border width",
+          "info": "Borders on large surfaces — tables, banners, panels. Item border width covers small repeated items instead."
+        }
+      }
+    },
+    "animations": {
+      "name": "Animations",
+      "settings": {
+        "header__1": {
+          "content": "Animations"
+        },
+        "disable_all_animations": {
+          "label": "Disable all animations",
+          "info": "Disables entrance effects, scroll motion, transitions and CSS animations across the theme."
+        }
+      }
+    },
+    "social_media": {
+      "name": "Social Media",
+      "settings": {
+        "social_instagram_link": {
+          "label": "Instagram",
+          "info": "https://instagram.com/shopify"
+        },
+        "social_facebook_link": {
+          "label": "Facebook",
+          "info": "https://facebook.com/shopify"
+        },
+        "social_youtube_link": {
+          "label": "YouTube",
+          "info": "https://youtube.com/shopify"
+        },
+        "social_tiktok_link": {
+          "label": "TikTok",
+          "info": "https://tiktok.com/@shopify"
+        },
+        "social_twitter_link": {
+          "label": "X (Twitter)",
+          "info": "https://x.com/shopify"
+        },
+        "social_pinterest_link": {
+          "label": "Pinterest",
+          "info": "https://pinterest.com/shopify"
+        },
+        "social_snapchat_link": {
+          "label": "Snapchat",
+          "info": "https://snapchat.com/add/shopify"
+        },
+        "social_tumblr_link": {
+          "label": "Tumblr",
+          "info": "https://shopify.tumblr.com"
+        },
+        "social_vimeo_link": {
+          "label": "Vimeo",
+          "info": "https://vimeo.com/shopify"
+        },
+        "social_linkedin_link": {
+          "label": "LinkedIn",
+          "info": "https://linkedin.com/company/shopify"
+        }
+      }
     }
   }
 }

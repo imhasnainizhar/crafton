@@ -1,0 +1,255 @@
+{% comment %}
+  Color Role Resolver
+  ------------------------------------------------------------------------------
+
+  Purpose:
+  The single owner of colour-ROLE resolution, the sibling of
+  `snippets/typography-resolver.liquid` (which owns role-based type but never
+  emits `color`). Like `accent-resolver`, it outputs BARE CSS declarations --
+  no selector, no braces -- so it drops straight into a `{% style %}` rule or a
+  `style=""` attribute.
+
+  ------------------------------------------------------------------------------
+
+  THE CONTRACT IT IMPLEMENTS
+
+  Custom properties inherit. The scheme roles (`--color-heading`,
+  `--color-text`, `--color-soft-text`, `--color-link`, `--color-border` and the
+  accent trio) are declared once on the section's `.color-<scheme>` element, and
+  every block below reads them at paint time. A child theme block cannot read a
+  parent's settings in Liquid -- but it does not need to: a CARD redeclares
+  those same role names on its own surface, and every nested block follows with
+  no per-block change.
+
+  That is the whole mechanism. This snippet owns both ends of it:
+
+    context mode  a card sets the colour context for its subtree
+    color mode    a leaf reads the role token that context may have repointed
+
+  ------------------------------------------------------------------------------
+
+  MODE: 'context'  -- called by a card on its own surface rule
+
+  Required:
+    source {Object}  Caller settings, carrying `content_color` plus, on
+                     'accent', the shared ids `accent_selected`
+                     (neutral|soft|strong) and `accent_contrast`
+                     (subtle|filled).
+
+  Optional (override the matching `source` values, for a card whose own
+  settings use other ids or fix the accent, e.g. a "Card colour" of Accent
+  that always means the neutral accent, filled):
+    content_color   {String}  scheme | accent | custom
+    accent          {String}  neutral | soft | strong
+    accent_contrast {String}  subtle | filled
+
+    {% render 'color-role-resolver', mode: 'context', source: block.settings,
+       content_color: 'accent', accent: 'neutral', accent_contrast: 'filled' %}
+
+  `content_color` values:
+
+    scheme (default)
+      Emits NOTHING. The section scheme's roles stand untouched, so roles stay
+      distinct (heading / text / soft text are three different colours) and a
+      card nested inside an already-accented parent keeps inheriting it. This
+      must stay a true no-op -- re-asserting the same values would break that,
+      and it CANNOT be a reset: once a role is shadowed the scheme's original
+      value is unrecoverable from a descendant.
+
+      That is safe only because no card accepts another card as a child (their
+      accept-lists are leaf blocks plus the background-less _group), so an
+      opaque scheme-coloured surface can never sit inside an accented one and
+      inherit a foreground that does not suit its own ground. If a card ever
+      gains a card child, this branch needs scheme-value aliases emitted in
+      layout/theme.liquid to reset against.
+
+    accent
+      Resolves the chosen accent into the CARD-LOCAL `--surface-accent` family,
+      then repoints the shared roles for the subtree. The card paints its own
+      background from `--surface-accent*`, which is what makes the `filled`
+      inversion safe: repointing `--color-accent` for the children cannot feed
+      back into the card's own fill.
+
+      Hierarchy is carried by ALPHA, not by hue. On an accent ground there is
+      only one foreground guaranteed to be legible, so soft text is a fade of
+      that foreground rather than a different colour.
+
+      On `filled` the accent trio is INVERTED for the subtree. A nested Button
+      paints `background: var(--color-accent)`; on an accent-filled card that is
+      accent-on-accent and disappears. Inverted, it comes back as
+      contrast-on-accent. `subtle` needs no swap -- accent on the contrast
+      ground already reads.
+
+    custom
+      The card's own four pickers.
+
+  The snippet never sets `background-color`: background ownership stays with the
+  block, matching `snippets/background-role-token.liquid`. The caller reads
+  `var(--surface-accent)` (filled) or `var(--surface-accent-contrast)` (subtle)
+  for its ground.
+
+  Usage:
+    .card--{{ block.id }} {
+      {% render 'color-role-resolver', mode: 'context', source: block.settings %}
+      background-color: {{ surface_bg }};
+      border: 1px solid var(--color-border);
+    }
+
+  ------------------------------------------------------------------------------
+
+  MODE: 'color'  -- called by a leaf block
+
+  Required:
+    role   {String}  'heading' | 'text' | 'soft' | 'accent'. The role the block
+                     plays, used to resolve `auto`.
+    source {Object}  Caller settings, carrying `text_color`.
+
+  Emits exactly one `color:` declaration.
+
+    auto (default)  var(--color-<role>) -- the token a card may have repointed
+    heading         var(--color-heading)
+    text            var(--color-text)
+    soft            var(--color-soft-text)
+    accent          var(--color-accent)
+    parent          inherit (the CSS keyword)
+
+  Usage:
+    #heading-{{ id }} {
+      {% render 'typography-resolver', role: 'heading', source: source %}
+      {% render 'color-role-resolver', mode: 'color', role: 'heading', source: source %}
+    }
+
+  ------------------------------------------------------------------------------
+
+  SCHEMA CONTRACT
+
+  Card (context mode). `visible_if` does not parse parentheses -- keep the
+  chains flat.
+
+    { "type": "header", "content": "Content Color" },
+    {
+      "type": "select",
+      "id": "content_color",
+      "label": "Content Color",
+      "info": "Accent paints the card in the selected accent and recolors every block inside it.",
+      "options": [
+        { "value": "scheme", "label": "Color Scheme" },
+        { "value": "accent", "label": "Accent" },
+        { "value": "custom", "label": "Custom" }
+      ],
+      "default": "scheme"
+    },
+    {
+      "type": "select",
+      "id": "accent_selected",
+      "label": "Accent",
+      "options": [
+        { "value": "neutral", "label": "Neutral" },
+        { "value": "soft", "label": "Soft" },
+        { "value": "strong", "label": "Strong" }
+      ],
+      "default": "neutral",
+      "visible_if": "{{ block.settings.content_color == 'accent' }}"
+    },
+    {
+      "type": "select",
+      "id": "accent_contrast",
+      "label": "Accent Contrast",
+      "info": "Filled paints the accent as the card background. Subtle inverts it.",
+      "options": [
+        { "value": "subtle", "label": "Subtle" },
+        { "value": "filled", "label": "Filled" }
+      ],
+      "default": "filled",
+      "visible_if": "{{ block.settings.content_color == 'accent' }}"
+    }
+
+  Leaf (color mode):
+
+    {
+      "type": "select",
+      "id": "text_color",
+      "label": "Color",
+      "info": "Automatic follows this block's own role, so a card set to Accent recolors it.",
+      "options": [
+        { "value": "auto", "label": "Automatic" },
+        { "value": "heading", "label": "Heading" },
+        { "value": "text", "label": "Text" },
+        { "value": "soft", "label": "Soft Text" },
+        { "value": "accent", "label": "Accent" },
+        { "value": "parent", "label": "Inherit From Parent" }
+      ],
+      "default": "auto"
+    }
+
+{% endcomment %}
+
+{%- liquid
+  assign crr_mode = mode | default: 'context'
+  assign crr_content = content_color | default: source.content_color
+  assign crr_treatment = accent_contrast | default: source.accent_contrast
+-%}
+
+{%- if crr_mode == 'color' -%}
+  {%- liquid
+    assign crr_role = role | default: 'text'
+    assign crr_choice = source.text_color | default: 'auto'
+
+    if crr_choice == 'auto'
+      assign crr_choice = crr_role
+    endif
+
+    case crr_choice
+      when 'heading'
+        assign crr_color = 'var(--color-heading)'
+      when 'soft'
+        assign crr_color = 'var(--color-soft-text)'
+      when 'accent'
+        assign crr_color = 'var(--color-accent)'
+      when 'parent'
+        assign crr_color = 'inherit'
+      else
+        assign crr_color = 'var(--color-text)'
+    endcase
+  -%}
+color: {{ crr_color }};
+
+{%- elsif crr_content == 'accent' -%}
+  {%- liquid
+    # Foreground and ground swap with the treatment. The border follows the
+    # foreground on a filled card (a scheme border would vanish into the fill)
+    # and the accent's own border role on a subtle one.
+    if crr_treatment == 'subtle'
+      assign crr_fg = 'var(--surface-accent)'
+      assign crr_border = 'var(--surface-accent-border)'
+      assign crr_accent = 'var(--surface-accent)'
+      assign crr_accent_contrast = 'var(--surface-accent-contrast)'
+      assign crr_accent_border = 'var(--surface-accent-border)'
+    else
+      assign crr_fg = 'var(--surface-accent-contrast)'
+      assign crr_border = 'color-mix(in srgb, var(--surface-accent-contrast) 30%, transparent)'
+      assign crr_accent = 'var(--surface-accent-contrast)'
+      assign crr_accent_contrast = 'var(--surface-accent)'
+      assign crr_accent_border = 'var(--surface-accent-contrast)'
+    endif
+  -%}
+{% render 'accent-resolver', source: source, accent: accent, prefix: 'surface-accent' %}
+--color-heading: {{ crr_fg }};
+--color-text: {{ crr_fg }};
+--color-link: {{ crr_fg }};
+--color-soft-text: color-mix(in srgb, {{ crr_fg }} 70%, transparent);
+--color-border: {{ crr_border }};
+--color-accent: {{ crr_accent }};
+--color-accent-contrast: {{ crr_accent_contrast }};
+--color-accent-border: {{ crr_accent_border }};
+
+{%- elsif crr_content == 'custom' -%}
+--color-heading: {{ source.custom_heading_color }};
+--color-text: {{ source.custom_text_color }};
+--color-link: {{ source.custom_accent_color }};
+--color-soft-text: color-mix(in srgb, {{ source.custom_text_color }} 70%, transparent);
+--color-border: {{ source.custom_border_color }};
+--color-accent: {{ source.custom_accent_color }};
+--color-accent-contrast: {{ source.custom_background_color }};
+--color-accent-border: {{ source.custom_accent_color }};
+{%- endif -%}

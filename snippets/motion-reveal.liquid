@@ -1,0 +1,148 @@
+{%- comment -%}
+  Standard interface for the theme's basic entrance animations. assets/motion.css
+  does the animating; assets/motion-reveal.js only switches .is-offscreen to
+  .is-inview as the element scrolls into view. No JS reads these settings.
+
+  Pass the settings object that holds the standard Animations group with `from`.
+  The snippet reads <prefix>_enabled / _effect / _once / _play_mode / _duration /
+  _delay / _distance / _stagger / _ease from it (prefix defaults to 'animation'),
+  and both parts print nothing when the group is off or the global "Disable all
+  animations" theme setting is on. An explicit param always wins over `from`.
+
+  part: 'class' → classes for the animated element, or for the direct parent of
+                  a group's items
+  part: 'vars'  → timing variables, printed inside the block's scoped {% style %}
+                  rule (a group's items inherit them)
+
+  Params:
+    from      object  settings holding the group: section.settings or block.settings
+    prefix    string  setting-id prefix of the group (default 'animation')
+    enabled   bool    overrides <prefix>_enabled (for derived conditions)
+    effect    string  fade | fade-up | fade-down | slide | scale | media-zoom-out | text-reveal
+    group     bool    animate the element's direct children, staggered, not the element itself
+    order     string  stagger (default) | together | scatter | rows | cols | directional orders;
+                      defaults to <prefix>_play_mode (row_by_row → rows, random → scatter)
+    trigger   string  view (default) | hover (pure CSS: an ancestor carries .motion-reveal-host)
+    once      bool    false replays every time it re-enters the viewport
+    dir       string  rtl → text-reveal wipes right to left
+    duration, delay (seconds) · distance (px) · stagger (milliseconds)
+    ease      string  out | out-strong | back | in-out | linear
+
+  Usage:
+    <div class="list list--{{ block.id }} {% render 'motion-reveal', part: 'class', from: section.settings, group: true %}">
+    {% style %}
+      .list--{{ block.id }} { {% render 'motion-reveal', part: 'vars', from: section.settings %} }
+    {% endstyle %}
+{%- endcomment -%}
+{%- liquid
+  assign p = prefix | default: 'animation'
+
+  assign on = enabled
+  if on == nil
+    if from
+      assign k = p | append: '_enabled'
+      assign on = from[k]
+      if on != true
+        assign on = false
+      endif
+    else
+      assign on = true
+    endif
+  endif
+  if settings.disable_all_animations == true
+    assign on = false
+  endif
+
+  if on != false
+    if from
+      assign k = p | append: '_effect'
+      assign effect = effect | default: from[k]
+      if once == nil
+        assign k = p | append: '_once'
+        assign once = from[k]
+      endif
+      if order == blank
+        assign k = p | append: '_play_mode'
+        assign order = from[k] | remove: 'directional-'
+        case order
+          when 'row_by_row'
+            assign order = 'rows'
+          when 'random'
+            assign order = 'scatter'
+          when 'manual'
+            assign order = 'stagger'
+        endcase
+      endif
+      if duration == nil
+        assign k = p | append: '_duration'
+        assign duration = from[k]
+      endif
+      if delay == nil
+        assign k = p | append: '_delay'
+        assign delay = from[k]
+      endif
+      if distance == nil
+        assign k = p | append: '_distance'
+        assign distance = from[k]
+      endif
+      if stagger == nil
+        assign k = p | append: '_stagger'
+        assign stagger = from[k]
+      endif
+      if ease == blank
+        assign k = p | append: '_ease'
+        assign ease = from[k]
+      endif
+    endif
+
+    if part == 'class'
+      assign out = 'motion-reveal motion-reveal--' | append: effect
+      if effect == blank
+        assign out = 'motion-reveal motion-reveal--fade-up'
+      endif
+      if group
+        assign out = out | append: ' motion-reveal--group'
+      endif
+      if order != blank and order != 'stagger'
+        assign out = out | append: ' motion-reveal--' | append: order
+      endif
+      if trigger == 'hover'
+        assign out = out | append: ' motion-reveal--hover'
+      endif
+      if once == false
+        assign out = out | append: ' motion-reveal--replay'
+      endif
+      if dir == 'rtl'
+        assign out = out | append: ' motion-reveal--rtl'
+      endif
+      echo out
+    else
+      case ease
+        when 'out-strong'
+          assign curve = 'cubic-bezier(0.16, 1, 0.3, 1)'
+        when 'back'
+          assign curve = 'cubic-bezier(0.34, 1.56, 0.64, 1)'
+        when 'in-out'
+          assign curve = 'cubic-bezier(0.65, 0, 0.35, 1)'
+        when 'linear'
+          assign curve = 'linear'
+      endcase
+      if duration != blank
+        echo '--motion-reveal-duration: ' | append: duration | append: 's;'
+      endif
+      if delay != blank
+        echo '--motion-reveal-delay: ' | append: delay | append: 's;'
+      endif
+      if distance != blank
+        echo '--motion-reveal-distance: ' | append: distance | append: 'px;'
+      endif
+      if stagger != blank
+        assign stagger_s = stagger | divided_by: 1000.0
+        echo '--motion-reveal-stagger: ' | append: stagger_s | append: 's;'
+      endif
+      if curve
+        echo '--motion-reveal-ease: ' | append: curve | append: ';'
+      endif
+    endif
+  endif
+-%}

@@ -1,0 +1,54 @@
+{%- comment -%}
+  Fluid Clamp
+
+  Emits a complete clamp() that scales linearly between two viewport anchors.
+  There is no merchant-facing growth factor anywhere in this — the middle term
+  is pure linear interpolation:
+
+    slope     = (max - min) / (maxViewport - minViewport)
+    preferred = min + slope * (currentViewport - minViewport)
+    final     = clamp(min, preferred, max)
+
+  The viewport anchors come from snippets/type-constants.liquid, which is the
+  only place they are written.
+
+  Parameters:
+  - min {Number} Required. Size at the lower viewport anchor.
+  - max {Number} Required. Size at the upper viewport anchor. It may be
+    smaller than min (a size that shrinks as the screen grows); the clamp's
+    bounds are then swapped so the output is still a valid clamp().
+  - unit {String} Optional output unit for min/max; defaults to px. The viewport
+    anchors are always px, which calc() mixes safely.
+
+  Usage:
+    font-size: {% render 'fluid-clamp', min: 26, max: 36 %};
+    /* clamp(26px, calc(26px + 10 * ((100vw - 375px) / 1065)), 36px) */
+
+  Callers must NOT wrap this in clamp() themselves — the wrapper is included.
+
+  Schema: none.
+{%- endcomment -%}
+{%- liquid
+  assign fc_unit = unit | default: 'px'
+  assign fc_min = min | default: 0
+  assign fc_max = max | default: 0
+
+  capture fc_min_vw
+    render 'type-constants', key: 'min_viewport'
+  endcapture
+  capture fc_max_vw
+    render 'type-constants', key: 'max_viewport'
+  endcapture
+
+  assign fc_min_vw = fc_min_vw | plus: 0
+  assign fc_max_vw = fc_max_vw | plus: 0
+  assign fc_span = fc_max_vw | minus: fc_min_vw
+  assign fc_rise = fc_max | minus: fc_min
+-%}
+{%- if fc_rise == 0 or fc_span <= 0 -%}
+{{ fc_min }}{{ fc_unit }}
+{%- elsif fc_rise < 0 -%}
+clamp({{ fc_max }}{{ fc_unit }}, calc({{ fc_min }}{{ fc_unit }} + {{ fc_rise }} * ((100vw - {{ fc_min_vw }}px) / {{ fc_span }})), {{ fc_min }}{{ fc_unit }})
+{%- else -%}
+clamp({{ fc_min }}{{ fc_unit }}, calc({{ fc_min }}{{ fc_unit }} + {{ fc_rise }} * ((100vw - {{ fc_min_vw }}px) / {{ fc_span }})), {{ fc_max }}{{ fc_unit }})
+{%- endif -%}
