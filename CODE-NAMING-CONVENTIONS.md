@@ -123,3 +123,15 @@ setting id `layout` on Before & After (`split` | `slider`); new aspect ratio
 value `screen` on `_before_after`. Locale keys
 `theme.sections.announcement_bar.days|hours|minutes|seconds`,
 `theme.sections.before_after.slider_label`.
+
+## Image filled text (`ift-`) — 2026-10-10
+
+Brought over with Elewind names (prefix chosen by the user there):
+`blocks/image_filled_text.liquid`, `sections/image-filled-text.liquid`,
+`assets/image-filled-text.js`, `<image-filled-text>`. Classes `.ift`,
+`.ift--video`, `.ift__text|media|video`, `.is-masked`, `.ift-section`,
+`.ift-section__inner`; hooks `data-ift-text`, `data-ift-media`; custom
+properties `--ift-size|weight|line-height|family|style|align|position|fill`.
+Setting ids `text`, `alignment_mobile`, `alignment_desktop`, `fill`, `image`,
+`video`, `font_source`, `custom_font`, `font_weight`, `size_mobile`,
+`size_desktop`, `line_height`.

@@ -190,3 +190,15 @@ Elewind's sections, brought over unchanged except where noted.
   need GSAP.
 - Storefront strings moved to locale keys: `theme.sections.announcement_bar.*`
   (countdown labels), `theme.sections.before_after.slider_label`.
+
+## 2026-10-10 — Image filled text
+
+- New section **Image filled text** (Text & content) and public theme block **Image filled
+  text**, from Elewind unchanged: rich text whose letters are filled with an image or a looping
+  muted video (Shopify's sample clothing illustration when none is chosen), with mobile and
+  desktop alignment, font (theme body text by default, theme heading or custom), thickness,
+  line spacing and a size that grows linearly from mobile to desktop, up to 380px. Images use
+  `background-clip: text`; video mode masks the video to the letters with
+  `assets/image-filled-text.js` (`<image-filled-text>`), playing only while on screen.
+- Files: `blocks/image_filled_text.liquid`, `sections/image-filled-text.liquid`,
+  `assets/image-filled-text.js`.

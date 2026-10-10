@@ -1,0 +1,359 @@
+{%- comment -%}
+  Image Filled Text: big rich text whose letters are filled with an image or
+  a looping video. Images (and the sample clothing placeholder when no media
+  is chosen) are painted with background-clip: text, so they need no script.
+  Video mode loads assets/image-filled-text.js (<image-filled-text>), which
+  masks a video layer to the letters; the video's cover image fills the
+  letters until the mask is ready. Size grows linearly from the mobile to
+  the desktop value (snippets/fluid-clamp).
+{%- endcomment -%}
+
+{%- liquid
+  # --- Fill: video, image, or the sample clothing placeholder ----------------
+  assign ift_image = block.settings.image
+  assign ift_video = block.settings.video
+  assign ift_mode = 'placeholder'
+  if block.settings.fill == 'video' and ift_video != blank
+    assign ift_mode = 'video'
+  elsif block.settings.fill == 'image' and ift_image != blank
+    assign ift_mode = 'image'
+  endif
+
+  assign ift_bg_mobile = ''
+  assign ift_bg_desktop = ''
+  assign ift_bg_position = 'center'
+  case ift_mode
+    when 'image'
+      assign ift_bg_mobile = ift_image | image_url: width: 1200
+      assign ift_bg_desktop = ift_image | image_url: width: 2400
+      assign ift_bg_position = ift_image.presentation.focal_point | default: 'center'
+    when 'video'
+      assign ift_poster = ift_video.preview_image
+      if ift_poster != blank
+        assign ift_bg_mobile = ift_poster | image_url: width: 1200
+        assign ift_bg_desktop = ift_poster | image_url: width: 2400
+      endif
+    else
+      assign ift_svg = 'hero-apparel-1' | placeholder_svg_tag
+      unless ift_svg contains 'xmlns='
+        assign ift_svg = ift_svg | replace_first: '<svg', '<svg xmlns="http://www.w3.org/2000/svg"'
+      endunless
+      assign ift_bg_mobile = ift_svg | base64_encode | prepend: 'data:image/svg+xml;base64,'
+      assign ift_bg_desktop = ift_bg_mobile
+  endcase
+
+  # --- Font: the theme's body or heading font, or a custom one --------------
+  assign ift_weight = block.settings.font_weight | default: 800 | append: ''
+  case block.settings.font_source
+    when 'heading'
+      assign ift_font = settings.type_heading_font
+      assign ift_family = 'var(--font-heading-family)'
+      assign ift_style = 'var(--font-heading-style)'
+    when 'custom'
+      assign ift_font = block.settings.custom_font
+      assign ift_family = ift_font.family | append: ', ' | append: ift_font.fallback_families
+      assign ift_style = ift_font.style
+    else
+      assign ift_font = settings.type_body_font
+      assign ift_family = 'var(--font-body-family)'
+      assign ift_style = 'var(--font-body-style)'
+  endcase
+  assign ift_font_weighted = ift_font | font_modify: 'weight', ift_weight
+  if ift_font_weighted
+    assign ift_font_bolder = ift_font_weighted | font_modify: 'weight', 'bolder'
+    assign ift_font_italic = ift_font_weighted | font_modify: 'style', 'italic'
+  endif
+
+  assign ift_size_m = block.settings.size_mobile | default: 80
+  assign ift_size_d = block.settings.size_desktop | default: 220
+-%}
+
+{%- if ift_mode == 'video' -%}
+  <script src="{{ 'image-filled-text.js' | asset_url }}" defer></script>
+{%- endif -%}
+
+{% style %}
+  {{ ift_font | font_face: font_display: 'swap' }}
+  {%- if ift_font_weighted %}
+    {{ ift_font_weighted | font_face: font_display: 'swap' }}
+  {%- endif %}
+  {%- if ift_font_bolder %}
+    {{ ift_font_bolder | font_face: font_display: 'swap' }}
+  {%- endif %}
+  {%- if ift_font_italic %}
+    {{ ift_font_italic | font_face: font_display: 'swap' }}
+  {%- endif %}
+
+  .ift--{{ block.id }} {
+    --ift-size: {% render 'fluid-clamp', min: ift_size_m, max: ift_size_d %};
+    --ift-weight: {{ ift_weight }};
+    --ift-line-height: {{ block.settings.line_height | default: 0.9 }};
+    --ift-family: {{ ift_family }};
+    --ift-style: {{ ift_style }};
+    --ift-align: {{ block.settings.alignment_mobile | default: 'center' }};
+    --ift-position: {{ ift_bg_position }};
+    {%- if ift_bg_mobile != blank %}
+    --ift-fill: url("{{ ift_bg_mobile }}");
+    {%- endif %}
+  }
+
+  @media screen and (min-width: 768px) {
+    .ift--{{ block.id }} {
+      --ift-align: {{ block.settings.alignment_desktop | default: 'center' }};
+      {%- if ift_bg_desktop != blank %}
+      --ift-fill: url("{{ ift_bg_desktop }}");
+      {%- endif %}
+    }
+  }
+{% endstyle %}
+
+{%- if ift_mode == 'video' -%}
+  <image-filled-text class="ift ift--{{ block.id }} ift--video" {{ block.shopify_attributes }}>
+    <div class="ift__media" data-ift-media aria-hidden="true">
+      {{
+        ift_video
+        | video_tag:
+          image_size: '2400x',
+          muted: true,
+          loop: true,
+          playsinline: true,
+          controls: false,
+          preload: 'none',
+          class: 'ift__video'
+      }}
+    </div>
+    <div class="ift__text" data-ift-text>{{ block.settings.text }}</div>
+  </image-filled-text>
+{%- else -%}
+  <div class="ift ift--{{ block.id }}" {{ block.shopify_attributes }}>
+    <div class="ift__text">{{ block.settings.text }}</div>
+  </div>
+{%- endif -%}
+
+{% stylesheet %}
+  .ift {
+    position: relative;
+    display: block;
+    width: 100%;
+    min-width: 0;
+  }
+
+  .ift__text {
+    position: relative;
+    z-index: 1;
+    margin: 0;
+    font-family: var(--ift-family);
+    font-style: var(--ift-style);
+    font-weight: var(--ift-weight);
+    font-size: var(--ift-size);
+    line-height: var(--ift-line-height);
+    text-align: var(--ift-align);
+    overflow-wrap: break-word;
+    color: var(--color-text);
+  }
+
+  .ift__text > * {
+    margin: 0;
+    font: inherit;
+    line-height: inherit;
+  }
+
+  .ift__text strong,
+  .ift__text b {
+    font-weight: bolder;
+  }
+
+  .ift__text a {
+    text-decoration: none;
+  }
+
+  @supports (-webkit-background-clip: text) or (background-clip: text) {
+    .ift__text {
+      background-color: var(--color-text);
+      background-image: var(--ift-fill, none);
+      background-position: var(--ift-position);
+      background-size: cover;
+      background-repeat: no-repeat;
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .ift__text * {
+      color: transparent;
+      -webkit-text-fill-color: transparent;
+    }
+  }
+
+  .ift__media {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    overflow: hidden;
+    visibility: hidden;
+    pointer-events: none;
+    -webkit-mask-size: 100% 100%;
+    mask-size: 100% 100%;
+    -webkit-mask-repeat: no-repeat;
+    mask-repeat: no-repeat;
+  }
+
+  .ift__media video {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .ift.is-masked .ift__media {
+    visibility: visible;
+  }
+
+  .ift.is-masked .ift__text {
+    background: none;
+  }
+{% endstylesheet %}
+
+{% schema %}
+{
+  "name": "Image filled text",
+  "tag": null,
+  "settings": [
+    {
+      "type": "header",
+      "content": "Text"
+    },
+    {
+      "type": "richtext",
+      "id": "text",
+      "label": "Text",
+      "default": "<p>New season</p>"
+    },
+    {
+      "type": "text_alignment",
+      "id": "alignment_mobile",
+      "label": "Alignment on mobile",
+      "default": "center"
+    },
+    {
+      "type": "text_alignment",
+      "id": "alignment_desktop",
+      "label": "Alignment on desktop",
+      "default": "center"
+    },
+    {
+      "type": "header",
+      "content": "Fill",
+      "info": "The image or video shows only through the letters."
+    },
+    {
+      "type": "select",
+      "id": "fill",
+      "label": "Fill letters with",
+      "options": [
+        {
+          "value": "image",
+          "label": "Image"
+        },
+        {
+          "value": "video",
+          "label": "Video"
+        }
+      ],
+      "default": "image"
+    },
+    {
+      "type": "image_picker",
+      "id": "image",
+      "label": "Image",
+      "info": "Leave empty to preview with a sample clothing image.",
+      "visible_if": "{{ block.settings.fill == 'image' }}"
+    },
+    {
+      "type": "video",
+      "id": "video",
+      "label": "Video",
+      "info": "Plays muted on a loop. Its cover image fills the letters until it starts. Leave empty to preview with a sample clothing image.",
+      "visible_if": "{{ block.settings.fill == 'video' }}"
+    },
+    {
+      "type": "header",
+      "content": "Letters",
+      "info": "Bigger and thicker letters show more of the image or video."
+    },
+    {
+      "type": "select",
+      "id": "font_source",
+      "label": "Font",
+      "options": [
+        {
+          "value": "body",
+          "label": "Theme body text"
+        },
+        {
+          "value": "heading",
+          "label": "Theme heading"
+        },
+        {
+          "value": "custom",
+          "label": "Custom"
+        }
+      ],
+      "default": "body"
+    },
+    {
+      "type": "font_picker",
+      "id": "custom_font",
+      "label": "Custom font",
+      "default": "work_sans_n4",
+      "visible_if": "{{ block.settings.font_source == 'custom' }}"
+    },
+    {
+      "type": "range",
+      "id": "font_weight",
+      "label": "Thickness",
+      "min": 100,
+      "max": 900,
+      "step": 100,
+      "default": 800,
+      "info": "A font without this thickness uses its closest one."
+    },
+    {
+      "type": "range",
+      "id": "size_mobile",
+      "label": "Size on mobile",
+      "min": 16,
+      "max": 380,
+      "step": 4,
+      "unit": "px",
+      "default": 80
+    },
+    {
+      "type": "range",
+      "id": "size_desktop",
+      "label": "Size on desktop",
+      "min": 16,
+      "max": 380,
+      "step": 4,
+      "unit": "px",
+      "default": 220,
+      "info": "The size grows smoothly from the mobile size to the desktop size as the screen widens."
+    },
+    {
+      "type": "range",
+      "id": "line_height",
+      "label": "Line spacing",
+      "min": 0.7,
+      "max": 1.5,
+      "step": 0.1,
+      "default": 0.9
+    }
+  ],
+  "presets": [
+    {
+      "name": "Image filled text"
+    }
+  ]
+}
+{% endschema %}
