@@ -1,0 +1,121 @@
+{%- comment -%}
+  Article — cover image, title, date and author, the article body, then its
+  comments and the comment form when the blog allows them, inside the shared
+  page shell (assets/base.css).
+{%- endcomment -%}
+<article class="page-shell page-shell--narrow color-{{ section.settings.color_scheme }}">
+  <div class="page-shell__inner main-article">
+    {%- if article.image -%}
+      {{
+        article.image
+        | image_url: width: 1600
+        | image_tag:
+          class: 'main-article__image',
+          widths: '600, 900, 1200, 1600',
+          sizes: '(min-width: 768px) 760px, 100vw'
+      }}
+    {%- endif -%}
+
+    <h1 class="page-shell__title">{{ article.title | escape }}</h1>
+
+    {%- assign date = article.published_at | time_tag: format: 'date' -%}
+    <p class="main-article__meta">{{ 'blog.article_metadata_html' | t: date: date, author: article.author }}</p>
+
+    <div class="page-shell__rte">{{ article.content }}</div>
+
+    {%- if blog.comments_enabled? -%}
+      <h2 class="main-article__subtitle">{{ 'blog.article_comments' | t }}</h2>
+
+      <div id="comments" class="main-article__comments">
+        {%- paginate article.comments by 10 -%}
+          {%- for comment in article.comments -%}
+            <div class="main-article__comment">
+              <p class="main-article__meta">{{ comment.author | escape }} · {{ comment.created_at | time_tag: format: 'date' }}</p>
+              {{ comment.content }}
+            </div>
+          {%- endfor -%}
+
+          {%- if paginate.pages > 1 -%}
+            {{ paginate | default_pagination: anchor: 'comments' }}
+          {%- endif -%}
+        {%- endpaginate -%}
+      </div>
+
+      {%- form 'new_comment', article, class: 'page-shell__form' -%}
+        <h2 class="main-article__subtitle">{{ 'blog.comment_form_title' | t }}</h2>
+
+        {{ form.errors | default_errors }}
+
+        <label for="CommentAuthor">{{ 'blog.comment_form_name' | t }}</label>
+        <input type="text" name="comment[author]" id="CommentAuthor" value="{{ form.author }}" autocomplete="name" required>
+
+        <label for="CommentEmail">{{ 'blog.comment_form_email' | t }}</label>
+        <input type="email" name="comment[email]" id="CommentEmail" value="{{ form.email }}" autocomplete="email" required>
+
+        <label for="CommentBody">{{ 'blog.comment_form_body' | t }}</label>
+        <textarea name="comment[body]" id="CommentBody" rows="5" required>{{ form.body }}</textarea>
+
+        <button type="submit" class="page-shell__button">{{ 'blog.comment_form_submit' | t }}</button>
+      {%- endform -%}
+    {%- endif -%}
+  </div>
+</article>
+
+{% stylesheet %}
+  .main-article {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+  }
+
+  .main-article__image {
+    display: block;
+    width: 100%;
+    height: auto;
+    border-radius: var(--ds-item-radius-mobile);
+  }
+
+  .main-article__meta {
+    color: var(--color-soft-text);
+    font-size: var(--fs-text-sm);
+  }
+
+  .main-article__subtitle {
+    margin-block-start: 1rem;
+    color: var(--color-heading);
+    font-size: var(--fs-heading-sm);
+  }
+
+  .main-article__comments {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .main-article__comment {
+    padding-block-end: 1rem;
+    border-block-end: 1px solid var(--color-border);
+  }
+
+  @media (min-width: 768px) {
+    .main-article__image {
+      border-radius: var(--ds-item-radius-desktop);
+    }
+  }
+{% endstylesheet %}
+
+{% schema %}
+{
+  "name": "Blog post",
+  "tag": "section",
+  "class": "shopify-section--main",
+  "settings": [
+    {
+      "type": "color_scheme",
+      "id": "color_scheme",
+      "label": "Color scheme",
+      "default": "scheme_1"
+    }
+  ]
+}
+{% endschema %}

@@ -1,0 +1,135 @@
+{%- comment -%}
+  Cart — line items with quantity update, remove link and checkout, inside the
+  shared page shell (assets/base.css, .page-shell). A plain form post: no cart
+  JavaScript.
+{%- endcomment -%}
+<div class="page-shell color-{{ section.settings.color_scheme }}">
+  <div class="page-shell__inner">
+    <h1 class="page-shell__title">{{ 'cart.title' | t }}</h1>
+
+    {%- if cart.item_count > 0 -%}
+      <form action="{{ routes.cart_url }}" method="post" class="main-cart">
+        <ul class="main-cart__items">
+          {%- for item in cart.items -%}
+            <li class="main-cart__item">
+              {%- if item.image -%}
+                <a class="main-cart__media" href="{{ item.url }}">
+                  {{ item.image | image_url: width: 240 | image_tag: loading: 'lazy', widths: '120, 240', sizes: '120px' }}
+                </a>
+              {%- endif -%}
+              <div class="main-cart__info">
+                <a class="main-cart__title" href="{{ item.url }}">{{ item.product.title | escape }}</a>
+                {%- unless item.product.has_only_default_variant -%}
+                  <p class="main-cart__variant">{{ item.variant.title | escape }}</p>
+                {%- endunless -%}
+                <p>{{ item.final_line_price | money }}</p>
+                <a class="page-shell__link" href="{{ item.url_to_remove }}">{{ 'cart.remove' | t }}</a>
+              </div>
+              <div class="main-cart__qty">
+                <label class="visually-hidden" for="CartQty-{{ forloop.index }}">{{ 'cart.quantity' | t }}</label>
+                <input type="number" min="0" name="updates[]" id="CartQty-{{ forloop.index }}" value="{{ item.quantity }}">
+              </div>
+            </li>
+          {%- endfor -%}
+        </ul>
+
+        <div class="main-cart__footer">
+          <p class="main-cart__total">{{ 'cart.subtotal' | t }}: {{ cart.total_price | money_with_currency }}</p>
+          <button type="submit" name="update" class="page-shell__button page-shell__button--secondary">{{ 'cart.update' | t }}</button>
+          <button type="submit" name="checkout" class="page-shell__button">{{ 'cart.checkout' | t }}</button>
+        </div>
+      </form>
+    {%- else -%}
+      <p>{{ 'cart.empty' | t }}</p>
+      <p><a class="page-shell__link" href="{{ routes.all_products_collection_url }}">{{ '404.back_to_shopping' | t }}</a></p>
+    {%- endif -%}
+  </div>
+</div>
+
+{% stylesheet %}
+  .main-cart__items {
+    display: flex;
+    flex-direction: column;
+    gap: var(--ds-item-gap-mobile);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .main-cart__item {
+    display: grid;
+    grid-template-columns: 5rem minmax(0, 1fr) auto;
+    gap: 1rem;
+    align-items: start;
+    padding-block-end: var(--ds-item-gap-mobile);
+    border-block-end: 1px solid var(--color-border);
+  }
+
+  .main-cart__media img {
+    display: block;
+    width: 100%;
+    border-radius: var(--ds-item-radius-mobile);
+  }
+
+  .main-cart__info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+
+  .main-cart__title {
+    color: var(--color-heading);
+    text-decoration: none;
+  }
+
+  .main-cart__variant {
+    color: var(--color-soft-text);
+  }
+
+  .main-cart__qty input {
+    width: 4.5rem;
+    padding: 0.5rem;
+    font: inherit;
+    color: var(--color-text);
+    background-color: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--ds-item-radius-mobile);
+  }
+
+  .main-cart__footer {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 1rem;
+    margin-block-start: var(--ds-layout-gap-mobile);
+  }
+
+  .main-cart__total {
+    flex: 1 0 100%;
+    text-align: end;
+    color: var(--color-heading);
+  }
+
+  @media (min-width: 768px) {
+    .main-cart__item {
+      grid-template-columns: 7.5rem minmax(0, 1fr) auto;
+    }
+  }
+{% endstylesheet %}
+
+{% schema %}
+{
+  "name": "Cart",
+  "tag": "section",
+  "class": "shopify-section--main",
+  "settings": [
+    {
+      "type": "color_scheme",
+      "id": "color_scheme",
+      "label": "Color scheme",
+      "default": "scheme_1"
+    }
+  ]
+}
+{% endschema %}

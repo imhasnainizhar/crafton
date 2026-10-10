@@ -1,0 +1,613 @@
+/*
+ * ------------------------------------------------------------
+ * IMPORTANT: The contents of this file are auto-generated.
+ *
+ * This file may be updated by the Shopify admin theme editor
+ * or related systems. Please exercise caution as any changes
+ * made to this file may be overwritten.
+ * ------------------------------------------------------------
+ */
+{
+  "sections": {
+    "featured_collection": {
+      "type": "featured-collection",
+      "settings": {},
+      "blocks": {
+        "intro": {
+          "type": "rich_content",
+          "settings": {
+            "align_x_mobile": "center",
+            "align_x_desktop": "center",
+            "gap": "sm"
+          },
+          "blocks": {
+            "subtitle": {
+              "type": "subtitle",
+              "settings": {
+                "text": "featured"
+              }
+            },
+            "heading": {
+              "type": "heading",
+              "settings": {
+                "heading_text": "Shop the collection"
+              }
+            }
+          },
+          "block_order": [
+            "subtitle",
+            "heading"
+          ]
+        },
+        "collection": {
+          "type": "_cfx_collection",
+          "settings": {}
+        }
+      },
+      "block_order": [
+        "intro",
+        "collection"
+      ]
+    },
+    "featured_products": {
+      "type": "featured-products",
+      "settings": {
+        "heading": "Featured products"
+      }
+    },
+    "collection_tabs": {
+      "type": "classic-collection-tabs",
+      "blocks": {
+        "tab_1": {
+          "type": "tab",
+          "settings": {
+            "title": "New arrivals"
+          }
+        },
+        "tab_2": {
+          "type": "tab",
+          "settings": {
+            "title": "Best sellers"
+          }
+        },
+        "tab_3": {
+          "type": "tab",
+          "settings": {
+            "title": "On sale"
+          }
+        }
+      },
+      "block_order": [
+        "tab_1",
+        "tab_2",
+        "tab_3"
+      ],
+      "settings": {
+        "heading": "Shop the collections"
+      }
+    },
+    "featured_articles": {
+      "type": "featured-articles",
+      "settings": {},
+      "blocks": {
+        "intro": {
+          "type": "rich_content",
+          "settings": {
+            "align_x_mobile": "center",
+            "align_x_desktop": "center",
+            "gap": "sm"
+          },
+          "blocks": {
+            "subtitle": {
+              "type": "subtitle",
+              "settings": {
+                "text": "journal"
+              }
+            },
+            "heading": {
+              "type": "heading",
+              "settings": {
+                "heading_text": "From the journal"
+              }
+            }
+          },
+          "block_order": [
+            "subtitle",
+            "heading"
+          ]
+        },
+        "feature": {
+          "type": "_afx_feature",
+          "settings": {},
+          "blocks": {
+            "card_1": {
+              "type": "article_card",
+              "settings": {},
+              "blocks": {
+                "meta": {
+                  "type": "_article_meta_row",
+                  "settings": {},
+                  "blocks": {
+                    "date": {
+                      "type": "_article_date",
+                      "settings": {}
+                    },
+                    "read_time": {
+                      "type": "_article_read_time",
+                      "settings": {}
+                    }
+                  },
+                  "block_order": [
+                    "date",
+                    "read_time"
+                  ]
+                },
+                "title": {
+                  "type": "_article_title",
+                  "settings": {}
+                },
+                "excerpt": {
+                  "type": "_article_excerpt",
+                  "settings": {}
+                },
+                "author": {
+                  "type": "_article_author",
+                  "settings": {}
+                }
+              },
+              "block_order": [
+                "meta",
+                "title",
+                "excerpt",
+                "author"
+              ]
+            },
+            "card_2": {
+              "type": "article_card",
+              "settings": {},
+              "blocks": {
+                "meta": {
+                  "type": "_article_meta_row",
+                  "settings": {},
+                  "blocks": {
+                    "date": {
+                      "type": "_article_date",
+                      "settings": {}
+                    },
+                    "read_time": {
+                      "type": "_article_read_time",
+                      "settings": {}
+                    }
+                  },
+                  "block_order": [
+                    "date",
+                    "read_time"
+                  ]
+                },
+                "title": {
+                  "type": "_article_title",
+                  "settings": {}
+                },
+                "excerpt": {
+                  "type": "_article_excerpt",
+                  "settings": {}
+                },
+                "author": {
+                  "type": "_article_author",
+                  "settings": {}
+                }
+              },
+              "block_order": [
+                "meta",
+                "title",
+                "excerpt",
+                "author"
+              ]
+            },
+            "card_3": {
+              "type": "article_card",
+              "settings": {},
+              "blocks": {
+                "meta": {
+                  "type": "_article_meta_row",
+                  "settings": {},
+                  "blocks": {
+                    "date": {
+                      "type": "_article_date",
+                      "settings": {}
+                    },
+                    "read_time": {
+                      "type": "_article_read_time",
+                      "settings": {}
+                    }
+                  },
+                  "block_order": [
+                    "date",
+                    "read_time"
+                  ]
+                },
+                "title": {
+                  "type": "_article_title",
+                  "settings": {}
+                },
+                "excerpt": {
+                  "type": "_article_excerpt",
+                  "settings": {}
+                },
+                "author": {
+                  "type": "_article_author",
+                  "settings": {}
+                }
+              },
+              "block_order": [
+                "meta",
+                "title",
+                "excerpt",
+                "author"
+              ]
+            },
+            "card_4": {
+              "type": "article_card",
+              "settings": {},
+              "blocks": {
+                "meta": {
+                  "type": "_article_meta_row",
+                  "settings": {},
+                  "blocks": {
+                    "date": {
+                      "type": "_article_date",
+                      "settings": {}
+                    },
+                    "read_time": {
+                      "type": "_article_read_time",
+                      "settings": {}
+                    }
+                  },
+                  "block_order": [
+                    "date",
+                    "read_time"
+                  ]
+                },
+                "title": {
+                  "type": "_article_title",
+                  "settings": {}
+                },
+                "excerpt": {
+                  "type": "_article_excerpt",
+                  "settings": {}
+                },
+                "author": {
+                  "type": "_article_author",
+                  "settings": {}
+                }
+              },
+              "block_order": [
+                "meta",
+                "title",
+                "excerpt",
+                "author"
+              ]
+            }
+          },
+          "block_order": [
+            "card_1",
+            "card_2",
+            "card_3",
+            "card_4"
+          ]
+        }
+      },
+      "block_order": [
+        "intro",
+        "feature"
+      ]
+    },
+    "featured_blogs": {
+      "type": "featured-blogs",
+      "settings": {},
+      "blocks": {
+        "intro": {
+          "type": "rich_content",
+          "settings": {
+            "align_x_mobile": "center",
+            "align_x_desktop": "center",
+            "gap": "sm"
+          },
+          "blocks": {
+            "subtitle": {
+              "type": "subtitle",
+              "settings": {
+                "text": "stories"
+              }
+            },
+            "heading": {
+              "type": "heading",
+              "settings": {
+                "heading_text": "Explore our blogs"
+              }
+            }
+          },
+          "block_order": [
+            "subtitle",
+            "heading"
+          ]
+        },
+        "feature": {
+          "type": "_bfx_feature",
+          "settings": {},
+          "blocks": {
+            "card_1": {
+              "type": "blog_cover_card",
+              "settings": {},
+              "blocks": {
+                "title": {
+                  "type": "_blog_title",
+                  "settings": {}
+                },
+                "description": {
+                  "type": "_blog_description",
+                  "settings": {}
+                },
+                "author": {
+                  "type": "_blog_author",
+                  "settings": {}
+                }
+              },
+              "block_order": [
+                "title",
+                "description",
+                "author"
+              ]
+            },
+            "card_2": {
+              "type": "blog_cover_card",
+              "settings": {},
+              "blocks": {
+                "title": {
+                  "type": "_blog_title",
+                  "settings": {}
+                },
+                "description": {
+                  "type": "_blog_description",
+                  "settings": {}
+                },
+                "author": {
+                  "type": "_blog_author",
+                  "settings": {}
+                }
+              },
+              "block_order": [
+                "title",
+                "description",
+                "author"
+              ]
+            },
+            "card_3": {
+              "type": "blog_cover_card",
+              "settings": {},
+              "blocks": {
+                "title": {
+                  "type": "_blog_title",
+                  "settings": {}
+                },
+                "description": {
+                  "type": "_blog_description",
+                  "settings": {}
+                },
+                "author": {
+                  "type": "_blog_author",
+                  "settings": {}
+                }
+              },
+              "block_order": [
+                "title",
+                "description",
+                "author"
+              ]
+            },
+            "card_4": {
+              "type": "blog_cover_card",
+              "settings": {},
+              "blocks": {
+                "title": {
+                  "type": "_blog_title",
+                  "settings": {}
+                },
+                "description": {
+                  "type": "_blog_description",
+                  "settings": {}
+                },
+                "author": {
+                  "type": "_blog_author",
+                  "settings": {}
+                }
+              },
+              "block_order": [
+                "title",
+                "description",
+                "author"
+              ]
+            }
+          },
+          "block_order": [
+            "card_1",
+            "card_2",
+            "card_3",
+            "card_4"
+          ]
+        }
+      },
+      "block_order": [
+        "intro",
+        "feature"
+      ]
+    },
+    "newsletter": {
+      "type": "newsletter",
+      "blocks": {
+        "intro": {
+          "type": "rich_content",
+          "settings": {
+            "align_x_mobile": "center",
+            "align_x_desktop": "center",
+            "content_width": "760",
+            "gap": "sm",
+            "padding_horizontal": "none"
+          },
+          "blocks": {
+            "subtitle": {
+              "type": "subtitle",
+              "settings": {
+                "text": "STAY IN THE LOOP"
+              }
+            },
+            "heading": {
+              "type": "heading",
+              "settings": {
+                "heading_text": "Join our newsletter",
+                "heading_tag": "h2"
+              }
+            },
+            "text": {
+              "type": "text",
+              "settings": {
+                "paragraph_text": "<p>Sign up for updates, inspiration, and exclusive offers delivered straight to your inbox.</p>"
+              }
+            }
+          },
+          "block_order": [
+            "subtitle",
+            "heading",
+            "text"
+          ]
+        },
+        "signup": {
+          "type": "email_signup",
+          "settings": {}
+        }
+      },
+      "block_order": [
+        "intro",
+        "signup"
+      ],
+      "settings": {}
+    },
+    "collection_list": {
+      "type": "list-collections",
+      "settings": {},
+      "blocks": {
+        "list_1": {
+          "type": "rich_content",
+          "settings": {
+            "align_x_mobile": "center",
+            "align_x_desktop": "center",
+            "gap": "sm"
+          },
+          "blocks": {
+            "list_1_1": {
+              "type": "heading",
+              "settings": {
+                "heading_text": "Shop by Collection",
+                "heading_tag": "h2"
+              }
+            },
+            "list_1_2": {
+              "type": "text",
+              "settings": {
+                "paragraph_text": "<p>Browse our curated collections to find exactly what you're looking for.</p>"
+              }
+            }
+          },
+          "block_order": [
+            "list_1_1",
+            "list_1_2"
+          ]
+        },
+        "list_2": {
+          "type": "list_collections",
+          "settings": {
+            "desktop_layout": "grid",
+            "desktop_columns": 4,
+            "mobile_layout": "carousel",
+            "mobile_columns": "1"
+          },
+          "blocks": {
+            "list_2_1": {
+              "type": "_collection_card",
+              "settings": {
+                "title": "New Arrivals"
+              }
+            },
+            "list_2_2": {
+              "type": "_collection_card",
+              "settings": {
+                "title": "Best Sellers"
+              }
+            },
+            "list_2_3": {
+              "type": "_collection_card",
+              "settings": {
+                "title": "Sale"
+              }
+            },
+            "list_2_4": {
+              "type": "_collection_card",
+              "settings": {
+                "title": "Featured"
+              }
+            }
+          },
+          "block_order": [
+            "list_2_1",
+            "list_2_2",
+            "list_2_3",
+            "list_2_4"
+          ]
+        }
+      },
+      "block_order": [
+        "list_1",
+        "list_2"
+      ]
+    },
+    "classic_collection_list": {
+      "type": "classic-collection-list-tabs",
+      "settings": {},
+      "blocks": {
+        "list_1": {
+          "type": "tab",
+          "settings": {
+            "title": "Women"
+          }
+        },
+        "list_2": {
+          "type": "tab",
+          "settings": {
+            "title": "Men"
+          }
+        },
+        "list_3": {
+          "type": "tab",
+          "settings": {
+            "title": "Accessories"
+          }
+        }
+      },
+      "block_order": [
+        "list_1",
+        "list_2",
+        "list_3"
+      ]
+    }
+  },
+  "order": [
+    "featured_collection",
+    "featured_products",
+    "collection_tabs",
+    "collection_list",
+    "classic_collection_list",
+    "featured_articles",
+    "featured_blogs",
+    "newsletter"
+  ]
+}

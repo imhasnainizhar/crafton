@@ -1,43 +1,95 @@
+{%- comment -%}
+  Crafton document shell. Maps every color scheme to its --color-* roles, loads
+  the four type roles and the resolved Design System (--ds-*) on :root, then
+  renders the header group, the template and the footer group.
+  Depends on: assets/base.css, assets/motion.css, assets/motion-reveal.js,
+  snippets/design-system-vars.liquid, snippets/meta-tags.liquid.
+{%- endcomment -%}
 <!doctype html>
-<html lang="{{ request.locale.iso_code }}">
+<html
+  class="no-js{% if settings.disable_all_animations %} motion-disabled{% endif %}"
+  lang="{{ request.locale.iso_code }}"
+>
   <head>
-    {% # Inlined CSS Variables %}
-    {% render 'css-variables' %}
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <link rel="canonical" href="{{ canonical_url }}">
 
-    {% comment %}
-      Font preloading:
-      1. Preconnect to font CDN for faster connection
-      2. Preload only the critical font variant (base weight)
-      3. Additional variants load on-demand via @font-face
-    {% endcomment %}
-    {% unless settings.type_primary_font.system? %}
-      <link rel="preconnect" href="https://fonts.shopifycdn.com" crossorigin>
+    {%- comment -%}
+      Body and heading fonts are fetched before first paint, so the swap from the
+      fallback face does not shift the first screen. System fonts need no file.
+    {%- endcomment -%}
+    {%- unless settings.type_body_font.system? -%}
+      {{ settings.type_body_font | font_url | preload_tag: as: 'font', type: 'font/woff2', crossorigin: true }}
+    {%- endunless -%}
+    {%- unless settings.type_heading_font.system? or settings.type_heading_font == settings.type_body_font -%}
+      {{ settings.type_heading_font | font_url | preload_tag: as: 'font', type: 'font/woff2', crossorigin: true }}
+    {%- endunless -%}
 
-      {% comment %} Preload the base font variant for initial page render {% endcomment %}
-      {{ settings.type_primary_font | font_url | preload_tag: as: 'font', crossorigin: 'anonymous' }}
-    {% endunless %}
+    {%- if settings.favicon != blank -%}
+      <link rel="icon" type="image/png" href="{{ settings.favicon | image_url: width: 32, height: 32 }}">
+    {%- else -%}
+      {%- comment -%}No favicon set: an empty icon stops the browser requesting /favicon.ico (a 404 console error).{%- endcomment -%}
+      <link rel="icon" href="data:,">
+    {%- endif -%}
 
-    {% # Load and preload the critical CSS %}
-    {{ 'critical.css' | asset_url | stylesheet_tag: preload: true }}
-    {{ 'base.css' | asset_url | stylesheet_tag }}
+    <title>
+      {{ page_title }}
+      {%- if current_tags -%}
+        {%- assign meta_tags = current_tags | join: ', ' %} &ndash; {{ 'general.meta.tagged' | t: tags: meta_tags }}
+      {%- endif -%}
+      {%- if current_page != 1 %} &ndash; {{ 'general.meta.page' | t: page: current_page }}{% endif -%}
+      {%- unless page_title contains shop.name %} &ndash; {{ shop.name }}{% endunless -%}
+    </title>
 
-    {% # Social, title, etc. %}
+    {% if page_description %}
+      <meta name="description" content="{{ page_description | escape }}">
+    {% endif %}
+
     {% render 'meta-tags' %}
 
+    {%- comment -%}
+      Motion (snippets/motion-reveal.liquid). Nothing is hidden at first paint:
+      motion-reveal.js hides only below-the-fold entrances, so the first screen
+      paints at once. __motionAssets is the one lazy-load map (GSAP, Swiper):
+      motion-reveal.js loads from it once per page, only when a carousel or an
+      accent needs it. Swiper's CSS is linked here once instead of per section,
+      so carousels lay out before its JS arrives.
+    {%- endcomment -%}
+    {{ 'motion.css' | asset_url | stylesheet_tag }}
+    {{ 'swiper-bundle.min.css' | asset_url | stylesheet_tag }}
+    <script>
+      window.__motionDisabled = {{ settings.disable_all_animations | json }};
+      window.__motionAssets = {
+        gsap: "{{ 'gsap.min.js' | asset_url }}",
+        scrollTrigger: "{{ 'ScrollTrigger.min.js' | asset_url }}",
+        swiper: "{{ 'swiper-bundle.min.js' | asset_url }}",
+      };
+    </script>
+
+    {% render 'theme-styles' %}
+
+    {%- comment -%}
+      After the theme's own stylesheets: it carries the compiled stylesheet-tag
+      CSS of every section, block and snippet, which must win ties against
+      base.css and motion.css.
+    {%- endcomment -%}
     {{ content_for_header }}
+
+    <script src="{{ 'motion-reveal.js' | asset_url }}" defer></script>
   </head>
 
-  <body>
-    {% block 'container', tag: 'div' %}
-      {% block 'header' -%}{%- endblock %}
-    {% endblock %}
+  <body class="template-{{ template.name | handle }} color-{{ settings.color_schemes.first.id }}">
+    <a class="skip-to-content-link visually-hidden" href="#MainContent">
+      {{- 'accessibility.skip_to_content' | t -}}
+    </a>
 
-    <main>
+    {% sections 'header-group' %}
+
+    <main id="MainContent" class="content-for-layout" role="main" tabindex="-1">
       {{ content_for_layout }}
     </main>
 
-    {% block 'container', tag: 'div' %}
-      {% block 'footer' -%}{%- endblock %}
-    {% endblock %}
+    {% sections 'footer-group' %}
   </body>
 </html>
