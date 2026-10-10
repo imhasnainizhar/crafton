@@ -1,157 +1,62 @@
-# Skeleton Theme Agent Guide
+# AGENTS.md
 
-A minimal Shopify theme that defines page structure directly in Liquid. This
-file lists the repository conventions that aren't obvious from an individual
-file. The code is the source of truth.
+Instructions for AI coding agents working in this repo. Tool-specific files (`CLAUDE.md`, Cursor, Codex) point here.
 
-## Non-negotiables when editing this theme
-
-- **No sections:** no `sections/` folder, no `{% section %}`/`{% sections %}`
-  tags, no JSON templates, no schema `presets`.
-- **No Liquid-embedded assets:** no `{% stylesheet %}`, no `{% javascript %}`.
-  All CSS and JavaScript live in `assets/`.
-- **Direct Liquid templates:** templates render page content from blocks,
-  snippets, and inline markup. Don't introduce a section for markup that is
-  used by only one page.
-- **Template-owned containers:** each `templates/*.liquid` file is the
-  composition root and wraps its page content in one or more `container`
-  blocks — one per vertical slice. `layout/theme.liquid` wraps only the
-  `header` and `footer` blocks in their own `container` blocks and renders
-  `content_for_layout` in a plain `<main>`; `layout/password.liquid` renders
-  `content_for_layout` in a plain `<main>`, and its template owns the
-  container. The exception is `gift_card.liquid` (`{% layout none %}`): it
-  manages its own document structure.
-- **Whitespace matters:** include whitespace between an HTML tag name and a
-  following Liquid delimiter (`<li {% ... %}`, not `<li{% ... %}`).
-- **Translated UI only:** every user-facing string uses a literal
-  `{{ 'key' | t }}` call.
-- **Shopify routes for storefront URLs:** use Liquid `routes.*` for every
-  storefront path; never hardcode `/cart`, `/search`, or `/collections`.
-
-## Page structure
+Crafton is a free, open-source Shopify Online Store 2.0 theme for lightweight stores: Liquid, CSS and vanilla JS only. There is no build step and no test suite. It shares its foundation with the Elewind pro theme (color schemes, Design System, type roles, typography blocks, basic motion) and keeps everything else small.
 
 ```
-layout/theme.liquid    → {% block 'container' %} (header) + <main> content_for_layout + {% block 'container' %} (footer)
-layout/password.liquid → <main> content_for_layout
-templates/*.liquid     → {% block 'container' %} → blocks / snippets / inline HTML
+shopify theme dev      # preview
+shopify theme check    # lint
 ```
 
-Neither layout wraps `content_for_layout` in a `container` block; each renders
-it in a plain `<main>`. In `theme.liquid` the `header` and `footer` blocks each
-get their own `container` block. Every template is the composition root and
-wraps its page content in one or more `container` blocks — a template may hold
-any number of containers, one per vertical slice.
+## Architecture
 
-## The block tag
+- **JSON templates + sections.** `templates/*.json` list sections; merchants add, remove and reorder them in the theme editor. `gift_card.liquid` is the one Liquid template.
+- **Layouts.** `layout/theme.liquid` renders the header group, `content_for_layout` and the footer group. `layout/password.liquid` renders only the password template. Both load `snippets/theme-styles.liquid` (scheme roles, type roles, Design System) before `content_for_header`.
+- **Page sections** are `sections/main-*.liquid`, wrapped in the shared page shell (`.page-shell` in `assets/base.css`).
+- **Featured families** (from Elewind, unchanged): Featured collection (`blocks/_cfx_collection.liquid`, `assets/collection-featured.js`), Featured articles (`_afx_feature`, `article_card` + `_article_*` blocks, `assets/articles-featured.js`), Featured blogs (`_bfx_feature`, `blog_cover_card` + `_blog_*` blocks, `assets/blogs-featured.js`). Each section is a shell: Rich content intro + the feature block. Carousels are Swiper, loaded lazily through `Motion.whenSwiper` (`assets/motion-reveal.js`); View more paging goes through `assets/loader-fetch.js` + `assets/loader-state.js` + `snippets/ldx-state.liquid`.
+- **Collection list** (from Elewind, unchanged): `sections/list-collections.liquid` + `blocks/list_collections.liquid` + `blocks/_collection_card.liquid`, carousel through `<container-carousel>` (`assets/container-carousel.js`, Swiper via `Motion.whenSwiper`).
+- **Classic sections** (`cls-` family): Featured products, Classic collection tabs and Classic collection list. Each carries the standard Animations group and the Section Design Mode panel. Shared parts: `snippets/classic-head.liquid`, `snippets/classic-panel.liquid` (grid / native scroll-snap carousel, family layout CSS), `assets/classic-tabs.js` (`<classic-tabs>`, tabs and arrows only).
+- **Cards**: `snippets/collection-product-card.liquid` (`opc-`), `snippets/collection-list-card.liquid` (`clc-`), `blocks/article_card.liquid` (`arc-`), `blocks/blog_cover_card.liquid` (`bcc-`), `snippets/classic-article-card.liquid` (blog page). Their hover lift lives in one layer at the end of `assets/base.css`.
+- **Typography blocks** (`heading`, `subtitle`, `text`, `rich_text`, `rich_content`, `button`, `label`, `caption`, `_accent_line`) and `email_signup` are theme blocks. The Newsletter section is a shell that renders them with `{% content_for 'blocks' %}`.
 
-```liquid
-{% block 'name', named_parameter: value %}
-  Body content
-{% endblock %}
-```
+## Rules
 
-The tag works like `{% render %}`, but renders `blocks/name.liquid`. Every
-named parameter is available as a plain variable inside the block. If its name
-matches a setting declared in the block's schema, it also sets
-`block.settings.<id>`. A parameter with no matching schema setting is only a
-variable.
+- Touch only the files the task needs. Read the current file before you change it; the user edits code by hand. Never revert work the user changed.
+- Don't rename files, classes, ids, settings or variables, and don't remove features, unless asked. Don't add libraries without approval.
+- CSS is split in two, both in the file itself:
+  - Static rules go in the file's `{% stylesheet %}` tag, written against the shared class. No Liquid inside it, not even comments.
+  - Per-instance values (settings, `block.id`, `section.id`) go in a scoped `{% style %}` tag that only sets custom properties on `.thing--{{ block.id }}` / `{{ section.id }}`.
+  - Write both mobile-first, with exactly one `@media (min-width: 768px)` override. No horizontal overflow. No needless `!important`.
+- Colours only through `color_scheme` settings and `var(--color-*)` roles. No raw colour pickers.
+- Spacing, radius, gaps, gutters and widths only through the resolved `--ds-*` tokens (`snippets/design-system-vars.liquid`). A section with cards or a carousel takes the Section Design Mode override (Auto / Blend / Custom): render `snippets/section-design-mode.liquid` in its root's scoped style and copy only the contract settings its markup consumes, with their ids, options and defaults unchanged.
+- The product card (`collection-product-card`, `opc-`) and collection card (`collection-list-card`, `clc-`) are Elewind's, unchanged. Style them through their documented data attributes and custom properties, never by editing the snippets.
+- Typography through the shared `--font-*`, `--fs-*`, `--lh-*`, `--ls-*` tokens and `snippets/typography-resolver.liquid`.
+- Entrance animations go through `snippets/motion-reveal.liquid` (CSS classes + timing variables, animated by `assets/motion.css`, switched on by `assets/motion-reveal.js`). Keep motion basic: fade, fade up/down, slide, scale, mask reveal, staggered groups. No scroll scrub, parallax or split text. GSAP loads only for accent typography, lazily, from `snippets/accent-typography.liquid`.
+- JS: vanilla, guard against double initialization, survive theme-editor reloads (`shopify:section:load`, `shopify:block:select`).
+- Every file starts with a 2–5 line comment saying what it is and how it works. Snippets document every render parameter.
+- Every user-facing storefront string uses a `'key' | t` lookup in `locales/en.default.json`. Global theme-setting labels live in `locales/en.default.schema.json`.
+- Use `routes.*` for storefront URLs.
 
-For example, the container schema declares `alignment`, but not `tag`:
+## Schema settings
 
-```liquid
-{% block 'container', alignment: 'center', tag: 'div' %}
-  {{ page.content }}
-{% endblock %}
-```
+- Don't add or change settings, blocks or presets unless asked. When asked, add exactly what was requested, make each one work, and keep the schema valid.
+- Write labels for merchants: describe the result they will see. No CSS, code or setting ids in labels.
+- Hide settings that do nothing in the current state with `visible_if` (block's own settings or `section.settings` only; no parentheses; 250 characters max).
+- Color scheme defaults are `scheme_1` … `scheme_6`, the ids in `config/settings_data.json`.
 
-Inside the container, both `alignment` and `block.settings.alignment` return
-`center`; `tag` returns `div` and does not create `block.settings.tag`. Continue
-to use `block.settings.<id>` for schema-backed controls in block implementations.
-`class` is an ordinary parameter with no special platform behavior.
+## Liquid trap
 
-`{% doc %}` documents parameters; it does not declare, validate, or bind them.
-A parameter documented only in LiquidDoc is read as a plain variable and does
-not become a schema setting. Use `{% schema %}` for merchant-editable controls.
-Inline literal arrays are supported in `{% block %}` arguments, as shown by
-`tips` in `templates/index.liquid`; `{% render %}` and `{% partial %}` do not
-accept inline literal arrays.
+Never write `{% %}` or `{{ }}` inside a `{%- liquid -%}` tag, not even in `#` comments. The tag closes at the first `%}`, and everything after it prints as raw text.
 
-The content between `{% block %}` and `{% endblock %}` is available inside the
-block as `{{ content }}`. Always include the closing `{% endblock %}` tag,
-even when the call has no body content. The body is rendered in the caller's
-scope; it cannot read the callee's settings or local assignments. Prefer body
-content for display-only text and markup instead of adding `title`, `body`, or
-`heading` parameters. Add parameters when the block needs data or must change
-how it renders.
+## Naming
 
-Executable `{% block %}` tags are allowed only in `layout/` and `templates/`.
-Keep child calls in the caller-owned body, never in block or snippet
-implementations. LiquidDoc examples may show block calls, but must be authored
-in a layout or template when used.
+Follow `CODE-NAMING-CONVENTIONS.md`. If it doesn't cover the case, ask the user, offering 3–4 concrete options. After you write or replace code, append a dated entry to its Convention log.
 
-## The partial tag
+## Tracking
 
-```liquid
-{% partial 'name' %}...{% endpartial %}
-```
+Log changes in `changelog.md`.
 
-Partials name inline regions of server-rendered HTML. JavaScript can request a
-region by name and replace the matching region in the DOM. The name in the
-Liquid template and the name in JavaScript must match.
+## Testing
 
-The `liquid-tips` block is the theme's canonical partial-refresh example: its
-tip sentence lives in a `{% partial 'liquid-tip' %}` region, and
-`assets/liquid-tips.js` calls `partials.refresh("liquid-tip")` to swap in a
-fresh server-rendered tip. Import `partials` from
-`@shopify/partial-rendering`. Use `refresh()` to fetch and apply regions from
-the current page URL, or `fetch()` followed by `apply()` when you need control
-over the request URL, method, body, or when the update appears. Fetch related
-regions together so one response keeps them synchronized. Build request URLs
-from the current page URL or Liquid `routes.*` to preserve locale and market
-routing.
-
-`apply()` preserves focus, text selection, form values, and scroll position.
-It also preserves input, textarea, and select values when returned markup
-changes them: explicitly update server-adjusted controls after applying the
-partial (for example, a cart quantity corrected by inventory validation).
-Cancel stale requests with an `AbortSignal`, use `aria-busy` while loading,
-announce meaningful results in a live region, and restore transient DOM state
-such as open disclosures. Read URL state from `window.location.search` so
-shared links and browser navigation produce the same result.
-
-The `{% partial %}` tag renders on the storefront only when
-`shop.features.agentic_editor_enabled?` is on and the page is served by
-StorefrontRenderer; otherwise the storefront raises `Unknown tag 'partial'`.
-
-## Blocks
-
-Every block must:
-
-- Start with a `{% doc %}` header with typed params.
-- Include a `{% schema %}` tag without `presets`.
-- Document each named parameter that the block reads, such as `tag` or `class`.
-- Document `content` in LiquidDoc and indicate whether it is required or
-  optional: `@param {string} content` or `@param {string} [content]`. For
-  self-contained blocks, describe that callers must leave the body empty.
-- Render `{{ content }}` where caller-supplied body content belongs.
-  Self-contained blocks may omit the outlet and use an empty caller body.
-- Keep executable child block calls in layouts or templates.
-- Keep `{{ block.shopify_attributes }}` on the root element so the theme editor
-  can identify the block.
-
-Skeleton keeps `.theme-check.yml` as a pristine
-`extends: theme-check:recommended` with **zero overrides**. Fix Theme Check
-errors in the Liquid instead of adding configuration exceptions.
-
-Current blocks: `container`, `hello-world`, `header`, `footer`,
-`liquid-tips`.
-
-## Theme map
-
-```
-blocks/               container, hello-world, header, footer, liquid-tips
-templates/            *.liquid page structure (no JSON templates)
-layout/               theme.liquid document shell: header/footer container blocks + <main>
-snippets/             internal utilities (css-variables, image, meta-tags)
-assets/               CSS, JavaScript, and other static assets
-```
+Check the code you changed. For bigger features also run `shopify theme check` and test interactions and breakpoints. Never claim a test ran when it didn't.
