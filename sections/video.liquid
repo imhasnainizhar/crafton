@@ -1,0 +1,1379 @@
+{%- comment -%}
+  Video — a full-bleed video stage with a custom play/pause button, a
+  YouTube-style hover timeline, an optional full-screen YouTube popover, and
+  an optional Heading block floating on top. No other text blocks are
+  allowed. Overlay treatment (tint / shadow) comes from
+  snippets/media-overlay-tint.liquid, shared with the Image section.
+
+  Behavior lives in assets/video-section.js (<video-section> custom element):
+  click-to-toggle playback, timeline scrubbing, popover open/close. When
+  Autoplay is on the video starts playing muted and the play button can be
+  hidden entirely.
+{%- endcomment -%}
+
+{%- liquid
+  assign ar_mobile = section.settings.aspect_mobile | default: '4 / 5'
+  assign ar_desktop = section.settings.aspect_desktop | default: '16 / 9'
+
+  assign has_video = false
+  if section.settings.video != blank
+    assign has_video = true
+  endif
+
+  assign has_popover = false
+  if section.settings.enable_youtube_popover and section.settings.youtube_link != blank
+    assign has_popover = true
+  endif
+
+  assign show_play_button = false
+  if has_video
+    assign show_play_button = true
+    if section.settings.autoplay and section.settings.hide_play_button
+      assign show_play_button = false
+    endif
+  endif
+
+  assign is_clickable = false
+  if has_popover or has_video
+    assign is_clickable = true
+  endif
+
+  assign media_zoom_on = false
+  if section.settings.media_zoom_enabled and settings.disable_all_animations == false
+    assign media_zoom_on = true
+  endif
+
+  assign full_height_mode = section.settings.full_height_mode
+  assign design_mode_mobile = section.settings.design_mode_mobile
+  assign design_mode_desktop = section.settings.design_mode_desktop
+-%}
+
+<script src="{{ 'video-section.js' | asset_url }}" defer="defer"></script>
+
+{% style %}
+  /* Mobile-first base + single 768px desktop override. */
+  video-section.video-section--{{ section.id }} {
+    {% render 'section-design-mode', section_settings: section.settings %}
+    --video-media-radius: var(--ds-layout-radius-mobile);
+    display: block;
+    --btn-scale: {{ section.settings.button_scale }};
+    background-color: var(--color-base);
+    color: var(--color-text);
+    overflow-x: clip;
+    overflow-y: visible;
+  }
+
+  .video-section--{{ section.id }} .video-section__rail {
+    padding-inline: var(--ds-layout-gutter-mobile);
+    padding-block: var(--ds-section-padding-mobile);
+
+    {% if section.settings.design_mode_mobile == 'modern' %}
+      box-sizing: border-box;
+    {% else %}
+      {% if section.settings.full_height_mode %}
+        box-sizing: content-box;
+      {% endif %}
+    {% endif %}
+
+    {% if full_height_mode %}
+      height: var(--viewport-height, 100vh);
+    {% endif %}
+  }
+
+  .video-section--{{ section.id }} .video-section__stage {
+    position: relative;
+    width: 100%;
+    border-radius: var(--video-media-radius);
+    overflow: hidden;
+    border: var(--ds-layout-border-width-mobile) solid var(--color-border);
+
+    {% if full_height_mode %}
+      height: 100%;
+    {% elsif ar_mobile != 'auto' %}
+      aspect-ratio: {{ ar_mobile }};
+    {% endif %}
+    {% if is_clickable %}
+      cursor: pointer;
+    {% endif %}
+  }
+
+  .video-section--{{ section.id }} .video-section__media {
+    z-index: 1;
+
+    {% if full_height_mode %}
+      position: absolute;
+      inset: 0;
+    {% elsif ar_mobile == 'auto' %}
+      position: relative;
+    {% else %}
+      position: absolute;
+      inset: 0;
+    {% endif %}
+  }
+
+  .video-section--{{ section.id }} .media-element {
+    object-fit: cover;
+    {% if full_height_mode %}
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+    {% elsif ar_mobile == 'auto' %}
+      position: static;
+      display: block;
+      width: 100%;
+      height: auto;
+    {% else %}
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+    {% endif %}
+  }
+
+  .video-section--{{ section.id }} .video-section__motion {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    {%- if media_zoom_on %}
+      {% render 'motion-reveal', part: 'vars', from: section.settings, prefix: 'media_zoom', enabled: media_zoom_on %}
+    {%- endif %}
+  }
+
+  {% if ar_mobile == 'auto' and full_height_mode == false %}
+    .video-section--{{ section.id }} .video-section__motion {
+      height: auto;
+    }
+  {% endif %}
+
+  .video-section--{{ section.id }} .placeholder-svg {
+    background-color: var(--color-surface);
+    fill: var(--color-text);
+  }
+
+  /* Video Play Button */
+  .video-section--{{ section.id }} .video-play-btn {
+    position: absolute;
+    z-index: 3;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none; /* Let the stage handle the click */
+    background-color: var(--color-accent);
+    color: var(--color-accent-contrast);
+    border-radius: {{ section.settings.button_border_radius }}px;
+    width: calc(80px * var(--btn-scale));
+    height: calc(80px * var(--btn-scale));
+    transition: opacity 0.3s ease;
+
+    {% if section.settings.button_align_y == 'flex-start' %}top: 2rem;{% elsif section.settings.button_align_y == 'flex-end' %}bottom: 2rem;{% else %}top: 50%;{% endif %}
+    {% if section.settings.button_align_x == 'left' %}left: 2rem;{% elsif section.settings.button_align_x == 'right' %}right: 2rem;{% else %}left: 50%;{% endif %}
+
+    {% if section.settings.button_align_y == 'center' and section.settings.button_align_x == 'center' %}
+      transform: translate(-50%, -50%);
+    {% elsif section.settings.button_align_y == 'center' %}
+      transform: translateY(-50%);
+    {% elsif section.settings.button_align_x == 'center' %}
+      transform: translateX(-50%);
+    {% endif %}
+  }
+
+  .video-section--{{ section.id }} .play-btn-icon-wrapper {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+  }
+
+  .video-section--{{ section.id }} .video-play-btn svg {
+    width: calc(30px * var(--btn-scale));
+    height: calc(30px * var(--btn-scale));
+    fill: currentColor;
+  }
+
+  .video-section--{{ section.id }} .video-play-btn .icon-play {
+    margin-left: calc(4px * var(--btn-scale)); /* Balance play triangle */
+  }
+
+  .video-section--{{ section.id }} .video-play-btn .icon-pause {
+    margin-left: 0; /* Keep pause bars centered */
+    display: none;
+  }
+
+  /* Play Button Popup Animation */
+  @keyframes scalePop {
+    0% { transform: scale(0.6); }
+    50% { transform: scale(1.35); }
+    100% { transform: scale(1); }
+  }
+  .video-section--{{ section.id }} .animate-scale-pop .play-btn-icon-wrapper {
+    animation: scalePop 0.45s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+  }
+
+  /* Custom Hover Timeline (YouTube Style) */
+  .video-section--{{ section.id }} .video-custom-timeline {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    z-index: 5;
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    padding: 20px 25px;
+    box-sizing: border-box;
+    background: linear-gradient(to top, color-mix(in srgb, var(--color-shadow) 70%, transparent), transparent);
+
+    transform: translateY(100%);
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    cursor: pointer;
+  }
+
+  .video-section--{{ section.id }} .video-section__stage:hover .video-custom-timeline {
+    transform: translateY(0);
+  }
+
+  .video-section--{{ section.id }} .timeline-time {
+    color: var(--color-accent-contrast);
+    font-size: 13px;
+    font-family: var(--font-body-family);
+    white-space: nowrap;
+    user-select: none;
+    text-shadow: 0 1px 2px color-mix(in srgb, var(--color-shadow) 50%, transparent);
+  }
+
+  .video-section--{{ section.id }} .video-progress-bar {
+    flex-grow: 1;
+    height: 5px;
+    background: color-mix(in srgb, var(--color-accent-contrast) 40%, transparent);
+    position: relative;
+    transition: height 0.15s ease;
+  }
+
+  .video-section--{{ section.id }} .video-progress-bar:hover {
+    height: 8px;
+  }
+
+  .video-section--{{ section.id }} .video-progress-filled {
+    height: 100%;
+    background: var(--color-accent);
+    width: 0%;
+    position: absolute;
+    top: 0;
+    left: 0;
+    pointer-events: none;
+  }
+
+  .video-section--{{ section.id }} .video-progress-thumb {
+    position: absolute;
+    right: -6px;
+    top: 50%;
+    transform: translateY(-50%) scale(0);
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background-color: var(--color-accent-contrast);
+    transition: transform 0.15s ease;
+  }
+
+  .video-section--{{ section.id }} .video-custom-timeline:hover .video-progress-thumb {
+    transform: translateY(-50%) scale(1);
+  }
+
+  /* YouTube Popover Modal */
+  .video-section--{{ section.id }} .yt-popover {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background-color: var(--color-shadow);
+    z-index: 999999;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease;
+    overflow-y: auto;
+    cursor: default;
+  }
+
+  .video-section--{{ section.id }} .yt-popover.is-active {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .video-section--{{ section.id }} .yt-popover-scroll {
+    width: 100%;
+    min-height: max(100vh, 500px);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 60px 20px;
+    box-sizing: border-box;
+    position: relative;
+  }
+
+  .video-section--{{ section.id }} .yt-popover-close {
+    position: absolute;
+    top: 20px;
+    right: 30px;
+    font-size: 40px;
+    color: var(--color-accent-contrast);
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    z-index: 2;
+    transition: transform 0.2s ease;
+  }
+
+  .video-section--{{ section.id }} .yt-popover-close:hover {
+    transform: scale(1.1);
+  }
+
+  .video-section--{{ section.id }} .yt-popover-content {
+    width: 90%;
+    max-width: 1000px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 15px;
+  }
+
+  .video-section--{{ section.id }} .yt-popover-content iframe {
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    border: none;
+    border-radius: var(--video-media-radius);
+    box-shadow: 0 10px 30px color-mix(in srgb, var(--color-shadow) 50%, transparent);
+  }
+
+  .video-section--{{ section.id }} .yt-popover-link {
+    color: var(--color-accent-contrast);
+    text-decoration: underline;
+    font-family: var(--font-body-family);
+    font-size: var(--fs-body);
+    cursor: pointer;
+  }
+
+  @media (min-width: 786px) {
+    video-section.video-section--{{ section.id }} {
+      --video-media-radius: var(--ds-layout-radius-desktop);
+    }
+  }
+
+  @media screen and (min-width: 768px) {
+
+    .video-section--{{ section.id }} .video-section__rail {
+      padding-inline: var(--ds-layout-gutter-desktop);
+      padding-block: var(--ds-section-padding-desktop);
+
+      {% if section.settings.design_mode_desktop == 'modern' %}
+        box-sizing: border-box;
+      {% else %}
+        {% if section.settings.full_height_mode %}
+          box-sizing: content-box;
+        {% endif %}
+      {% endif %}
+
+      {% if full_height_mode %}
+        height: var(--viewport-height, 100vh);
+      {% endif %}
+    }
+
+    .video-section--{{ section.id }} .video-section__stage {
+      border-radius: var(--video-media-radius);
+      border: var(--ds-layout-border-width-desktop) solid var(--color-border);
+
+      {% if full_height_mode %}
+        height: 100%;
+      {% else %}
+        aspect-ratio: {{ ar_desktop }};
+      {% endif %}
+    }
+
+    {% unless full_height_mode %}
+    {% if ar_desktop == 'auto' and ar_mobile != 'auto' %}
+      .video-section--{{ section.id }} .video-section__media {
+        position: relative;
+        inset: auto;
+      }
+      .video-section--{{ section.id }} .media-element {
+        position: static;
+        inset: auto;
+        width: 100%;
+        height: auto;
+        display: block;
+      }
+    {% elsif ar_desktop != 'auto' and ar_mobile == 'auto' %}
+      .video-section--{{ section.id }} .video-section__media {
+        position: absolute;
+        inset: 0;
+      }
+      .video-section--{{ section.id }} .media-element {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+      }
+    {% endif %}
+    {% endunless %}
+  }
+{% endstyle %}
+
+<video-section
+  class="video-section--{{ section.id }} color-{{ section.settings.color_scheme }}"
+  {% if has_popover %}
+    data-youtube-id="{{ section.settings.youtube_link.id }}"
+  {% endif %}
+  {% if section.settings.autoplay %}
+    data-autoplay
+  {% endif %}
+>
+  <div class="video-section__rail">
+    <div class="video-section__stage">
+      <div
+        class="video-section__media"
+      >
+        {%- if has_video -%}
+          <div
+            class="video-section__motion {% render 'motion-reveal', part: 'class', from: section.settings, prefix: 'media_zoom', enabled: media_zoom_on, effect: 'media-zoom-out' %}"
+          >
+            <video
+              class="media-element bg-media-video"
+              muted
+              playsinline
+              {% if section.settings.loop %}
+                loop
+              {% endif %}
+              {% if section.settings.autoplay %}
+                autoplay
+              {% endif %}
+              poster="{{ section.settings.video.preview_image | image_url: width: 1500 }}"
+            >
+              <!-- Loop over sources so the browser finds a working one -->
+              {% for source in section.settings.video.sources %}
+                <source src="{{ source.url }}" type="{{ source.mime_type }}">
+              {% endfor %}
+            </video>
+          </div>
+
+          {%- if show_play_button -%}
+            <div class="video-play-btn">
+              <div class="play-btn-icon-wrapper">
+                <!-- Play SVG -->
+                <svg class="icon-play" viewBox="0 0 24 24">
+                  <path d="M8 5v14l11-7z"/>
+                </svg>
+                <!-- Pause SVG -->
+                <svg class="icon-pause" viewBox="0 0 24 24">
+                  <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>
+                </svg>
+              </div>
+            </div>
+          {%- endif -%}
+
+          {%- if section.settings.enable_video_timeline -%}
+            <div class="video-custom-timeline">
+              {% if section.settings.show_timestamp and section.settings.timestamp_position == 'left' %}
+                <span class="timeline-time">0:00 / 0:00</span>
+              {% endif %}
+
+              <div class="video-progress-bar">
+                <div class="video-progress-filled">
+                  <div class="video-progress-thumb"></div>
+                </div>
+              </div>
+
+              {% if section.settings.show_timestamp and section.settings.timestamp_position == 'right' %}
+                <span class="timeline-time">0:00 / 0:00</span>
+              {% endif %}
+            </div>
+          {%- endif -%}
+        {%- else -%}
+          <div
+            class="video-section__motion {% render 'motion-reveal', part: 'class', from: section.settings, prefix: 'media_zoom', enabled: media_zoom_on, effect: 'media-zoom-out' %}"
+          >
+            {{ 'lifestyle-2' | placeholder_svg_tag: 'media-element placeholder-svg' }}
+          </div>
+        {%- endif -%}
+      </div>
+
+      {% render 'media-overlay-tint', id: section.id, s: section.settings %}
+
+      <div class="mc-content mc-content--{{ section.id }}">
+        {% content_for 'blocks' %}
+      </div>
+    </div>
+  </div>
+
+  {%- if has_popover -%}
+    <div class="yt-popover">
+      <div class="yt-popover-scroll">
+        <button class="yt-popover-close" aria-label="{{ 'theme.sections.video.close' | t }}">&times;</button>
+        <div class="yt-popover-content">
+          <iframe
+            class="yt-popover-iframe"
+            src=""
+            title="{{ 'theme.sections.video.popover_title' | t }}"
+            allow="autoplay; encrypted-media; fullscreen; picture-in-picture"
+            allowfullscreen
+          ></iframe>
+          <a
+            href="https://www.youtube.com/watch?v={{ section.settings.youtube_link.id }}"
+            target="_blank"
+            rel="noopener"
+            class="yt-popover-link"
+          >
+            {{ 'theme.sections.video.watch_on_youtube' | t }}
+          </a>
+        </div>
+      </div>
+    </div>
+  {%- endif -%}
+</video-section>
+
+{% schema %}
+{
+  "name": "Video",
+  "disabled_on": {
+    "templates": [
+      "page",
+      "blog"
+    ]
+  },
+  "settings": [
+    {
+      "type": "header",
+      "content": "Section",
+      "info": "A video player with an optional heading on top."
+    },
+    {
+      "type": "color_scheme",
+      "id": "color_scheme",
+      "label": "Color Scheme",
+      "default": "scheme_1"
+    },
+    {
+      "type": "header",
+      "content": "Design Mode"
+    },
+    {
+      "type": "select",
+      "id": "section_design_mode",
+      "label": "Section Design Mode",
+      "info": "Auto: inherit all theme settings. Blend: use this section's values with the theme's responsive Design Mode. Custom: use this section's Design Mode and Design System values.",
+      "options": [
+        {
+          "value": "auto",
+          "label": "Auto"
+        },
+        {
+          "value": "blend",
+          "label": "Blend"
+        },
+        {
+          "value": "custom",
+          "label": "Custom"
+        }
+      ],
+      "default": "auto"
+    },
+    {
+      "type": "select",
+      "id": "design_mode_desktop",
+      "label": "Desktop Design Mode",
+      "options": [
+        {
+          "value": "modern",
+          "label": "Modern"
+        },
+        {
+          "value": "minimal",
+          "label": "Minimal"
+        }
+      ],
+      "default": "modern",
+      "visible_if": "{{ section.settings.section_design_mode == 'custom' }}"
+    },
+    {
+      "type": "select",
+      "id": "design_mode_mobile",
+      "label": "Mobile Design Mode",
+      "options": [
+        {
+          "value": "modern",
+          "label": "Modern"
+        },
+        {
+          "value": "minimal",
+          "label": "Minimal"
+        }
+      ],
+      "default": "modern",
+      "visible_if": "{{ section.settings.section_design_mode == 'custom' }}"
+    },
+    {
+      "type": "header",
+      "content": "Spacing",
+      "visible_if": "{{ section.settings.section_design_mode == 'custom' or section.settings.section_design_mode == 'blend' }}"
+    },
+    {
+      "type": "select",
+      "id": "design_section_padding_desktop",
+      "label": "Section padding (desktop)",
+      "options": [
+        {
+          "value": "none",
+          "label": "None"
+        },
+        {
+          "value": "xs",
+          "label": "Extra small"
+        },
+        {
+          "value": "sm",
+          "label": "Small"
+        },
+        {
+          "value": "md",
+          "label": "Medium"
+        },
+        {
+          "value": "lg",
+          "label": "Large"
+        },
+        {
+          "value": "xl",
+          "label": "Extra large"
+        },
+        {
+          "value": "2xl",
+          "label": "Maximum"
+        }
+      ],
+      "default": "xl",
+      "visible_if": "{{ section.settings.section_design_mode == 'custom' or section.settings.section_design_mode == 'blend' or section.settings.full_height_mode }}"
+    },
+    {
+      "type": "select",
+      "id": "design_section_padding_mobile",
+      "label": "Section padding (mobile)",
+      "options": [
+        {
+          "value": "none",
+          "label": "None"
+        },
+        {
+          "value": "xs",
+          "label": "Extra small"
+        },
+        {
+          "value": "sm",
+          "label": "Small"
+        },
+        {
+          "value": "md",
+          "label": "Medium"
+        },
+        {
+          "value": "lg",
+          "label": "Large"
+        },
+        {
+          "value": "xl",
+          "label": "Extra large"
+        },
+        {
+          "value": "2xl",
+          "label": "Maximum"
+        }
+      ],
+      "default": "lg",
+      "visible_if": "{{ section.settings.section_design_mode == 'custom' or section.settings.section_design_mode == 'blend' or section.settings.full_height_mode }}"
+    },
+    {
+      "type": "header",
+      "content": "Layout",
+      "visible_if": "{{ section.settings.section_design_mode == 'custom' or section.settings.section_design_mode == 'blend' }}"
+    },
+    {
+      "type": "checkbox",
+      "id": "design_enable_minimal_gutter",
+      "label": "Enable gutter in Minimal mode",
+      "default": false,
+      "visible_if": "{{ section.settings.section_design_mode == 'custom' or section.settings.section_design_mode == 'blend' }}"
+    },
+    {
+      "type": "select",
+      "id": "design_gutter_desktop",
+      "label": "Gutter (desktop)",
+      "options": [
+        {
+          "value": "none",
+          "label": "None"
+        },
+        {
+          "value": "xs",
+          "label": "Extra small"
+        },
+        {
+          "value": "sm",
+          "label": "Small"
+        },
+        {
+          "value": "md",
+          "label": "Medium"
+        },
+        {
+          "value": "lg",
+          "label": "Large"
+        },
+        {
+          "value": "xl",
+          "label": "Extra large"
+        }
+      ],
+      "default": "lg",
+      "visible_if": "{{ section.settings.section_design_mode == 'custom' or section.settings.section_design_mode == 'blend' }}"
+    },
+    {
+      "type": "select",
+      "id": "design_gutter_mobile",
+      "label": "Gutter (mobile)",
+      "options": [
+        {
+          "value": "none",
+          "label": "None"
+        },
+        {
+          "value": "sm",
+          "label": "Small"
+        },
+        {
+          "value": "md",
+          "label": "Medium"
+        },
+        {
+          "value": "lg",
+          "label": "Large"
+        }
+      ],
+      "default": "md",
+      "visible_if": "{{ section.settings.section_design_mode == 'custom' or section.settings.section_design_mode == 'blend' }}"
+    },
+    {
+      "type": "range",
+      "id": "design_layout_radius_desktop",
+      "label": "Layout radius (desktop)",
+      "info": "Blend: this section's radius always applies, even when the theme is Minimal. Custom: Minimal Design Mode removes it.",
+      "min": 0,
+      "max": 80,
+      "step": 2,
+      "unit": "px",
+      "default": 24,
+      "visible_if": "{{ section.settings.section_design_mode == 'custom' or section.settings.section_design_mode == 'blend' }}"
+    },
+    {
+      "type": "range",
+      "id": "design_layout_radius_mobile",
+      "label": "Layout radius (mobile)",
+      "info": "Blend: this section's radius always applies, even when the theme is Minimal. Custom: Minimal Design Mode removes it.",
+      "min": 0,
+      "max": 60,
+      "step": 2,
+      "unit": "px",
+      "default": 16,
+      "visible_if": "{{ section.settings.section_design_mode == 'custom' or section.settings.section_design_mode == 'blend' }}"
+    },
+    {
+      "type": "header",
+      "content": "Section Width",
+      "info": "Independent of Design Mode — the width cap applies in both Modern and Minimal, in Blend as well as Custom, and only when enabled below."
+    },
+    {
+      "type": "checkbox",
+      "id": "design_enable_section_width",
+      "label": "Enable Section Width",
+      "default": false
+    },
+    {
+      "type": "select",
+      "id": "design_section_width_desktop",
+      "label": "Section Width (Desktop)",
+      "options": [
+        {
+          "value": "none",
+          "label": "None"
+        },
+        {
+          "value": "wide",
+          "label": "Wide"
+        },
+        {
+          "value": "max",
+          "label": "Maximum"
+        },
+        {
+          "value": "tv",
+          "label": "TV"
+        }
+      ],
+      "default": "tv",
+      "visible_if": "{{ section.settings.design_enable_section_width }}"
+    },
+    {
+      "type": "select",
+      "id": "design_section_width_mobile",
+      "label": "Section Width (Mobile)",
+      "options": [
+        {
+          "value": "none",
+          "label": "None"
+        },
+        {
+          "value": "wide",
+          "label": "Wide"
+        },
+        {
+          "value": "max",
+          "label": "Maximum"
+        }
+      ],
+      "default": "none",
+      "visible_if": "{{ section.settings.design_enable_section_width }}"
+    },
+    {
+      "type": "range",
+      "id": "design_layout_border_width",
+      "label": "Layout border width",
+      "min": 0,
+      "max": 10,
+      "step": 1,
+      "unit": "px",
+      "default": 1,
+      "visible_if": "{{ section.settings.section_design_mode == 'custom' or section.settings.section_design_mode == 'blend' }}"
+    },
+    {
+      "type": "header",
+      "content": "Media"
+    },
+    {
+      "type": "video",
+      "id": "video",
+      "label": "Video"
+    },
+    {
+      "type": "header",
+      "content": "Playback"
+    },
+    {
+      "type": "checkbox",
+      "id": "loop",
+      "label": "Loop Video",
+      "default": true
+    },
+    {
+      "type": "checkbox",
+      "id": "autoplay",
+      "label": "Autoplay",
+      "info": "Starts the video automatically, muted.",
+      "default": false
+    },
+    {
+      "type": "checkbox",
+      "id": "hide_play_button",
+      "label": "Hide Play Button",
+      "info": "Clicking the video still pauses and resumes it.",
+      "visible_if": "{{ section.settings.autoplay }}",
+      "default": false
+    },
+    {
+      "type": "header",
+      "content": "Animations",
+      "info": "Turned off everywhere by Theme settings > Animations > Disable all animations."
+    },
+    {
+      "type": "checkbox",
+      "id": "media_zoom_enabled",
+      "label": "Zoom From Enlarged State On View",
+      "default": true
+    },
+    {
+      "type": "range",
+      "id": "media_zoom_duration",
+      "label": "Duration",
+      "min": 0.2,
+      "max": 1.5,
+      "step": 0.1,
+      "unit": "s",
+      "default": 0.8,
+      "visible_if": "{{ section.settings.media_zoom_enabled }}"
+    },
+    {
+      "type": "range",
+      "id": "media_zoom_delay",
+      "label": "Initial delay",
+      "min": 0,
+      "max": 2,
+      "step": 0.1,
+      "unit": "s",
+      "default": 0,
+      "visible_if": "{{ section.settings.media_zoom_enabled }}"
+    },
+    {
+      "type": "select",
+      "id": "media_zoom_ease",
+      "label": "Easing",
+      "options": [
+        {
+          "value": "out",
+          "label": "Smooth (ease out)"
+        },
+        {
+          "value": "out-strong",
+          "label": "Strong ease out"
+        },
+        {
+          "value": "back",
+          "label": "Overshoot (back)"
+        },
+        {
+          "value": "in-out",
+          "label": "Ease in-out"
+        },
+        {
+          "value": "linear",
+          "label": "Linear"
+        }
+      ],
+      "default": "out",
+      "visible_if": "{{ section.settings.media_zoom_enabled }}"
+    },
+    {
+      "type": "checkbox",
+      "id": "media_zoom_once",
+      "label": "Play once",
+      "info": "Turn off to reverse when the media leaves the viewport and replay on re-entry.",
+      "default": true,
+      "visible_if": "{{ section.settings.media_zoom_enabled }}"
+    },
+    {
+      "type": "header",
+      "content": "Play Button"
+    },
+    {
+      "type": "range",
+      "id": "button_scale",
+      "min": 0.5,
+      "max": 2.5,
+      "step": 0.1,
+      "label": "Button Scaling Factor",
+      "default": 1
+    },
+    {
+      "type": "range",
+      "id": "button_border_radius",
+      "min": 0,
+      "max": 50,
+      "step": 2,
+      "unit": "px",
+      "label": "Border Radius",
+      "default": 50
+    },
+    {
+      "type": "text_alignment",
+      "id": "button_align_x",
+      "label": "Horizontal Alignment",
+      "default": "center"
+    },
+    {
+      "type": "select",
+      "id": "button_align_y",
+      "label": "Vertical Alignment",
+      "options": [
+        {
+          "value": "flex-start",
+          "label": "Top"
+        },
+        {
+          "value": "center",
+          "label": "Middle"
+        },
+        {
+          "value": "flex-end",
+          "label": "Bottom"
+        }
+      ],
+      "default": "center"
+    },
+    {
+      "type": "header",
+      "content": "Video Timeline"
+    },
+    {
+      "type": "checkbox",
+      "id": "enable_video_timeline",
+      "label": "Enable Video Timeline",
+      "info": "YouTube-style scrubber that slides up on hover.",
+      "default": true
+    },
+    {
+      "type": "checkbox",
+      "id": "show_timestamp",
+      "label": "Show Timestamp",
+      "visible_if": "{{ section.settings.enable_video_timeline }}",
+      "default": true
+    },
+    {
+      "type": "select",
+      "id": "timestamp_position",
+      "label": "Timestamp Position",
+      "visible_if": "{{ section.settings.enable_video_timeline }}",
+      "options": [
+        {
+          "value": "left",
+          "label": "Left"
+        },
+        {
+          "value": "right",
+          "label": "Right"
+        }
+      ],
+      "default": "left"
+    },
+    {
+      "type": "header",
+      "content": "YouTube Popover"
+    },
+    {
+      "type": "checkbox",
+      "id": "enable_youtube_popover",
+      "label": "Enable Section Click to Open YouTube Video",
+      "default": false
+    },
+    {
+      "type": "video_url",
+      "id": "youtube_link",
+      "accept": [
+        "youtube"
+      ],
+      "label": "YouTube Link",
+      "visible_if": "{{ section.settings.enable_youtube_popover }}",
+      "info": "Opens inside a full-screen popover when the section is clicked."
+    },
+    {
+      "type": "header",
+      "content": "Section"
+    },
+    {
+      "type": "checkbox",
+      "id": "full_height_mode",
+      "label": "Full Height Label",
+      "default": true
+    },
+    {
+      "type": "select",
+      "id": "aspect_mobile",
+      "label": "Aspect Ratio (Mobile)",
+      "options": [
+        {
+          "value": "auto",
+          "label": "Auto (media's natural height)"
+        },
+        {
+          "value": "21 / 9",
+          "label": "Ultrawide (21:9)"
+        },
+        {
+          "value": "16 / 9",
+          "label": "Landscape (16:9)"
+        },
+        {
+          "value": "3 / 2",
+          "label": "Landscape (3:2)"
+        },
+        {
+          "value": "4 / 3",
+          "label": "Landscape (4:3)"
+        },
+        {
+          "value": "1 / 1",
+          "label": "Square (1:1)"
+        },
+        {
+          "value": "4 / 5",
+          "label": "Portrait (4:5)"
+        },
+        {
+          "value": "3 / 4",
+          "label": "Portrait (3:4)"
+        },
+        {
+          "value": "9 / 16",
+          "label": "Tall (9:16)"
+        }
+      ],
+      "default": "4 / 5",
+      "visible_if": "{{ section.settings.full_height_mode == false }}"
+    },
+    {
+      "type": "select",
+      "id": "aspect_desktop",
+      "label": "Aspect Ratio (Desktop)",
+      "visible_if": "{{ section.settings.full_height_mode == false }}",
+      "options": [
+        {
+          "value": "auto",
+          "label": "Auto (media's natural height)"
+        },
+        {
+          "value": "21 / 9",
+          "label": "Ultrawide (21:9)"
+        },
+        {
+          "value": "16 / 9",
+          "label": "Landscape (16:9)"
+        },
+        {
+          "value": "3 / 2",
+          "label": "Landscape (3:2)"
+        },
+        {
+          "value": "4 / 3",
+          "label": "Landscape (4:3)"
+        },
+        {
+          "value": "1 / 1",
+          "label": "Square (1:1)"
+        },
+        {
+          "value": "4 / 5",
+          "label": "Portrait (4:5)"
+        },
+        {
+          "value": "3 / 4",
+          "label": "Portrait (3:4)"
+        },
+        {
+          "value": "9 / 16",
+          "label": "Tall (9:16)"
+        }
+      ],
+      "default": "16 / 9"
+    },
+    {
+      "type": "header",
+      "content": "Content"
+    },
+    {
+      "type": "header",
+      "content": "Content Alignment",
+      "info": "Positions the heading over the video."
+    },
+    {
+      "type": "text_alignment",
+      "id": "align_x_mobile",
+      "label": "Horizontal alignment (mobile)",
+      "default": "left"
+    },
+    {
+      "type": "text_alignment",
+      "id": "align_x_desktop",
+      "label": "Horizontal alignment (desktop)",
+      "default": "left"
+    },
+    {
+      "type": "select",
+      "id": "align_y_mobile",
+      "label": "Vertical alignment (mobile)",
+      "options": [
+        {
+          "value": "top",
+          "label": "Top"
+        },
+        {
+          "value": "center",
+          "label": "Middle"
+        },
+        {
+          "value": "bottom",
+          "label": "Bottom"
+        }
+      ],
+      "default": "bottom"
+    },
+    {
+      "type": "select",
+      "id": "align_y_desktop",
+      "label": "Vertical alignment (desktop)",
+      "options": [
+        {
+          "value": "top",
+          "label": "Top"
+        },
+        {
+          "value": "center",
+          "label": "Middle"
+        },
+        {
+          "value": "bottom",
+          "label": "Bottom"
+        }
+      ],
+      "default": "bottom"
+    },
+    {
+      "type": "range",
+      "id": "content_padding_vertical",
+      "min": 0,
+      "max": 10,
+      "step": 0.5,
+      "unit": "rem",
+      "label": "Content Vertical Padding",
+      "default": 1.5
+    },
+    {
+      "type": "range",
+      "id": "content_padding_horizontal",
+      "min": 0,
+      "max": 10,
+      "step": 0.5,
+      "unit": "rem",
+      "label": "Content Horizontal Padding",
+      "default": 1.5
+    },
+    {
+      "type": "header",
+      "content": "Overlay",
+      "info": "Overlay washes the whole video; Shadow renders behind the heading and follows it."
+    },
+    {
+      "type": "select",
+      "id": "overlay_mode",
+      "label": "Overlay Mode",
+      "options": [
+        {
+          "value": "none",
+          "label": "None"
+        },
+        {
+          "value": "tint",
+          "label": "Overlay"
+        },
+        {
+          "value": "shadow",
+          "label": "Shadow"
+        }
+      ],
+      "default": "none"
+    },
+    {
+      "type": "range",
+      "id": "overlay_opacity",
+      "min": 0,
+      "max": 100,
+      "step": 5,
+      "unit": "%",
+      "label": "Overlay Opacity",
+      "visible_if": "{{ section.settings.overlay_mode == 'tint' }}",
+      "default": 15
+    },
+    {
+      "type": "range",
+      "id": "shadow_offset_x",
+      "min": -100,
+      "max": 100,
+      "step": 5,
+      "unit": "px",
+      "label": "Shadow Offset X",
+      "visible_if": "{{ section.settings.overlay_mode == 'shadow' }}",
+      "default": 0
+    },
+    {
+      "type": "range",
+      "id": "shadow_offset_y",
+      "min": -100,
+      "max": 100,
+      "step": 5,
+      "unit": "px",
+      "label": "Shadow Offset Y",
+      "visible_if": "{{ section.settings.overlay_mode == 'shadow' }}",
+      "default": 0
+    },
+    {
+      "type": "range",
+      "id": "shadow_blur",
+      "min": 0,
+      "max": 200,
+      "step": 5,
+      "unit": "px",
+      "label": "Shadow Depth (Blur)",
+      "visible_if": "{{ section.settings.overlay_mode == 'shadow' }}",
+      "default": 60
+    },
+    {
+      "type": "range",
+      "id": "shadow_spread",
+      "min": 0,
+      "max": 150,
+      "step": 5,
+      "unit": "px",
+      "label": "Shadow Spread",
+      "visible_if": "{{ section.settings.overlay_mode == 'shadow' }}",
+      "default": 20
+    },
+    {
+      "type": "range",
+      "id": "shadow_opacity",
+      "min": 0,
+      "max": 100,
+      "step": 5,
+      "unit": "%",
+      "label": "Shadow Opacity",
+      "visible_if": "{{ section.settings.overlay_mode == 'shadow' }}",
+      "default": 40
+    },
+    {
+      "type": "range",
+      "id": "shadow_radius",
+      "min": 0,
+      "max": 50,
+      "step": 2,
+      "unit": "px",
+      "label": "Shadow Corner Radius",
+      "visible_if": "{{ section.settings.overlay_mode == 'shadow' }}",
+      "default": 0
+    }
+  ],
+  "presets": [
+    {
+      "name": "Video",
+      "category": "Media",
+      "settings": {
+        "overlay_mode": "tint"
+      },
+      "blocks": {
+        "head": {
+          "type": "heading",
+          "settings": {
+            "heading_text": "See it in motion",
+            "heading_tag": "h2"
+          }
+        }
+      },
+      "block_order": [
+        "head"
+      ]
+    }
+  ],
+  "blocks": [
+    {
+      "type": "heading"
+    }
+  ]
+}
+{% endschema %}

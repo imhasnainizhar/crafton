@@ -137,6 +137,11 @@
           "other": "{{ count }} articles"
         },
         "latest_article": "Latest: {{ title }}"
+      },
+      "video": {
+        "close": "Close video",
+        "popover_title": "YouTube video",
+        "watch_on_youtube": "Watch directly on YouTube"
       }
     }
   }

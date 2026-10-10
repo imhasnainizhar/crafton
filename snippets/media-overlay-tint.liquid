@@ -1,0 +1,88 @@
+{%- comment -%}
+  Media Overlay Tint — the shared content surface for the Image and Video
+  sections. Emits the scoped CSS for the absolute content layer
+  (.mc-content--{id}) and the overlay treatment, plus the tint element when
+  Overlay mode is "tint".
+
+  The caller renders the content layer itself (Crafton allows only Heading
+  blocks there):
+    <div class="mc-content mc-content--{{ section.id }}">
+      {% content_for 'blocks' %}
+    </div>
+  (content_for cannot run inside a snippet.)
+
+  Overlay modes (setting id `overlay_mode`):
+    none   — nothing extra
+    tint   — full-media color wash (overlay_color + overlay_opacity)
+    shadow — a box-shadow behind the Heading block that follows its box
+             (shadow_offset_x/y, shadow_blur, shadow_spread, shadow_color,
+             shadow_opacity, shadow_radius)
+
+  Usage: {% render 'media-overlay-tint', id: section.id, s: section.settings %}
+  Both callers must share these setting IDs, plus
+  content_padding_vertical / content_padding_horizontal and the four alignment
+  ids from snippets/alignments.liquid — align_x_mobile / align_x_desktop /
+  align_y_mobile / align_y_desktop — which position the content layer's
+  children at each breakpoint.
+{%- endcomment -%}
+
+{%- liquid
+  assign mode = s.overlay_mode | default: 'none'
+  assign shadow_alpha = s.shadow_opacity | default: 40 | divided_by: 100.0
+-%}
+
+{% style %}
+  .mc-content--{{ id }} {
+    {% render 'alignments', source: s %}
+    position: absolute;
+    inset: 0;
+    z-index: 4;
+    display: flex;
+    flex-direction: column;
+    box-sizing: border-box;
+    padding: calc({{ s.content_padding_vertical }}rem * var(--spacing-factor-vertical)) calc({{ s.content_padding_horizontal }}rem * var(--spacing-factor-horizontal));
+    {%- comment -%}
+      The content layer is a column, so the section's horizontal alignment is
+      the cross axis and its vertical alignment is the main axis. These position
+      every child Heading block, which is why the alignment lives on the
+      section.
+    {%- endcomment -%}
+    align-items: var(--align-x-mobile, flex-start);
+    justify-content: var(--align-y-mobile, flex-end);
+    text-align: var(--text-align-mobile, left);
+    /* Let clicks reach the media underneath; the content opts back in. */
+    pointer-events: none;
+  }
+
+  .mc-content--{{ id }} > * {
+    pointer-events: auto;
+  }
+
+  @media screen and (min-width: 768px) {
+    .mc-content--{{ id }} {
+      align-items: var(--align-x-desktop, flex-start);
+      justify-content: var(--align-y-desktop, flex-end);
+      text-align: var(--text-align-desktop, left);
+    }
+  }
+
+  {% if mode == 'tint' %}
+    .media-tint--{{ id }} {
+      position: absolute;
+      inset: 0;
+      z-index: 2;
+      background-color: var(--color-shadow);
+      opacity: {{ s.overlay_opacity | default: 40 | divided_by: 100.0 }};
+      pointer-events: none;
+    }
+  {% elsif mode == 'shadow' %}
+    .mc-content--{{ id }} > * {
+      border-radius: {{ s.shadow_radius }}px;
+      box-shadow: {{ s.shadow_offset_x }}px {{ s.shadow_offset_y }}px {{ s.shadow_blur }}px {{ s.shadow_spread }}px color-mix(in srgb, var(--color-shadow) {{ s.shadow_opacity | default: 40 }}%, transparent);
+    }
+  {% endif %}
+{% endstyle %}
+
+{% if mode == 'tint' %}
+  <div class="media-tint--{{ id }}" aria-hidden="true"></div>
+{% endif %}

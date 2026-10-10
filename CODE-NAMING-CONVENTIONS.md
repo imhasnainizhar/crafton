@@ -95,3 +95,11 @@ Nothing new named. `data-opc-cart='slide'` keeps its id but now means "grows in
 and pushes the title". Brought over with Elewind names: sections
 `classic-collection-list-tabs`, `list-collections`; blocks `list_collections`,
 `_collection_card`; `<container-carousel>`.
+
+## Image, Video and Media Row sections — 2026-10-10
+
+Nothing new named. Brought over with Elewind names: sections `image`, `video`,
+`row-media`; blocks `_row_media`, `_row_media_item`, `_vertical_divider`;
+snippet `media-overlay-tint` (`.mc-content`, `.media-tint`); `<video-section>`,
+`<media-autoplay>`. Locale keys `theme.sections.video.close`,
+`theme.sections.video.popover_title`, `theme.sections.video.watch_on_youtube`.

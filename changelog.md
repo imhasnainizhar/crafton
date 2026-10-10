@@ -119,3 +119,23 @@ blocks. The block-first version stays on `new-sections`.
   blocks, `assets/container-carousel.js`), Elewind's, unchanged. Restored
   Elewind's `container-carousel` hover-bleed rules in `assets/base.css`.
 - Homepage: Collection list and Classic collection list added.
+
+## 2026-10-10 — Image, Video and Media Row sections
+
+Elewind's media sections, media only. Everything else is unchanged from Elewind.
+
+- Image (`sections/image.liquid`) and Video (`sections/video.liquid`,
+  `assets/video-section.js`): the content layer takes only the Heading block
+  (no Rich content, text, subtitle, button or other blocks); the presets ship
+  one heading. They share `snippets/media-overlay-tint.liquid`.
+- Media Row (`sections/row-media.liquid`, `blocks/_row_media.liquid`,
+  `blocks/_row_media_item.liquid`, `blocks/_vertical_divider.liquid`,
+  `assets/media-block.js`): no floating text. Dropped the "Media Row with
+  Text" preset and its Floating Content settings. The row takes Row Media
+  Items and Vertical Dividers only (not Elewind's `_media` block).
+- Vertical Divider: line only. Its overlay text settings are gone.
+- Dropped Image's parallax (Crafton has none). Media zoom no longer checks
+  Elewind's global "Enable media animations" setting, which Crafton doesn't
+  have; "Disable all animations" still turns it off.
+- Image's Overlay Opacity now shows only in Overlay mode, as in Video.
+- Video's popover strings moved to `theme.sections.video.*` locale keys.
