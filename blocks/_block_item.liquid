@@ -1,0 +1,416 @@
+{%- comment -%}
+  Block Item (private)
+
+  - Composable content cell for Block Items Grid; hosts Icon, Number, Heading,
+    and Paragraph blocks.
+  - Owns only its internal padding, content gap, responsive alignment, height
+    behavior, and surface presentation.
+  - Its shadow either maps to a Design System token (item or surface) or to a
+    fixed small/medium/large value.
+{%- endcomment -%}
+
+
+{%- liquid
+  # The item's ground. Under Accent it paints from its own --surface-accent*
+  # family, which is what lets the resolver repoint the shared --color-accent
+  # for children without feeding back into this fill.
+  case block.settings.content_color
+    when 'accent'
+      if block.settings.accent_contrast == 'subtle'
+        assign item_ground = 'var(--surface-accent-contrast)'
+      else
+        assign item_ground = 'var(--surface-accent)'
+      endif
+    when 'custom'
+      assign item_ground = block.settings.custom_background_color
+    else
+      capture item_ground
+        render 'background-role-token', key: block.settings.background_role
+      endcapture
+  endcase
+-%}
+
+{% style %}
+  .block-item--{{ block.id }} {
+    {% render 'alignments', source: block.settings %}
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    min-width: 0;
+    height: {% if block.settings.height_mode == 'stretch' %}100%{% else %}auto{% endif %};
+    align-self: {% if block.settings.height_mode == 'stretch' %}stretch{% else %}flex-start{% endif %};
+  }
+
+  .block-item--{{ block.id }} .block-item__surface {
+    {% render 'color-role-resolver', mode: 'context', source: block.settings %}
+    box-sizing: border-box;
+    display: flex;
+    flex: {% if block.settings.height_mode == 'stretch' %}1 1 auto{% else %}0 0 auto{% endif %};
+    flex-direction: column;
+    align-items: var(--align-x-mobile, flex-start);
+    justify-content: {% if block.settings.height_mode == 'stretch' %}{% if block.settings.stretch_content_mode == 'spacing' %}{{ block.settings.stretch_spacing }}{% else %}{{ block.settings.align_y }}{% endif %}{% else %}flex-start{% endif %};
+    row-gap: {{ block.settings.content_gap | default: 0.5 }}rem;
+    min-width: 0;
+    margin: {{ block.settings.margin }}rem;
+    background-color: color-mix(
+      in srgb,
+      {{ item_ground }}
+      {{ block.settings.background_opacity }}%,
+      transparent
+    );
+    border: var(--ds-item-border-width) solid var(--color-border);
+    border-radius: var(--ds-item-radius-mobile);
+    box-shadow: var(--ds-item-shadow-mobile);
+    padding: {{ block.settings.padding_vertical }}rem
+      calc({{ block.settings.padding_horizontal }}rem * var(--layout-padding-factor-mobile, 1));
+    text-align: var(--text-align-mobile, left);
+  }
+
+  @media (min-width: 768px) {
+    .block-item--{{ block.id }} .block-item__surface {
+      align-items: var(--align-x-desktop, flex-start);
+      text-align: var(--text-align-desktop, left);
+      padding-inline: calc({{ block.settings.padding_horizontal }}rem * var(--layout-padding-factor-desktop, 1));
+      border-radius: var(--ds-item-radius-desktop);
+      box-shadow: var(--ds-item-shadow-desktop);
+    }
+  }
+{% endstyle %}
+
+<div class="block-item block-item--{{ block.id }}" data-height-mode="{{ block.settings.height_mode }}" {{ block.shopify_attributes }}>
+  <div class="block-item__surface">
+    {% content_for 'blocks' %}
+  </div>
+</div>
+
+{% schema %}
+{
+  "name": "Block Item",
+  "tag": null,
+  "settings": [
+    {
+      "type": "header",
+      "content": "Layout & Alignment"
+    },
+    {
+      "type": "select",
+      "id": "height_mode",
+      "label": "Card Height",
+      "info": "Auto follows the card content size. Stretch matches the height of the biggest sibling card.",
+      "options": [
+        {
+          "value": "auto",
+          "label": "Auto"
+        },
+        {
+          "value": "stretch",
+          "label": "Stretch"
+        }
+      ],
+      "default": "stretch"
+    },
+    {
+      "type": "select",
+      "id": "stretch_content_mode",
+      "label": "Stretch Content Mode",
+      "options": [
+        {
+          "value": "alignment",
+          "label": "Alignment"
+        },
+        {
+          "value": "spacing",
+          "label": "Spacing"
+        }
+      ],
+      "default": "alignment",
+      "visible_if": "{{ block.settings.height_mode == 'stretch' }}"
+    },
+    {
+      "type": "select",
+      "id": "align_y",
+      "label": "Vertical Alignment",
+      "options": [
+        {
+          "value": "flex-start",
+          "label": "Top"
+        },
+        {
+          "value": "center",
+          "label": "Center"
+        },
+        {
+          "value": "flex-end",
+          "label": "Bottom"
+        }
+      ],
+      "default": "flex-start",
+      "visible_if": "{{ block.settings.height_mode == 'stretch' and block.settings.stretch_content_mode == 'alignment' }}"
+    },
+    {
+      "type": "select",
+      "id": "stretch_spacing",
+      "label": "Content Spacing",
+      "options": [
+        {
+          "value": "space-around",
+          "label": "Around"
+        },
+        {
+          "value": "space-between",
+          "label": "Between"
+        }
+      ],
+      "default": "space-between",
+      "visible_if": "{{ block.settings.height_mode == 'stretch' and block.settings.stretch_content_mode == 'spacing' }}"
+    },
+    {
+      "type": "text_alignment",
+      "id": "align_x_mobile",
+      "label": "Horizontal Alignment (Mobile)",
+      "default": "center"
+    },
+    {
+      "type": "text_alignment",
+      "id": "align_x_desktop",
+      "label": "Horizontal Alignment (Desktop)",
+      "default": "center"
+    },
+    {
+      "type": "header",
+      "content": "Surface"
+    },
+    {
+      "type": "select",
+      "id": "content_color",
+      "label": "Content Color",
+      "info": "Accent paints the card in the selected accent and recolors every block inside it.",
+      "options": [
+        { "value": "scheme", "label": "Color Scheme" },
+        { "value": "accent", "label": "Accent" },
+        { "value": "custom", "label": "Custom" }
+      ],
+      "default": "scheme"
+    },
+    {
+      "type": "select",
+      "id": "background_role",
+      "label": "Card Surface",
+      "options": [
+        { "value": "base", "label": "Base" },
+        { "value": "surface", "label": "Surface" }
+      ],
+      "default": "base",
+      "visible_if": "{{ block.settings.content_color == 'scheme' }}"
+    },
+    {
+      "type": "select",
+      "id": "accent_selected",
+      "label": "Accent",
+      "options": [
+        { "value": "neutral", "label": "Neutral" },
+        { "value": "soft", "label": "Soft" },
+        { "value": "strong", "label": "Strong" }
+      ],
+      "default": "neutral",
+      "visible_if": "{{ block.settings.content_color == 'accent' }}"
+    },
+    {
+      "type": "select",
+      "id": "accent_contrast",
+      "label": "Accent Contrast",
+      "info": "Filled paints the accent as the card background with the contrast color on top. Subtle inverts it.",
+      "options": [
+        { "value": "subtle", "label": "Subtle" },
+        { "value": "filled", "label": "Filled" }
+      ],
+      "default": "filled",
+      "visible_if": "{{ block.settings.content_color == 'accent' }}"
+    },
+    {
+      "type": "color",
+      "id": "custom_background_color",
+      "label": "Custom Background",
+      "default": "#FFFFFF",
+      "visible_if": "{{ block.settings.content_color == 'custom' }}"
+    },
+    {
+      "type": "range",
+      "id": "background_opacity",
+      "label": "Background Opacity",
+      "min": 0,
+      "max": 100,
+      "step": 5,
+      "unit": "%",
+      "default": 100
+    },
+    {
+      "type": "color",
+      "id": "custom_border_color",
+      "label": "Custom Border",
+      "default": "#E2E2E2",
+      "visible_if": "{{ block.settings.content_color == 'custom' }}"
+    },
+    {
+      "type": "color",
+      "id": "custom_heading_color",
+      "label": "Custom Heading",
+      "default": "#121212",
+      "visible_if": "{{ block.settings.content_color == 'custom' }}"
+    },
+    {
+      "type": "color",
+      "id": "custom_text_color",
+      "label": "Custom Text",
+      "default": "#321E1E",
+      "visible_if": "{{ block.settings.content_color == 'custom' }}"
+    },
+    {
+      "type": "color",
+      "id": "custom_accent_color",
+      "label": "Custom Accent",
+      "default": "#BF1212",
+      "visible_if": "{{ block.settings.content_color == 'custom' }}"
+    },
+    {
+      "type": "header",
+      "content": "Spacing"
+    },
+    {
+      "type": "range",
+      "id": "padding_vertical",
+      "label": "Vertical Padding",
+      "min": 0,
+      "max": 4,
+      "step": 0.5,
+      "unit": "rem",
+      "default": 1.5
+    },
+    {
+      "type": "range",
+      "id": "padding_horizontal",
+      "label": "Horizontal Padding",
+      "min": 0,
+      "max": 4,
+      "step": 0.5,
+      "unit": "rem",
+      "default": 1
+    },
+    {
+      "type": "range",
+      "id": "content_gap",
+      "label": "Gap",
+      "min": 0,
+      "max": 4,
+      "step": 0.5,
+      "unit": "rem",
+      "default": 0.5
+    },
+    {
+      "type": "range",
+      "id": "margin",
+      "label": "Margin",
+      "info": "Adds space around the Block Item surface without changing Swiper slide measurements.",
+      "min": 0,
+      "max": 4,
+      "step": 0.5,
+      "unit": "rem",
+      "default": 0
+    }
+  ],
+  "blocks": [
+    {
+      "type": "icon"
+    },
+    {
+      "type": "_number"
+    },
+    {
+      "type": "heading"
+    },
+    {
+      "type": "text"
+    },
+    {
+      "type": "image"
+    }
+  ],
+  "presets": [
+    {
+      "name": "Block Item",
+      "settings": {
+        "height_mode": "stretch"
+      },
+      "blocks": {
+        "icon": {
+          "type": "icon",
+          "settings": {
+            "icon_source": "text",
+            "icon_svg": "<svg viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round' aria-hidden='true'><path d='M12 3.5c.6 4.3 2.2 5.9 6.5 6.5-4.3.6-5.9 2.2-6.5 6.5-.6-4.3-2.2-5.9-6.5-6.5 4.3-.6 5.9-2.2 6.5-6.5Z'/><path d='M18.5 16v4M16.5 18h4'/></svg>",
+            "icon_size_mobile": 28,
+            "icon_size_desktop": 32
+          }
+        },
+        "heading": {
+          "type": "heading",
+          "settings": {
+            "heading_text": "Thoughtful feature",
+            "heading_tag": "h6",
+            "font_size": "xxs",
+            "font_weight": "medium"
+          }
+        },
+        "paragraph": {
+          "type": "text",
+          "settings": {
+            "paragraph_text": "<p>Describe a benefit, service, value, or product feature.</p>",
+            "font_size": "sm",
+            "text_color": "soft"
+          }
+        }
+      },
+      "block_order": [
+        "icon",
+        "heading",
+        "paragraph"
+      ]
+    },
+    {
+      "name": "Stat Item",
+      "settings": {
+        "height_mode": "stretch"
+      },
+      "blocks": {
+        "number": {
+          "type": "_number",
+          "settings": {
+            "number": "92%",
+            "font_weight": "500",
+            "number_size": "h4",
+            "enable_count_up": true
+          }
+        },
+        "heading": {
+          "type": "heading",
+          "settings": {
+            "heading_text": "Brighter-looking skin",
+            "heading_tag": "h6"
+          }
+        },
+        "paragraph": {
+          "type": "text",
+          "settings": {
+            "paragraph_text": "<p>Reported after eight weeks of use.</p>"
+          }
+        }
+      },
+      "block_order": [
+        "number",
+        "heading",
+        "paragraph"
+      ]
+    }
+  ]
+}
+{% endschema %}

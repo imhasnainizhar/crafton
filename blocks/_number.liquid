@@ -1,0 +1,136 @@
+{%- comment -%}
+  Number — reusable numeric content with optional observer-gated count-up.
+  Loads assets/stats-counter.js when animation is enabled and exposes its
+  value through the shared [data-stat-value] contract.
+{%- endcomment -%}
+
+{% if block.settings.enable_count_up %}
+  <script src="{{ 'stats-counter.js' | asset_url }}" type="module"></script>
+{% endif %}
+
+{%- liquid
+  assign number_family = 'var(--font-heading-family)'
+  assign number_style = 'var(--font-heading-style)'
+  if block.settings.text_style == 'simple'
+    assign number_family = 'var(--font-body-family)'
+    assign number_style = 'var(--font-body-style)'
+  endif
+
+  assign number_size = '--fs-h3'
+  case block.settings.number_size
+    when 'body'
+      assign number_size = '--fs-body'
+    when 'h6'
+      assign number_size = '--fs-h6'
+    when 'h5'
+      assign number_size = '--fs-h5'
+    when 'h4'
+      assign number_size = '--fs-h4'
+    when 'h2'
+      assign number_size = '--fs-h2'
+    when 'h1'
+      assign number_size = '--fs-h1'
+  endcase
+-%}
+
+{% style %}
+  .number--{{ block.id }} {
+    display: inline-block;
+    max-width: 100%;
+    {% render 'color-role-resolver', mode: 'color', role: 'heading', source: block.settings %}
+    font-family: {{ number_family }};
+    font-size: var({{ number_size }});
+    font-style: {{ number_style }};
+    font-weight: {{ block.settings.font_weight }};
+    line-height: 1;
+    text-align: var(--text-align, left);
+    font-variant-numeric: tabular-nums;
+  }
+{% endstyle %}
+
+{% if block.settings.enable_count_up %}
+  <stats-counter class="number--{{ block.id }}" data-animate="true" {{ block.shopify_attributes }}>
+    <span data-stat-value>{{ block.settings.number }}</span>
+  </stats-counter>
+{% else %}
+  <span class="number--{{ block.id }}" {{ block.shopify_attributes }}>{{ block.settings.number }}</span>
+{% endif %}
+
+{% schema %}
+{
+  "name": "Number",
+  "tag": null,
+  "settings": [
+    {
+      "type": "inline_richtext",
+      "id": "number",
+      "label": "Number",
+      "default": "92%"
+    },
+    {
+      "type": "checkbox",
+      "id": "enable_count_up",
+      "label": "Increase number",
+      "default": true
+    },
+    {
+      "type": "select",
+      "id": "text_color",
+      "label": "Color",
+      "info": "Automatic follows this block's own role, so a card set to Accent recolors it.",
+      "options": [
+        { "value": "auto", "label": "Automatic" },
+        { "value": "heading", "label": "Heading" },
+        { "value": "text", "label": "Text" },
+        { "value": "soft", "label": "Soft Text" },
+        { "value": "accent", "label": "Accent" },
+        { "value": "parent", "label": "Inherit From Parent" }
+      ],
+      "default": "auto"
+    },
+    {
+      "type": "select",
+      "id": "text_style",
+      "label": "Text Style",
+      "options": [
+        { "value": "heading", "label": "Heading" },
+        { "value": "simple", "label": "Simple text" }
+      ],
+      "default": "heading"
+    },
+    {
+      "type": "select",
+      "id": "font_weight",
+      "label": "Font Weight",
+      "info": "Semi means semi-bold.",
+      "options": [
+        { "value": "400", "label": "Normal" },
+        { "value": "500", "label": "Medium" },
+        { "value": "600", "label": "Semi" },
+        { "value": "700", "label": "Bold" }
+      ],
+      "default": "700"
+    },
+    {
+      "type": "select",
+      "id": "number_size",
+      "label": "Number Size",
+      "options": [
+        { "value": "body", "label": "Body" },
+        { "value": "h6", "label": "H6" },
+        { "value": "h5", "label": "H5" },
+        { "value": "h4", "label": "H4" },
+        { "value": "h3", "label": "H3" },
+        { "value": "h2", "label": "H2" },
+        { "value": "h1", "label": "H1" }
+      ],
+      "default": "h3"
+    }
+  ],
+  "presets": [
+    {
+      "name": "Number"
+    }
+  ]
+}
+{% endschema %}

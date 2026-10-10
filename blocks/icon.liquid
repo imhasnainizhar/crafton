@@ -1,0 +1,326 @@
+{%- comment -%}
+  Icon
+
+  - Standalone icon block for use inside content layouts.
+  - Alignment inherits the parent's --align-x / --text-align by default; center
+    and right also position the icon box itself, so it behaves the same in a
+    static slot and in the block tree.
+{%- endcomment -%}
+
+{%- liquid
+  # Two independent axes.
+  #   style       base | accent    — which colour family (both modes)
+  #   cookie_mode classic | cookie — whether there is a surface
+  # Classic emits no background, border or padding and never resolves accent
+  # contrast. Cookie + base paints a Base/Surface fill; cookie + accent
+  # resolves fg/bg through accent-contrast-resolver.
+  assign icon_style = block.settings.style | default: 'base'
+  assign icon_cookie = false
+  if block.settings.cookie_mode == 'cookie'
+    assign icon_cookie = true
+  endif
+
+  assign icon_accent_surface = false
+  if icon_cookie and icon_style == 'accent'
+    assign icon_accent_surface = true
+  endif
+
+  assign icon_has_bg = false
+  if icon_cookie
+    if icon_accent_surface and block.settings.accent_contrast == 'filled'
+      assign icon_has_bg = true
+    elsif block.settings.cookie_bg
+      assign icon_has_bg = true
+    endif
+  endif
+
+  assign icon_has_border = false
+  if icon_cookie and block.settings.cookie_border
+    assign icon_has_border = true
+  endif
+
+  assign icon_has_backing = false
+  if icon_has_bg or icon_has_border
+    assign icon_has_backing = true
+  endif
+
+  assign icon_radius = '999px'
+  if block.settings.cookie_radius_style == 'custom'
+    assign icon_radius = block.settings.cookie_border_radius | default: 12 | append: 'px'
+  endif
+
+  # Foreground.
+  if icon_accent_surface and block.settings.accent_contrast == 'filled'
+    assign icon_color = 'var(--color-accent-contrast)'
+  elsif icon_style == 'accent'
+    assign icon_color = 'var(--color-accent)'
+  else
+    assign icon_color = 'var(--color-text)'
+  endif
+
+  capture icon_base_bg
+    render 'background-role-token', key: block.settings.background_role
+  endcapture
+-%}
+
+{% style %}
+  .icon-block--{{ block.id }} {
+    display: inline-block;
+    width: fit-content
+  }
+  {% if icon_style == 'accent' %}
+    .icon-block--{{ block.id }} {
+      {% render 'accent-resolver', source: block.settings %}
+    }
+  {% endif %}
+
+  .icon-block--{{ block.id }} .icon-block__glyph {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    box-sizing: content-box;
+    color: {{ icon_color }};
+    width: {{ block.settings.icon_size_mobile }}px;
+    height: {{ block.settings.icon_size_mobile }}px;
+    {% if icon_has_backing %}
+      {% if icon_has_bg %}
+        background-color: {% if icon_accent_surface %}var(--color-accent){% else %}{{ icon_base_bg }}{% endif %};
+      {% endif %}
+      {% if icon_has_border %}
+        border: 1px solid {% if icon_accent_surface %}var(--color-accent-border){% else %}var(--color-border){% endif %};
+      {% endif %}
+      border-radius: {{ icon_radius }};
+      padding: calc({{ block.settings.icon_size_mobile }}px * 0.35);
+    {% endif %}
+  }
+  .icon-block--{{ block.id }} .icon-block__glyph svg,
+  .icon-block--{{ block.id }} .icon-block__glyph img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+  }
+
+  @media (min-width: 768px) {
+    .icon-block--{{ block.id }} .icon-block__glyph {
+      width: {{ block.settings.icon_size_desktop }}px;
+      height: {{ block.settings.icon_size_desktop }}px;
+      {% if icon_has_backing %}
+        padding: calc({{ block.settings.icon_size_desktop }}px * 0.35);
+      {% endif %}
+    }
+  }
+
+{% endstyle %}
+
+<div class="icon-block icon-block--{{ block.id }}" {{ block.shopify_attributes }}>
+  <span class="icon-block__glyph">
+    {% if block.settings.icon_source == 'upload' and block.settings.icon_image != blank %}
+      {{ block.settings.icon_image | image_url: width: 200 | image_tag: alt: '', loading: 'lazy' }}
+    {% elsif block.settings.icon_source == 'text' and block.settings.icon_svg != blank %}
+      {{ block.settings.icon_svg }}
+    {% else %}
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.35" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M12 2.75c.55 5.08 2.17 7.7 7.25 9.25-5.08.55-7.7 2.17-9.25 7.25-.55-5.08-2.17-7.7-7.25-9.25 5.08-.55 7.7-2.17 9.25-7.25Z" />
+        <path d="M19 3v4M21 5h-4" />
+      </svg>
+    {% endif %}
+  </span>
+</div>
+
+{% schema %}
+{
+  "name": "Icon",
+  "settings": [
+    {
+      "type": "header",
+      "content": "Icon",
+      "info": "A decorative icon with adjustable size and alignment."
+    },
+    {
+      "type": "select",
+      "id": "icon_source",
+      "label": "Icon Source",
+      "options": [
+        {
+          "value": "upload",
+          "label": "Upload"
+        },
+        {
+          "value": "text",
+          "label": "Text"
+        }
+      ],
+      "default": "text"
+    },
+    {
+      "type": "image_picker",
+      "id": "icon_image",
+      "label": "Icon image",
+      "visible_if": "{{ block.settings.icon_source == 'upload' }}"
+    },
+    {
+      "type": "html",
+      "id": "icon_svg",
+      "label": "Icon (SVG code)",
+      "info": "Paste SVG code. Use stroke=\"currentColor\" or fill=\"currentColor\" so the icon picks up the color scheme. Leave blank for the default decorative sparkle icon.",
+      "visible_if": "{{ block.settings.icon_source == 'text' }}"
+    },
+    {
+      "type": "select",
+      "id": "style",
+      "label": "Style",
+      "options": [
+        {
+          "value": "base",
+          "label": "Base"
+        },
+        {
+          "value": "accent",
+          "label": "Accent"
+        }
+      ],
+      "default": "base"
+    },
+    {
+      "type": "select",
+      "id": "accent_selected",
+      "label": "Accent",
+      "info": "Which accent this icon uses. Independent of Mode.",
+      "options": [
+        {
+          "value": "neutral",
+          "label": "Neutral"
+        },
+        {
+          "value": "soft",
+          "label": "Soft"
+        },
+        {
+          "value": "strong",
+          "label": "Strong"
+        }
+      ],
+      "default": "neutral",
+      "visible_if": "{{ block.settings.style == 'accent' }}"
+    },
+    {
+      "type": "select",
+      "id": "cookie_mode",
+      "label": "Mode",
+      "options": [
+        {
+          "value": "classic",
+          "label": "Classic"
+        },
+        {
+          "value": "cookie",
+          "label": "Cookie"
+        }
+      ],
+      "default": "classic"
+    },
+    {
+      "type": "select",
+      "id": "background_role",
+      "label": "Background",
+      "options": [
+        {
+          "value": "base",
+          "label": "Base"
+        },
+        {
+          "value": "surface",
+          "label": "Surface"
+        }
+      ],
+      "default": "surface",
+      "visible_if": "{{ block.settings.cookie_mode == 'cookie' and block.settings.style == 'base' }}"
+    },
+    {
+      "type": "select",
+      "id": "accent_contrast",
+      "label": "Accent Contrast",
+      "info": "Subtle: accent-coloured glyph, no fill. Filled: accent fill with a contrasting glyph.",
+      "options": [
+        {
+          "value": "subtle",
+          "label": "Subtle"
+        },
+        {
+          "value": "filled",
+          "label": "Filled"
+        }
+      ],
+      "default": "subtle",
+      "visible_if": "{{ block.settings.cookie_mode == 'cookie' and block.settings.style == 'accent' }}"
+    },
+    {
+      "type": "checkbox",
+      "id": "cookie_bg",
+      "label": "Show Background",
+      "default": false,
+      "visible_if": "{{ block.settings.cookie_mode == 'cookie' and block.settings.accent_contrast != 'filled' }}"
+    },
+    {
+      "type": "checkbox",
+      "id": "cookie_border",
+      "label": "Show Border",
+      "default": false,
+      "visible_if": "{{ block.settings.cookie_mode == 'cookie' }}"
+    },
+    {
+      "type": "select",
+      "id": "cookie_radius_style",
+      "label": "Border Radius",
+      "options": [
+        {
+          "value": "rounded",
+          "label": "Rounded"
+        },
+        {
+          "value": "custom",
+          "label": "Custom"
+        }
+      ],
+      "default": "rounded",
+      "visible_if": "{{ block.settings.cookie_mode == 'cookie' }}"
+    },
+    {
+      "type": "range",
+      "id": "cookie_border_radius",
+      "label": "Corner Radius",
+      "min": 0,
+      "max": 60,
+      "step": 2,
+      "unit": "px",
+      "default": 12,
+      "visible_if": "{{ block.settings.cookie_mode == 'cookie' and block.settings.cookie_radius_style == 'custom' }}"
+    },
+    {
+      "type": "range",
+      "id": "icon_size_mobile",
+      "label": "Icon Size (Mobile)",
+      "min": 16,
+      "max": 96,
+      "step": 2,
+      "unit": "px",
+      "default": 26
+    },
+    {
+      "type": "range",
+      "id": "icon_size_desktop",
+      "label": "Icon Size (Desktop)",
+      "min": 16,
+      "max": 120,
+      "step": 2,
+      "unit": "px",
+      "default": 32
+    }
+  ],
+  "presets": [
+    {
+      "name": "Icon"
+    }
+  ]
+}
+{% endschema %}

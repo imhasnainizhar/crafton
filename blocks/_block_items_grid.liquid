@@ -1,0 +1,704 @@
+{%- comment -%}
+  Block Items Grid (private)
+
+  - Grid layout that arranges Block Item blocks into columns, with optional
+    dividers between them and an outer border.
+  - Column count, divider style, and border are all set separately for mobile
+    and desktop.
+  - Column selects arrive as strings, so they are cast to numbers before the
+    nth-child math that places the dividers.
+{%- endcomment -%}
+
+{%- liquid
+  # Column selects are strings — cast so the nth-child math below works.
+  assign cols_d = block.settings.columns_desktop | plus: 0
+  assign cols_m = block.settings.columns_mobile | plus: 0
+  assign divider_length_m = '100%'
+  assign divider_length_d = '100%'
+  if block.settings.divider_variant_mobile == 'partial'
+    assign divider_length_m = block.settings.divider_length | append: '%'
+  endif
+  if block.settings.divider_variant_desktop == 'partial'
+    assign divider_length_d = block.settings.divider_length | append: '%'
+  endif
+
+  assign grid_border_m = false
+  assign grid_border_d = false
+  if block.settings.grid_border_mobile == 'enabled'
+    assign grid_border_m = true
+  endif
+  if block.settings.grid_border_desktop == 'enabled'
+    assign grid_border_d = true
+  endif
+
+  # Entrance: the host section's Animations group (Block Items Grid, Stats
+  # Grid, Comparison Editorial) staggers the items (snippets/motion-reveal).
+  assign anim = section.settings
+-%}
+
+<script src="{{ 'stats-counter.js' | asset_url }}" type="module"></script>
+<script src="{{ 'container-carousel.js' | asset_url }}" type="module"></script>
+
+{% style %}
+  {%- comment -%}
+    Structure: outer (full width) → wrapper (optional border/radius box) →
+    <stats-counter> row → stats items. The carousel is one flex row. Dividers
+    sit halfway across Swiper's responsive gap between consecutive items.
+    Divider and border color come from the active scheme's --color-border role.
+  {%- endcomment -%}
+  .big-outer--{{ block.id }} {
+    --body-text-transform: var(--caption-label-text-transform);
+    width: 100%;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .big-wrapper--{{ block.id }} {
+    width: 100%;
+    box-sizing: border-box;
+    border-radius: var(--ds-layout-radius-mobile);
+    border: {% if grid_border_m %}{{ block.settings.border_width }}px solid var(--color-border){% else %}0 solid transparent{% endif %};
+    {% if grid_border_m %}
+      overflow: hidden;
+    {% elsif block.settings.carousel_bleed %}
+      overflow: visible;
+    {% else %}
+      overflow-x: clip;
+      overflow-y: visible;
+    {% endif %}
+  }
+  .big-inner--{{ block.id }} {
+    --big-cols: {{ cols_m }};
+    --big-border-width: {{ block.settings.border_width }}px;
+    --big-slide-gap: var(--ds-item-gap-mobile);
+    --big-radius: var(--ds-item-radius-mobile);
+    --big-divider-opacity: {{ block.settings.divider_opacity }}%;
+    --big-divider-length: {{ divider_length_m }};
+    display: block;
+    width: 100%;
+    box-sizing: border-box;
+    {% if block.settings.carousel_bleed == false %}
+      overflow-x: clip;
+      overflow-y: visible;
+    {% endif %}
+
+    position: relative;
+  }
+
+  /* --- Fade Shadow Overlays (Backdrop Shadows) --- */
+  .big-inner--{{ block.id }} .fade-overlay {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: {{ block.settings.fade_width }}%;
+    z-index: 2;
+    pointer-events: none;
+  }
+
+  .big-inner--{{ block.id }} .fade-left {
+    left: 0;
+    background: linear-gradient(to right, var(--color-base), transparent);
+  }
+
+  .big-inner--{{ block.id }} .fade-right {
+    right: 0;
+    background: linear-gradient(to left, var(--color-base), transparent);
+  }
+
+  .big-inner--{{ block.id }} .swiper {
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+    padding-inline: {{ block.settings.swiper_padding }}rem;
+  }
+
+  .big-inner--{{ block.id }} .swiper-wrapper {
+    display: flex;
+    flex-wrap: nowrap;
+    align-items: stretch;
+    justify-content: flex-start;
+    gap: 0;
+    width: 100%;
+    height: auto !important;
+    box-sizing: border-box;
+  }
+  .big-inner--{{ block.id }} .swiper-wrapper > * {
+    position: relative;
+    min-width: 0;
+    box-sizing: border-box;
+    flex: 0 0 calc(100% / var(--big-cols));
+    border-radius: var(--big-radius);
+  }
+  {%- comment -%} Before Swiper builds, slides take the width it will give them (gap included). {%- endcomment -%}
+  {%- capture big_scope -%}.big-carousel--{{ block.id }}{%- endcapture -%}
+  {% render 'carousel-preinit-width', scope: big_scope, spv_mobile: cols_m, spv_desktop: cols_d, gap: 'var(--big-slide-gap)' %}
+  .big-wrapper--{{ block.id }} .swiper-wrapper > .swiper-slide {
+    flex: 0 0 auto;
+    display: flex;
+    flex-direction: column;
+    align-self: stretch;
+    height: auto !important;
+  }
+  .big-wrapper--{{ block.id }} .swiper-wrapper > .swiper-slide > .block-item[data-height-mode="stretch"] {
+    flex: 1 1 auto;
+    height: 100%;
+    align-self: stretch;
+  }
+  .big-wrapper--{{ block.id }} .swiper-wrapper > .swiper-slide.block-item[data-height-mode="stretch"] {
+    height: auto !important;
+    align-self: stretch;
+  }
+
+  {% if block.settings.show_dividers %}
+    .big-inner--{{ block.id }} .swiper-wrapper > .swiper-slide:not(:first-of-type)::before {
+      content: "";
+      position: absolute;
+      left: calc(var(--big-slide-gap) / -2);
+      top: 50%;
+      height: var(--big-divider-length);
+      width: var(--big-border-width);
+      background-color: var(--color-border);
+      opacity: var(--big-divider-opacity);
+      transform: translate(-50%, -50%);
+    }
+  {% endif %}
+
+  @media (min-width: 768px) {
+    .big-inner--{{ block.id }} {
+      --big-cols: {{ cols_d }};
+      --big-radius: var(--ds-item-radius-desktop);
+      --big-slide-gap: var(--ds-item-gap-desktop);
+      --big-divider-length: {{ divider_length_d }};
+      {% if block.settings.carousel_bleed %}
+        overflow: visible;
+      {% endif %}
+    }
+
+    .big-wrapper--{{ block.id }} {
+      border-radius: var(--ds-layout-radius-desktop);
+      border: {% if grid_border_d %}{{ block.settings.border_width }}px solid var(--color-border){% else %}0 solid transparent{% endif %};
+      {% if grid_border_d %}
+        overflow: hidden;
+      {% elsif block.settings.carousel_bleed %}
+        overflow: visible;
+      {% else %}
+        overflow-x: clip;
+        overflow-y: visible;
+      {% endif %}
+    }
+  }
+
+    /* Entrance timing for snippets/motion-reveal (items inherit it). */
+    .big-carousel--{{ block.id }} {
+      {% render 'motion-reveal', part: 'vars', from: anim %}
+    }
+{% endstyle %}
+
+<container-carousel
+  class="big-carousel--{{ block.id }}"
+  data-carousel-bleed="{{ block.settings.carousel_bleed }}"
+  data-layout-mobile="carousel"
+  data-layout-desktop="carousel"
+  data-spv-mobile="{{ block.settings.columns_mobile }}"
+  data-spv-desktop="{{ block.settings.columns_desktop }}"
+  data-gap="0"
+  data-loop="false"
+  data-arrows="false"
+  data-dots="false"
+  {{ block.shopify_attributes }}
+>
+  <div class="big-outer--{{ block.id }}">
+    <div class="big-wrapper--{{ block.id }}">
+      <stats-counter class="big-inner big-inner--{{ block.id }}" data-animate="true">
+        {% if block.settings.enable_fades %}
+          <div class="fade-overlay fade-right"></div>
+          <div class="fade-overlay fade-left"></div>
+        {% endif %}
+        <div class="swiper">
+          {%- comment -%}
+            Only one content_for 'blocks' call is allowed per block file, so the
+            element always renders and data-animate gates the count-up in JS.
+          {%- endcomment -%}
+          <div class="swiper-wrapper {% render 'motion-reveal', part: 'class', from: anim, group: true %}">
+            {% content_for 'blocks' %}
+          </div>
+        </div>
+      </stats-counter>
+    </div>
+  </div>
+</container-carousel>
+
+{% schema %}
+{
+  "name": "Block Items Grid",
+  "settings": [
+    {
+      "type": "header",
+      "content": "Layout",
+      "info": "Block Items Grid always fills the width provided by its parent. Block Item blocks own card styling and content alignment."
+    },
+    {
+      "type": "select",
+      "id": "columns_mobile",
+      "label": "Columns (Mobile)",
+      "options": [
+        {
+          "value": "1",
+          "label": "1"
+        },
+        {
+          "value": "2",
+          "label": "2"
+        },
+        {
+          "value": "3",
+          "label": "3"
+        }
+      ],
+      "default": "3"
+    },
+    {
+      "type": "select",
+      "id": "columns_desktop",
+      "label": "Columns (Desktop)",
+      "options": [
+        {
+          "value": "1",
+          "label": "1"
+        },
+        {
+          "value": "2",
+          "label": "2"
+        },
+        {
+          "value": "3",
+          "label": "3"
+        },
+        {
+          "value": "4",
+          "label": "4"
+        }
+      ],
+      "default": "3"
+    },
+    {
+      "type": "range",
+      "id": "swiper_padding",
+      "label": "Horizontal Padding",
+      "info": "Adds space between the edge fades and resting Block Items.",
+      "min": 0,
+      "max": 6,
+      "step": 0.5,
+      "unit": "rem",
+      "default": 0
+    },
+    {
+      "type": "header",
+      "content": "Carousel Behavior"
+    },
+    {
+      "type": "checkbox",
+      "id": "carousel_bleed",
+      "label": "Allow carousel bleed",
+      "info": "Lets stat items extend from the layout rail to the screen edge. It is <strong>Highly Recommended</strong> to keep this turned on if u want shadows on cards and good UX.",
+      "default": true
+    },
+    {
+      "type": "header",
+      "content": "Fades"
+    },
+    {
+      "type": "checkbox",
+      "id": "enable_fades",
+      "label": "Enable Edge Fades (Backdrop Shadows)",
+      "default": false
+    },
+    {
+      "type": "range",
+      "id": "fade_width",
+      "label": "Fade Shadow Width",
+      "info": "How far the gradient shadow stretches inward from the edges.",
+      "min": 5,
+      "max": 30,
+      "step": 1,
+      "default": 15,
+      "unit": "%",
+      "visible_if": "{{ block.settings.enable_fades }}"
+    },
+    {
+      "type": "header",
+      "content": "Borders & Dividers",
+      "info": "Block Items Grid owns only its outer border and the dividers between Block Items."
+    },
+    {
+      "type": "checkbox",
+      "id": "show_dividers",
+      "label": "Show dividers",
+      "default": false
+    },
+    {
+      "type": "select",
+      "id": "divider_variant_mobile",
+      "label": "Divider (Mobile)",
+      "options": [
+        {
+          "value": "full",
+          "label": "Full"
+        },
+        {
+          "value": "partial",
+          "label": "Partial"
+        }
+      ],
+      "default": "full",
+      "visible_if": "{{ block.settings.show_dividers }}"
+    },
+    {
+      "type": "select",
+      "id": "divider_variant_desktop",
+      "label": "Divider (Desktop)",
+      "options": [
+        {
+          "value": "full",
+          "label": "Full"
+        },
+        {
+          "value": "partial",
+          "label": "Partial"
+        }
+      ],
+      "default": "full",
+      "visible_if": "{{ block.settings.show_dividers }}"
+    },
+    {
+      "type": "select",
+      "id": "grid_border_mobile",
+      "label": "Grid Border (Mobile)",
+      "options": [
+        {
+          "value": "disabled",
+          "label": "Disable"
+        },
+        {
+          "value": "enabled",
+          "label": "Enable"
+        }
+      ],
+      "default": "disabled"
+    },
+    {
+      "type": "select",
+      "id": "grid_border_desktop",
+      "label": "Grid Border (Desktop)",
+      "options": [
+        {
+          "value": "disabled",
+          "label": "Disable"
+        },
+        {
+          "value": "enabled",
+          "label": "Enable"
+        }
+      ],
+      "default": "disabled"
+    },
+    {
+      "type": "range",
+      "id": "border_width",
+      "label": "Border / Divider Width",
+      "min": 0,
+      "max": 10,
+      "step": 1,
+      "unit": "px",
+      "default": 1
+    },
+    {
+      "type": "range",
+      "id": "divider_opacity",
+      "label": "Divider Opacity",
+      "info": "Dividers style only.",
+      "min": 0,
+      "max": 100,
+      "step": 5,
+      "unit": "%",
+      "default": 20,
+      "visible_if": "{{ block.settings.show_dividers }}"
+    },
+    {
+      "type": "range",
+      "id": "divider_length",
+      "label": "Partial Divider Length",
+      "info": "Percentage of the Block Item height, centered between items.",
+      "min": 10,
+      "max": 90,
+      "step": 5,
+      "unit": "%",
+      "default": 60,
+      "visible_if": "{{ block.settings.show_dividers and block.settings.divider_variant_mobile == 'partial' or block.settings.show_dividers and block.settings.divider_variant_desktop == 'partial' }}"
+    }
+  ],
+  "blocks": [
+    {
+      "type": "_block_item"
+    }
+  ],
+  "presets": [
+    {
+      "name": "Block Items Grid",
+      "settings": {
+        "columns_mobile": "1",
+        "columns_desktop": "3",
+        "carousel_bleed": true,
+        "enable_fades": false,
+        "show_dividers": false,
+        "grid_border_mobile": "disabled",
+        "grid_border_desktop": "disabled"
+      },
+      "blocks": {
+        "item_1": {
+          "type": "_block_item",
+          "settings": {
+            "height_mode": "stretch"
+          },
+          "blocks": {
+            "icon": {
+              "type": "icon",
+              "settings": {
+                "icon_source": "text",
+                "icon_svg": "<svg viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round' aria-hidden='true'><path d='M20 4c-9 0-15 4.5-15 11.5 0 1.5.4 2.9 1 4 1.1.6 2.5 1 4 1C17 20.5 20 13 20 4Z'/><path d='M4 20c3.5-5 7-8 11-10'/></svg>",
+                "icon_size_mobile": 28,
+                "icon_size_desktop": 32
+              }
+            },
+            "heading": {
+              "type": "heading",
+              "settings": {
+                "heading_text": "Plant-powered",
+                "heading_tag": "h6",
+                "font_size": "xxs",
+                "font_weight": "medium"
+              }
+            },
+            "paragraph": {
+              "type": "text",
+              "settings": {
+                "paragraph_text": "<p>Thoughtful botanicals, simply chosen.</p>",
+                "font_size": "sm",
+                "text_color": "soft"
+              }
+            }
+          },
+          "block_order": [
+            "icon",
+            "heading",
+            "paragraph"
+          ]
+        },
+        "item_2": {
+          "type": "_block_item",
+          "settings": {
+            "height_mode": "stretch"
+          },
+          "blocks": {
+            "icon": {
+              "type": "icon",
+              "settings": {
+                "icon_source": "text",
+                "icon_svg": "<svg viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round' aria-hidden='true'><path d='M12 3.5s6 6.4 6 11a6 6 0 0 1-12 0c0-4.6 6-11 6-11Z'/><path d='M9.5 15a2.5 2.5 0 0 0 2.5 2.5'/></svg>",
+                "icon_size_mobile": 28,
+                "icon_size_desktop": 32
+              }
+            },
+            "heading": {
+              "type": "heading",
+              "settings": {
+                "heading_text": "Clean formulas",
+                "heading_tag": "h6",
+                "font_size": "xxs",
+                "font_weight": "medium"
+              }
+            },
+            "paragraph": {
+              "type": "text",
+              "settings": {
+                "paragraph_text": "<p>No unnecessary harsh ingredients.</p>",
+                "font_size": "sm",
+                "text_color": "soft"
+              }
+            }
+          },
+          "block_order": [
+            "icon",
+            "heading",
+            "paragraph"
+          ]
+        },
+        "item_3": {
+          "type": "_block_item",
+          "settings": {
+            "height_mode": "stretch"
+          },
+          "blocks": {
+            "icon": {
+              "type": "icon",
+              "settings": {
+                "icon_source": "text",
+                "icon_svg": "<svg viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round' aria-hidden='true'><path d='M12 20s-7.5-4.6-7.5-10A4.3 4.3 0 0 1 12 7.3 4.3 4.3 0 0 1 19.5 10c0 5.4-7.5 10-7.5 10Z'/></svg>",
+                "icon_size_mobile": 28,
+                "icon_size_desktop": 32
+              }
+            },
+            "heading": {
+              "type": "heading",
+              "settings": {
+                "heading_text": "Purposeful care",
+                "heading_tag": "h6",
+                "font_size": "xxs",
+                "font_weight": "medium"
+              }
+            },
+            "paragraph": {
+              "type": "text",
+              "settings": {
+                "paragraph_text": "<p>Effective, gentle, and made for every day.</p>",
+                "font_size": "sm",
+                "text_color": "soft"
+              }
+            }
+          },
+          "block_order": [
+            "icon",
+            "heading",
+            "paragraph"
+          ]
+        }
+      },
+      "block_order": [
+        "item_1",
+        "item_2",
+        "item_3"
+      ]
+    },
+    {
+      "name": "Stats Grid",
+      "settings": {
+        "carousel_bleed": true,
+        "enable_fades": false,
+        "show_dividers": false,
+        "grid_border_mobile": "disabled",
+        "grid_border_desktop": "disabled"
+      },
+      "blocks": {
+        "stat_1": {
+          "type": "_block_item",
+          "settings": {
+            "height_mode": "stretch"
+          },
+          "blocks": {
+            "number": {
+              "type": "_number",
+              "settings": {
+                "number": "92%",
+                "font_weight": "500",
+                "number_size": "h4"
+              }
+            },
+            "heading": {
+              "type": "heading",
+              "settings": {
+                "heading_text": "Brighter-looking skin",
+                "heading_tag": "h6"
+              }
+            },
+            "paragraph": {
+              "type": "text",
+              "settings": {
+                "paragraph_text": "<p>Reported after eight weeks of use.</p>"
+              }
+            }
+          },
+          "block_order": [
+            "number",
+            "heading",
+            "paragraph"
+          ]
+        },
+        "stat_2": {
+          "type": "_block_item",
+          "settings": {
+            "height_mode": "stretch"
+          },
+          "blocks": {
+            "number": {
+              "type": "_number",
+              "settings": {
+                "number": "89%",
+                "font_weight": "500",
+                "number_size": "h4"
+              }
+            },
+            "heading": {
+              "type": "heading",
+              "settings": {
+                "heading_text": "Improved hydration",
+                "heading_tag": "h6"
+              }
+            },
+            "paragraph": {
+              "type": "text",
+              "settings": {
+                "paragraph_text": "<p>Skin feels softer and more comfortable.</p>"
+              }
+            }
+          },
+          "block_order": [
+            "number",
+            "heading",
+            "paragraph"
+          ]
+        },
+        "stat_3": {
+          "type": "_block_item",
+          "settings": {
+            "height_mode": "stretch"
+          },
+          "blocks": {
+            "number": {
+              "type": "_number",
+              "settings": {
+                "number": "87%",
+                "font_weight": "500",
+                "number_size": "h4"
+              }
+            },
+            "heading": {
+              "type": "heading",
+              "settings": {
+                "heading_text": "Smoother texture",
+                "heading_tag": "h6"
+              }
+            },
+            "paragraph": {
+              "type": "text",
+              "settings": {
+                "paragraph_text": "<p>Skin texture appears visibly refined.</p>"
+              }
+            }
+          },
+          "block_order": [
+            "number",
+            "heading",
+            "paragraph"
+          ]
+        }
+      },
+      "block_order": [
+        "stat_1",
+        "stat_2",
+        "stat_3"
+      ]
+    }
+  ]
+}
+{% endschema %}
