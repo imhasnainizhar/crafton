@@ -1,0 +1,245 @@
+{%- comment -%}
+  Generic Badge
+
+  Render contract:
+  - id {String, required}: unique CSS scope suffix.
+  - source {Object, required}: settings containing badge_style,
+    cookie_radius_style, cookie_border_radius, background_role,
+    accent_selected, accent_contrast, badge_border_enabled, badge_padding_x,
+    badge_padding_y, badge_background, badge_background_opacity, and badge_text.
+  - label {String, optional}: displayed text; defaults to source.badge_label,
+    then "Badge".
+  - content {String, optional}: rendered Badge Text / Icon child markup or rich
+    HTML; takes precedence over label.
+
+  A badge is permanently a surface, so it carries no Cookie mode — only the
+  Style axis. Base paints the Base/Surface role with normal text colour, Accent
+  resolves fg/bg through accent-contrast-resolver, Custom takes raw colours.
+  Style therefore decides which of Background / Accent Contrast is offered:
+  never both at once.
+  - casing {String, optional}: CSS text-transform; defaults to none.
+  - attributes {String, optional}: raw Shopify block attributes.
+
+  Usage:
+    {% render 'badge',
+      id: block.id,
+      source: block.settings,
+      label: block.settings.badge_label,
+      attributes: block.shopify_attributes
+    %}
+
+  Caller schema:
+    {
+      "type": "text",
+      "id": "badge_label",
+      "label": "Label",
+      "default": "Badge"
+    },
+    {
+      "type": "select",
+      "id": "cookie_radius_style",
+      "label": "Shape",
+      "options": [
+        { "value": "pill", "label": "Pill" },
+        { "value": "custom", "label": "Custom" }
+      ],
+      "default": "pill"
+    },
+    {
+      "type": "range",
+      "id": "cookie_border_radius",
+      "label": "Custom radius",
+      "min": 0,
+      "max": 40,
+      "step": 2,
+      "unit": "px",
+      "default": 8,
+      "visible_if": "{{ block.settings.cookie_radius_style == 'custom' }}"
+    },
+    {
+      "type": "select",
+      "id": "badge_style",
+      "label": "Style",
+      "options": [
+        { "value": "base", "label": "Base" },
+        { "value": "accent", "label": "Accent" },
+        { "value": "custom", "label": "Custom" }
+      ],
+      "default": "accent"
+    },
+    {
+      "type": "select",
+      "id": "background_role",
+      "label": "Background",
+      "options": [
+        { "value": "base", "label": "Base" },
+        { "value": "surface", "label": "Surface" }
+      ],
+      "default": "surface",
+      "visible_if": "{{ block.settings.badge_style == 'base' }}"
+    },
+    {
+      "type": "select",
+      "id": "accent_selected",
+      "label": "Accent",
+      "options": [
+        { "value": "neutral", "label": "Neutral" },
+        { "value": "soft", "label": "Soft" },
+        { "value": "strong", "label": "Strong" }
+      ],
+      "default": "neutral",
+      "visible_if": "{{ block.settings.badge_style == 'accent' }}"
+    },
+    {
+      "type": "select",
+      "id": "accent_contrast",
+      "label": "Accent Contrast",
+      "options": [
+        { "value": "subtle", "label": "Subtle" },
+        { "value": "filled", "label": "Filled" }
+      ],
+      "default": "filled",
+      "visible_if": "{{ block.settings.badge_style == 'accent' }}"
+    },
+    {
+      "type": "checkbox",
+      "id": "badge_border_enabled",
+      "label": "Show border",
+      "default": true
+    },
+    {
+      "type": "range",
+      "id": "badge_padding_x",
+      "label": "Horizontal padding",
+      "min": 2,
+      "max": 24,
+      "step": 1,
+      "unit": "px",
+      "default": 7
+    },
+    {
+      "type": "range",
+      "id": "badge_padding_y",
+      "label": "Vertical padding",
+      "min": 2,
+      "max": 16,
+      "step": 1,
+      "unit": "px",
+      "default": 3
+    },
+    {
+      "type": "color",
+      "id": "badge_background",
+      "label": "Custom background",
+      "default": "#000000",
+      "visible_if": "{{ block.settings.badge_style == 'custom' }}"
+    },
+    {
+      "type": "range",
+      "id": "badge_background_opacity",
+      "label": "Background opacity",
+      "min": 0,
+      "max": 100,
+      "step": 5,
+      "unit": "%",
+      "default": 100,
+      "visible_if": "{{ block.settings.badge_style == 'custom' }}"
+    },
+    {
+      "type": "color",
+      "id": "badge_text",
+      "label": "Custom text",
+      "default": "#ffffff",
+      "visible_if": "{{ block.settings.badge_style == 'custom' }}"
+    }
+{%- endcomment -%}
+
+{%- liquid
+  assign badge_id = id | default: 'badge'
+  assign badge_label = label | default: source.badge_label | default: 'Badge'
+  assign badge_style = source.badge_style | default: 'accent'
+  assign badge_shape = source.cookie_radius_style | default: 'rounded'
+  assign badge_border_enabled = source.badge_border_enabled
+  if badge_border_enabled == nil
+    assign badge_border_enabled = true
+  endif
+  assign badge_pad_x = source.badge_padding_x | default: 7
+  assign badge_pad_y = source.badge_padding_y | default: 3
+
+  # Base-style badges resolve their fill through the shared Base/Surface role.
+  capture badge_base_bg
+    render 'background-role-token', key: source.background_role
+  endcapture
+-%}
+
+{% style %}
+  .badge--{{ badge_id }} {
+    {% if badge_style == 'accent' %}
+      {% render 'accent-resolver', source: source %}
+      {% render 'accent-contrast-resolver', source: source %}
+    {% endif %}
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    width: fit-content;
+    padding: {{ badge_pad_y }}px {{ badge_pad_x }}px;
+    border-radius: {% if badge_shape == 'custom' %}{{ source.cookie_border_radius | default: 8 }}px{% else %}999px{% endif %};
+    font-family: var(--font-body-family);
+    font-size: var(--fs-caption);
+    line-height: 1.2;
+    text-transform: {{ casing | default: 'none' }};
+    {% if badge_border_enabled %}
+      {%- case badge_style -%}
+        {%- when 'custom' -%}
+          border: 1px solid currentColor;
+        {%- when 'base' -%}
+          border: 1px solid var(--color-border);
+        {%- else -%}
+          border: 1px solid var(--color-accent-border);
+      {%- endcase -%}
+    {% else %}
+      border: 1px solid transparent;
+    {% endif %}
+    {% if badge_style == 'custom' %}
+      background-color: color-mix(
+        in srgb,
+        {{ source.badge_background }} {{ source.badge_background_opacity }}%,
+        transparent
+      );
+      color: {{ source.badge_text }};
+    {% elsif badge_style == 'base' %}
+      background-color: {{ badge_base_bg }};
+      color: var(--color-text);
+    {% endif %}
+  }
+
+  .badge--{{ badge_id }} svg {
+    width: 12px;
+    height: 12px;
+    flex: 0 0 auto;
+  }
+
+  .badge--{{ badge_id }} p {
+    margin: 0;
+  }
+
+  .badge--{{ badge_id }} .icon-block.icon-block .icon-block__glyph {
+    color: currentColor;
+  }
+
+  .badge--{{ badge_id }} .icon-block,
+  .badge--{{ badge_id }} .badge-icon,
+  .badge--{{ badge_id }} .badge-text {
+    flex: 0 0 auto;
+    margin: 0;
+  }
+
+  /* The badge owns the foreground; every child glyph follows it. */
+  .badge--{{ badge_id }} .badge-icon {
+    color: currentColor;
+  }
+{% endstyle %}
+
+<div class="badge badge--{{ badge_id }}" {{ attributes }}>
+  {% if content != blank %}{{ content }}{% else %}{{ badge_label | escape }}{% endif %}
+</div>

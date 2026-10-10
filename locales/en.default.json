@@ -151,6 +151,9 @@
         "hours": "Hrs",
         "minutes": "Min",
         "seconds": "Sec"
+      },
+      "before_after": {
+        "slider_label": "Adjust the before and after comparison"
       }
     }
   }

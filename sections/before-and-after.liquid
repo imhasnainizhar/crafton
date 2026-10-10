@@ -1,0 +1,750 @@
+{%- comment -%}
+  Before & After — a fixed two-part editorial row: one Rich Content block and
+  one Before & After Slider block, both statically rendered so the composition
+  never changes shape. The section owns only the color scheme, vertical
+  spacing, the single horizontal gutter, the direct-block gap and the row
+  direction; width, alignment and content belong to the two blocks.
+
+  Layout "Slider only" skips the Rich Content block and lets the slider span
+  the whole section, sized by its own aspect ratio (Comparison Editorial
+  style), so it can fill a large screen.
+
+  Direction settings reverse the visual flow in code only — the Rich Content
+  block always stays first in the markup, so neither the Theme Editor ordering
+  nor a screen reader's reading order changes.
+
+  Direct dependencies: snippets/section-design-mode.liquid and
+  snippets/background-role-token.liquid.
+{%- endcomment -%}
+
+{%- liquid
+  assign slider_only = false
+  if section.settings.layout == 'slider'
+    assign slider_only = true
+  endif
+
+  assign direction_mobile = 'column'
+  if section.settings.direction_mobile == 'reverse'
+    assign direction_mobile = 'column-reverse'
+  endif
+
+  assign direction_desktop = 'row'
+  if section.settings.direction_desktop == 'reverse'
+    assign direction_desktop = 'row-reverse'
+  endif
+
+  assign align_y = 'center'
+  if section.settings.align_y == 'top'
+    assign align_y = 'flex-start'
+  elsif section.settings.align_y == 'bottom'
+    assign align_y = 'flex-end'
+  elsif section.settings.align_y == 'stretch'
+    assign align_y = 'stretch'
+  endif
+-%}
+
+{% style %}
+  .before-after--{{ section.id }} {
+    {% render 'section-design-mode', section_settings: section.settings %}
+    box-sizing: border-box;
+    width: 100%;
+    padding-block: var(--ds-section-padding-mobile);
+    padding-inline: 0;
+    background-color: {% render 'background-role-token', key: section.settings.background_role %};
+    color: var(--color-text);
+    overflow-x: clip;
+    overflow-y: visible;
+  }
+
+  .before-after--{{ section.id }} .before-after__row {
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: {{ direction_mobile }};
+    align-items: stretch;
+    gap: var(--ds-layout-gap-mobile);
+    width: 100%;
+    max-width: var(--ds-section-width-mobile);
+    margin-inline: auto;
+    padding-inline: var(--ds-layout-gutter-mobile);
+  }
+
+  .before-after--{{ section.id }} .before-after__col {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    width: 100%;
+    min-width: 0;
+  }
+
+  @media (min-width: 768px) {
+    .before-after--{{ section.id }} {
+      padding-block: var(--ds-section-padding-desktop);
+    }
+
+    .before-after--{{ section.id }} .before-after__row {
+      flex-direction: {{ direction_desktop }};
+      align-items: {{ align_y }};
+      gap: var(--ds-layout-gap-desktop);
+      max-width: var(--ds-section-width-desktop);
+      padding-inline: var(--ds-layout-gutter-desktop);
+    }
+
+    .before-after--{{ section.id }} .before-after__col--content {
+      flex: {{ section.settings.content_ratio }} 1 0;
+      width: auto;
+    }
+
+    .before-after--{{ section.id }} .before-after__col--slider {
+      {%- if slider_only %}
+        flex: 1 1 100%;
+      {%- else %}
+        flex: {{ section.settings.slider_ratio }} 1 0;
+      {%- endif %}
+      width: auto;
+    }
+  }
+{% endstyle %}
+
+<section class="before-after--{{ section.id }} color-{{ section.settings.color_scheme }}">
+  <div class="before-after__row">
+    {%- unless slider_only -%}
+      <div class="before-after__col before-after__col--content">
+        {% content_for 'block', type: 'rich_content', id: 'content' %}
+      </div>
+    {%- endunless -%}
+
+    <div class="before-after__col before-after__col--slider">
+      {% content_for 'block', type: '_before_after', id: 'slider' %}
+    </div>
+  </div>
+</section>
+
+{% schema %}
+{
+  "name": "Before & After",
+  "disabled_on": {
+    "templates": ["blog"]
+  },
+  "settings": [
+    {
+      "type": "header",
+      "content": "Section",
+      "info": "A row pairing one Rich Content block with one Before & After Slider, or the slider on its own across the full section. Edit each block for its own content and styling."
+    },
+    {
+      "type": "select",
+      "id": "layout",
+      "label": "Layout",
+      "info": "Slider only hides the text and lets the slider fill the section. Pick a wide or full screen aspect ratio on the slider for a large comparison.",
+      "options": [
+        { "value": "split", "label": "Text and slider" },
+        { "value": "slider", "label": "Slider only" }
+      ],
+      "default": "split"
+    },
+    {
+      "type": "color_scheme",
+      "id": "color_scheme",
+      "label": "Color Scheme",
+      "default": "scheme_1"
+    },
+    {
+      "type": "select",
+      "id": "background_role",
+      "label": "Section Background",
+      "options": [
+        { "value": "base", "label": "Base" },
+        { "value": "surface", "label": "Surface" }
+      ],
+      "default": "base"
+    },
+    {
+      "type": "header",
+      "content": "Direction",
+      "visible_if": "{{ section.settings.layout == 'split' }}"
+    },
+    {
+      "type": "select",
+      "id": "direction_mobile",
+      "label": "Mobile Direction",
+      "visible_if": "{{ section.settings.layout == 'split' }}",
+      "info": "Straight keeps the text above the slider. Reverse flips the stack in code without changing block order.",
+      "options": [
+        { "value": "straight", "label": "Straight" },
+        { "value": "reverse", "label": "Reverse" }
+      ],
+      "default": "straight"
+    },
+    {
+      "type": "select",
+      "id": "direction_desktop",
+      "label": "Desktop Direction",
+      "visible_if": "{{ section.settings.layout == 'split' }}",
+      "info": "Straight puts the text before the slider in the row. Reverse flips the row in code without changing block order.",
+      "options": [
+        { "value": "straight", "label": "Straight" },
+        { "value": "reverse", "label": "Reverse" }
+      ],
+      "default": "straight"
+    },
+    {
+      "type": "select",
+      "id": "align_y",
+      "label": "Vertical Alignment (Desktop)",
+      "visible_if": "{{ section.settings.layout == 'split' }}",
+      "options": [
+        { "value": "top", "label": "Top" },
+        { "value": "middle", "label": "Middle" },
+        { "value": "bottom", "label": "Bottom" },
+        { "value": "stretch", "label": "Stretch" }
+      ],
+      "default": "middle"
+    },
+    {
+      "type": "range",
+      "id": "content_ratio",
+      "label": "Text Column Width (Desktop)",
+      "visible_if": "{{ section.settings.layout == 'split' }}",
+      "info": "Relative share of the row. Both columns at the same value split the row evenly.",
+      "min": 1,
+      "max": 4,
+      "step": 1,
+      "default": 1
+    },
+    {
+      "type": "range",
+      "id": "slider_ratio",
+      "label": "Slider Column Width (Desktop)",
+      "visible_if": "{{ section.settings.layout == 'split' }}",
+      "min": 1,
+      "max": 4,
+      "step": 1,
+      "default": 1
+    },
+    {
+      "type": "header",
+      "content": "Design Mode"
+    },
+    {
+      "type": "select",
+      "id": "section_design_mode",
+      "label": "Section Design Mode",
+      "info": "Auto: inherit all theme settings. Blend: inherit theme settings and override section padding, layout and item gaps, item shadow, and borders. Custom: use this section's Design Mode and complete Design System values.",
+      "options": [
+        { "value": "auto", "label": "Auto" },
+        { "value": "blend", "label": "Blend" },
+        { "value": "custom", "label": "Custom" }
+      ],
+      "default": "auto"
+    },
+    {
+      "type": "select",
+      "id": "design_mode_desktop",
+      "label": "Desktop Design Mode",
+      "options": [
+        { "value": "modern", "label": "Modern" },
+        { "value": "minimal", "label": "Minimal" }
+      ],
+      "default": "modern",
+      "visible_if": "{{ section.settings.section_design_mode == 'custom' }}"
+    },
+    {
+      "type": "select",
+      "id": "design_mode_mobile",
+      "label": "Mobile Design Mode",
+      "options": [
+        { "value": "modern", "label": "Modern" },
+        { "value": "minimal", "label": "Minimal" }
+      ],
+      "default": "modern",
+      "visible_if": "{{ section.settings.section_design_mode == 'custom' }}"
+    },
+    {
+      "type": "header",
+      "content": "Spacing",
+      "visible_if": "{{ section.settings.section_design_mode == 'custom' or section.settings.section_design_mode == 'blend' }}"
+    },
+    {
+      "type": "select",
+      "id": "design_section_padding_desktop",
+      "label": "Section padding (desktop)",
+      "options": [
+        { "value": "none", "label": "None" },
+        { "value": "xs", "label": "Extra small" },
+        { "value": "sm", "label": "Small" },
+        { "value": "md", "label": "Medium" },
+        { "value": "lg", "label": "Large" },
+        { "value": "xl", "label": "Extra large" },
+        { "value": "2xl", "label": "Maximum" }
+      ],
+      "default": "xl",
+      "visible_if": "{{ section.settings.section_design_mode == 'custom' or section.settings.section_design_mode == 'blend' }}"
+    },
+    {
+      "type": "select",
+      "id": "design_section_padding_mobile",
+      "label": "Section padding (mobile)",
+      "options": [
+        { "value": "none", "label": "None" },
+        { "value": "xs", "label": "Extra small" },
+        { "value": "sm", "label": "Small" },
+        { "value": "md", "label": "Medium" },
+        { "value": "lg", "label": "Large" },
+        { "value": "xl", "label": "Extra large" },
+        { "value": "2xl", "label": "Maximum" }
+      ],
+      "default": "lg",
+      "visible_if": "{{ section.settings.section_design_mode == 'custom' or section.settings.section_design_mode == 'blend' }}"
+    },
+    {
+      "type": "select",
+      "id": "design_layout_gap_desktop",
+      "label": "Layout Gap (Desktop)",
+      "options": [
+        { "value": "none", "label": "None" },
+        { "value": "xs", "label": "Extra small" },
+        { "value": "sm", "label": "Small" },
+        { "value": "md", "label": "Medium" },
+        { "value": "lg", "label": "Large" },
+        { "value": "xl", "label": "Extra large" }
+      ],
+      "default": "md",
+      "visible_if": "{{ section.settings.section_design_mode == 'custom' or section.settings.section_design_mode == 'blend' }}"
+    },
+    {
+      "type": "select",
+      "id": "design_layout_gap_mobile",
+      "label": "Layout Gap (Mobile)",
+      "options": [
+        { "value": "none", "label": "None" },
+        { "value": "xs", "label": "Extra small" },
+        { "value": "sm", "label": "Small" },
+        { "value": "md", "label": "Medium" },
+        { "value": "lg", "label": "Large" },
+        { "value": "xl", "label": "Extra large" }
+      ],
+      "default": "sm",
+      "visible_if": "{{ section.settings.section_design_mode == 'custom' or section.settings.section_design_mode == 'blend' }}"
+    },
+    {
+      "type": "header",
+      "content": "Layout",
+      "visible_if": "{{ section.settings.section_design_mode == 'custom' or section.settings.section_design_mode == 'blend' }}"
+    },
+    {
+      "type": "checkbox",
+      "id": "design_enable_minimal_gutter",
+      "label": "Enable gutter in Minimal mode",
+      "default": false,
+      "visible_if": "{{ section.settings.section_design_mode == 'custom' or section.settings.section_design_mode == 'blend' }}"
+    },
+    {
+      "type": "select",
+      "id": "design_gutter_desktop",
+      "label": "Gutter (desktop)",
+      "options": [
+        { "value": "none", "label": "None" },
+        { "value": "xs", "label": "Extra small" },
+        { "value": "sm", "label": "Small" },
+        { "value": "md", "label": "Medium" },
+        { "value": "lg", "label": "Large" },
+        { "value": "xl", "label": "Extra large" }
+      ],
+      "default": "lg",
+      "visible_if": "{{ section.settings.section_design_mode == 'custom' or section.settings.section_design_mode == 'blend' }}"
+    },
+    {
+      "type": "select",
+      "id": "design_gutter_mobile",
+      "label": "Gutter (mobile)",
+      "options": [
+        { "value": "none", "label": "None" },
+        { "value": "sm", "label": "Small" },
+        { "value": "md", "label": "Medium" },
+        { "value": "lg", "label": "Large" }
+      ],
+      "default": "md",
+      "visible_if": "{{ section.settings.section_design_mode == 'custom' or section.settings.section_design_mode == 'blend' }}"
+    },
+    {
+      "type": "header",
+      "content": "Section Width",
+      "info": "Independent of Design Mode — the width cap applies in both Modern and Minimal, in Blend as well as Custom, and only when enabled below."
+    },
+    {
+      "type": "checkbox",
+      "id": "design_enable_section_width",
+      "label": "Enable Section Width",
+      "default": false
+    },
+    {
+      "type": "select",
+      "id": "design_section_width_desktop",
+      "label": "Section Width (Desktop)",
+      "options": [
+        { "value": "none", "label": "None" },
+        { "value": "wide", "label": "Wide" },
+        { "value": "max", "label": "Maximum" },
+        { "value": "tv", "label": "TV" }
+      ],
+      "default": "tv",
+      "visible_if": "{{ section.settings.section_design_mode == 'custom' and section.settings.design_enable_section_width or section.settings.section_design_mode == 'blend' and section.settings.design_enable_section_width }}"
+    },
+    {
+      "type": "select",
+      "id": "design_section_width_mobile",
+      "label": "Section Width (Mobile)",
+      "options": [
+        { "value": "none", "label": "None" },
+        { "value": "wide", "label": "Wide" },
+        { "value": "max", "label": "Maximum" }
+      ],
+      "default": "none",
+      "visible_if": "{{ section.settings.section_design_mode == 'custom' and section.settings.design_enable_section_width or section.settings.section_design_mode == 'blend' and section.settings.design_enable_section_width }}"
+    },
+    {
+      "type": "header",
+      "content": "Slider Styling",
+      "visible_if": "{{ section.settings.section_design_mode == 'custom' or section.settings.section_design_mode == 'blend' }}"
+    },
+    {
+      "type": "range",
+      "id": "design_layout_radius_desktop",
+      "label": "Layout radius (desktop)",
+      "info": "Blend: this section's radius always applies, even when the theme is Minimal. Custom: Minimal Design Mode removes it.",
+      "min": 0,
+      "max": 80,
+      "step": 2,
+      "unit": "px",
+      "default": 24,
+      "visible_if": "{{ section.settings.section_design_mode == 'custom' or section.settings.section_design_mode == 'blend' }}"
+    },
+    {
+      "type": "range",
+      "id": "design_layout_radius_mobile",
+      "label": "Layout radius (mobile)",
+      "info": "Blend: this section's radius always applies, even when the theme is Minimal. Custom: Minimal Design Mode removes it.",
+      "min": 0,
+      "max": 60,
+      "step": 2,
+      "unit": "px",
+      "default": 16,
+      "visible_if": "{{ section.settings.section_design_mode == 'custom' or section.settings.section_design_mode == 'blend' }}"
+    },
+    {
+      "type": "range",
+      "id": "design_layout_border_width",
+      "label": "Layout border width",
+      "min": 0,
+      "max": 10,
+      "step": 1,
+      "unit": "px",
+      "default": 1,
+      "visible_if": "{{ section.settings.section_design_mode == 'custom' or section.settings.section_design_mode == 'blend' }}"
+    },
+    {
+      "type": "header",
+      "content": "Animations",
+      "info": "The comparison slider fades up as it scrolls into view."
+    },
+    {
+      "type": "checkbox",
+      "id": "animation_enabled",
+      "label": "Animate on scroll",
+      "default": true
+    },
+    {
+      "type": "select",
+      "id": "animation_effect",
+      "label": "Effect",
+      "options": [
+        {
+          "value": "fade",
+          "label": "Fade"
+        },
+        {
+          "value": "fade-up",
+          "label": "Fade up"
+        },
+        {
+          "value": "fade-down",
+          "label": "Fade down"
+        },
+        {
+          "value": "slide",
+          "label": "Slide"
+        },
+        {
+          "value": "scale",
+          "label": "Scale"
+        }
+      ],
+      "default": "fade-up",
+      "visible_if": "{{ section.settings.animation_enabled }}"
+    },
+    {
+      "type": "range",
+      "id": "animation_duration",
+      "label": "Duration",
+      "min": 0.2,
+      "max": 1.5,
+      "step": 0.1,
+      "unit": "s",
+      "default": 0.6,
+      "visible_if": "{{ section.settings.animation_enabled }}"
+    },
+    {
+      "type": "range",
+      "id": "animation_delay",
+      "label": "Delay",
+      "min": 0,
+      "max": 2,
+      "step": 0.1,
+      "unit": "s",
+      "default": 0,
+      "visible_if": "{{ section.settings.animation_enabled }}"
+    },
+    {
+      "type": "range",
+      "id": "animation_stagger",
+      "label": "Stagger",
+      "min": 0,
+      "max": 300,
+      "step": 10,
+      "unit": "ms",
+      "default": 120,
+      "visible_if": "{{ section.settings.animation_enabled }}"
+    },
+    {
+      "type": "range",
+      "id": "animation_distance",
+      "label": "Distance",
+      "min": 0,
+      "max": 100,
+      "step": 4,
+      "unit": "px",
+      "default": 24,
+      "visible_if": "{{ section.settings.animation_enabled and section.settings.animation_effect != 'fade' and section.settings.animation_effect != 'scale' }}"
+    },
+    {
+      "type": "select",
+      "id": "animation_ease",
+      "label": "Easing",
+      "options": [
+        {
+          "value": "out",
+          "label": "Out"
+        },
+        {
+          "value": "out-strong",
+          "label": "Out (strong)"
+        },
+        {
+          "value": "back",
+          "label": "Back"
+        },
+        {
+          "value": "in-out",
+          "label": "In out"
+        },
+        {
+          "value": "linear",
+          "label": "Linear"
+        }
+      ],
+      "default": "out",
+      "visible_if": "{{ section.settings.animation_enabled }}"
+    },
+    {
+      "type": "checkbox",
+      "id": "animation_once",
+      "label": "Animate only once",
+      "default": true,
+      "visible_if": "{{ section.settings.animation_enabled }}"
+    }
+  ],
+  "blocks": [
+    { "type": "rich_content" },
+    { "type": "_before_after" }
+  ],
+  "presets": [
+    {
+      "name": "Before & After",
+      "category": "Before & after",
+      "blocks": {
+        "content": {
+          "type": "rich_content",
+          "static": true,
+          "settings": {
+            "align_x_mobile": "center",
+            "align_x_desktop": "left",
+            "content_width": "760",
+            "gap": "sm"
+          },
+          "blocks": {
+            "subtitle": {
+              "type": "subtitle",
+              "settings": {
+                "text": "REAL RESULTS"
+              }
+            },
+            "heading": {
+              "type": "heading",
+              "settings": {
+                "heading_text": "See the difference",
+                "heading_tag": "h2"
+              }
+            },
+            "text": {
+              "type": "text",
+              "settings": {
+                "paragraph_text": "<p>Drag the handle to compare the same skin before and after eight weeks of daily care.</p>"
+              }
+            },
+            "button": {
+              "type": "button",
+              "settings": {
+                "text": "Shop the routine",
+                "link": "/collections/all",
+                "style": "solid",
+                "icon": "arrow"
+              }
+            }
+          },
+          "block_order": ["subtitle", "heading", "text", "button"]
+        },
+        "slider": {
+          "type": "_before_after",
+          "static": true,
+          "settings": {
+            "orientation": "horizontal"
+          },
+          "blocks": {
+            "before_slide": {
+              "type": "_before_slide",
+              "static": true,
+              "blocks": {
+                "badge": {
+                  "type": "_badge",
+                  "settings": {
+                    "badge_style": "base",
+                    "background_role": "surface",
+                    "badge_border_enabled": false
+                  },
+                  "blocks": {
+                    "label": {
+                      "type": "_badge_text",
+                      "settings": {
+                        "text": "Before",
+                        "font_size": "xl"
+                      }
+                    }
+                  },
+                  "block_order": ["label"]
+                }
+              },
+              "block_order": ["badge"]
+            },
+            "after_slide": {
+              "type": "_after_slide",
+              "static": true,
+              "blocks": {
+                "badge": {
+                  "type": "_badge",
+                  "settings": {
+                    "badge_style": "base",
+                    "background_role": "surface",
+                    "badge_border_enabled": false
+                  },
+                  "blocks": {
+                    "label": {
+                      "type": "_badge_text",
+                      "settings": {
+                        "text": "After",
+                        "font_size": "xl"
+                      }
+                    }
+                  },
+                  "block_order": ["label"]
+                }
+              },
+              "block_order": ["badge"]
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "Before & After full width",
+      "category": "Before & after",
+      "settings": {
+        "layout": "slider"
+      },
+      "blocks": {
+        "slider": {
+          "type": "_before_after",
+          "static": true,
+          "settings": {
+            "orientation": "horizontal",
+            "aspect_ratio_mobile": "3 / 4",
+            "aspect_ratio_desktop": "21 / 9",
+            "intro_enabled": true
+          },
+          "blocks": {
+            "before_slide": {
+              "type": "_before_slide",
+              "static": true,
+              "blocks": {
+                "badge": {
+                  "type": "_badge",
+                  "settings": {
+                    "badge_style": "base",
+                    "background_role": "surface",
+                    "badge_border_enabled": false
+                  },
+                  "blocks": {
+                    "label": {
+                      "type": "_badge_text",
+                      "settings": {
+                        "text": "Before",
+                        "font_size": "xl"
+                      }
+                    }
+                  },
+                  "block_order": ["label"]
+                }
+              },
+              "block_order": ["badge"]
+            },
+            "after_slide": {
+              "type": "_after_slide",
+              "static": true,
+              "blocks": {
+                "badge": {
+                  "type": "_badge",
+                  "settings": {
+                    "badge_style": "base",
+                    "background_role": "surface",
+                    "badge_border_enabled": false
+                  },
+                  "blocks": {
+                    "label": {
+                      "type": "_badge_text",
+                      "settings": {
+                        "text": "After",
+                        "font_size": "xl"
+                      }
+                    }
+                  },
+                  "block_order": ["label"]
+                }
+              },
+              "block_order": ["badge"]
+            }
+          }
+        }
+      }
+    }
+  ]
+}
+{% endschema %}

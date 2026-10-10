@@ -1,0 +1,542 @@
+{%- comment -%}
+  Before & After Slider (private) — comparison shell driven by
+  assets/before-after.js. It owns only frame geometry, clipping, divider,
+  handle, and input. Static Before Slide and After Slide blocks own media and
+  overlay composition. Accent roles resolve through snippets/accent-resolver.liquid.
+  Aspect ratio per breakpoint; "Full screen" sizes the frame to the viewport
+  height instead, for a large standalone comparison.
+  The frame fades up once through the host section's Animations group
+  (snippets/motion-reveal on .ba-box). With "Sweep in on scroll" on, the
+  divider starts at one edge and glides to the centre the first time the
+  frame scrolls into view, on the merchant's duration and easing.
+{%- endcomment -%}
+
+{%- liquid
+  assign orientation = block.settings.orientation | default: 'horizontal'
+
+  # Scroll sweep: same curves as the Animations group's easing choices.
+  assign intro_from = block.settings.intro_from | default: 'start'
+  case block.settings.intro_ease
+    when 'out-strong'
+      assign intro_curve = 'cubic-bezier(0.16, 1, 0.3, 1)'
+    when 'back'
+      assign intro_curve = 'cubic-bezier(0.34, 1.56, 0.64, 1)'
+    when 'in-out'
+      assign intro_curve = 'cubic-bezier(0.65, 0, 0.35, 1)'
+    when 'linear'
+      assign intro_curve = 'linear'
+    else
+      assign intro_curve = 'cubic-bezier(0.22, 1, 0.36, 1)'
+  endcase
+-%}
+
+<script src="{{ 'before-after.js' | asset_url }}" type="module"></script>
+
+{% style %}
+  .ba-outer--{{ block.id }} {
+    width: 100%;
+    display: flex;
+    padding-inline: {{ block.settings.padding_horizontal }}rem;
+    box-sizing: border-box;
+  }
+
+  .ba-box--{{ block.id }} {
+    width: 100%;
+    box-sizing: border-box;
+    {% render 'motion-reveal', part: 'vars', from: section.settings %}
+  }
+
+  .ba-frame--{{ block.id }} {
+    --ba-pos: 50%;
+    --ba-surface: var(--color-surface);
+    {% if block.settings.slider_style == 'custom' %}
+      --ba-slider-color: {{ block.settings.slider_custom_color }};
+      --ba-slider-contrast: var(--color-accent-contrast);
+      --ba-slider-border: {{ block.settings.slider_custom_color }};
+    {% else %}
+      {% render 'accent-resolver', source: block.settings %}
+      --ba-slider-color: var(--color-accent);
+      --ba-slider-contrast: var(--color-accent-contrast);
+      --ba-slider-border: var(--color-accent-border);
+    {% endif %}
+    display: block;
+    position: relative;
+    width: 100%;
+    {%- if block.settings.aspect_ratio_mobile == 'screen' %}
+      height: 100svh;
+    {%- else %}
+      aspect-ratio: {{ block.settings.aspect_ratio_mobile }};
+    {%- endif %}
+    {% if block.settings.show_border %}
+      border: var(--ds-layout-border-width) solid var(--ba-slider-border);
+    {% endif %}
+    border-radius: var(--ds-layout-radius-mobile);
+    overflow: hidden;
+    background: var(--ba-surface);
+    user-select: none;
+    -webkit-user-select: none;
+    {% if orientation == 'vertical' %}
+      cursor: ns-resize;
+      touch-action: pan-x;
+    {% else %}
+      cursor: ew-resize;
+      touch-action: pan-y;
+    {% endif %}
+  }
+
+  {% if block.settings.intro_enabled %}
+    .ba-frame--{{ block.id }} {
+      --ba-intro-duration: {{ block.settings.intro_duration | default: 1.4 }}s;
+      --ba-intro-ease: {{ intro_curve }};
+    }
+
+    .ba-frame--{{ block.id }}.is-sweeping {
+      transition: --ba-pos var(--ba-intro-duration) var(--ba-intro-ease);
+    }
+  {% endif %}
+
+  .ba-frame--{{ block.id }} .ba__slide {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+  }
+
+  .ba-frame--{{ block.id }} .ba__slide--after {
+    z-index: 1;
+    {% if orientation == 'vertical' %}
+      clip-path: inset(var(--ba-pos) 0 0 0);
+    {% else %}
+      clip-path: inset(0 0 0 var(--ba-pos));
+    {% endif %}
+  }
+
+  .ba-frame--{{ block.id }} .ba__slide--before {
+    z-index: 2;
+    {% if orientation == 'vertical' %}
+      clip-path: inset(0 0 calc(100% - var(--ba-pos)) 0);
+    {% else %}
+      clip-path: inset(0 calc(100% - var(--ba-pos)) 0 0);
+    {% endif %}
+  }
+
+  .ba-frame--{{ block.id }} .ba__line {
+    position: absolute;
+    z-index: 4;
+    background: var(--ba-slider-color);
+    pointer-events: none;
+    {% if orientation == 'vertical' %}
+      left: 0;
+      right: 0;
+      top: var(--ba-pos);
+      height: 2px;
+      transform: translateY(-50%);
+    {% else %}
+      top: 0;
+      bottom: 0;
+      left: var(--ba-pos);
+      width: 2px;
+      transform: translateX(-50%);
+    {% endif %}
+  }
+
+  .ba-frame--{{ block.id }} .ba__handle {
+    position: absolute;
+    z-index: 4;
+    width: 48px;
+    height: 48px;
+    background: var(--ba-slider-color);
+    color: var(--ba-slider-contrast);
+    border: 1px solid var(--ba-slider-border);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: var(--ds-surface-shadow-mobile);
+    pointer-events: none;
+    {% if orientation == 'vertical' %}
+      left: 50%;
+      top: var(--ba-pos);
+      transform: translate(-50%, -50%) rotate(90deg);
+    {% else %}
+      top: 50%;
+      left: var(--ba-pos);
+      transform: translate(-50%, -50%);
+    {% endif %}
+  }
+
+  .ba-frame--{{ block.id }} .ba__handle svg {
+    width: 20px;
+    height: 20px;
+  }
+
+  .ba-frame--{{ block.id }}.is-focused .ba__handle {
+    outline: 2px solid var(--ba-slider-contrast);
+    outline-offset: 2px;
+  }
+
+  .ba-frame--{{ block.id }} .ba__input {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    border: 0;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  @media (min-width: 768px) {
+    .ba-frame--{{ block.id }} {
+      {%- if block.settings.aspect_ratio_desktop == 'screen' %}
+        aspect-ratio: auto;
+        height: 100svh;
+      {%- else %}
+        aspect-ratio: {{ block.settings.aspect_ratio_desktop }};
+        height: auto;
+      {%- endif %}
+      border-radius: var(--ds-layout-radius-desktop);
+    }
+
+    .ba-frame--{{ block.id }} .ba__handle {
+      box-shadow: var(--ds-surface-shadow-desktop);
+    }
+  }
+{% endstyle %}
+
+<div class="ba-outer--{{ block.id }}" {{ block.shopify_attributes }}>
+  <div class="ba-box--{{ block.id }} {% render 'motion-reveal', part: 'class', from: section.settings %}">
+    <before-after-slider
+      class="ba-frame--{{ block.id }}"
+      data-orientation="{{ orientation }}"
+      {% if block.settings.intro_enabled %}
+        data-intro="{{ intro_from }}"
+      {% endif %}
+    >
+      {% content_for 'block', type: '_after_slide', id: 'after_slide' %}
+      {% content_for 'block', type: '_before_slide', id: 'before_slide' %}
+
+      <div class="ba__line"></div>
+      <div class="ba__handle">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <path d="M15 18l-6-6 6-6"/>
+        </svg>
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          style="margin-left:-8px;"
+          aria-hidden="true"
+        >
+          <path d="M9 18l6-6-6-6"/>
+        </svg>
+      </div>
+
+      <input
+        type="range"
+        class="ba__input"
+        min="0"
+        max="100"
+        step="1"
+        value="50"
+        aria-label="{{ 'theme.sections.before_after.slider_label' | t }}"
+      >
+    </before-after-slider>
+  </div>
+</div>
+
+{% schema %}
+{
+  "name": "Before & After Slider",
+  "tag": null,
+  "settings": [
+    {
+      "type": "header",
+      "content": "Slider"
+    },
+    {
+      "type": "select",
+      "id": "orientation",
+      "label": "Slide direction",
+      "options": [
+        {
+          "value": "horizontal",
+          "label": "Horizontal"
+        },
+        {
+          "value": "vertical",
+          "label": "Vertical"
+        }
+      ],
+      "default": "horizontal"
+    },
+    {
+      "type": "select",
+      "id": "aspect_ratio_mobile",
+      "label": "Mobile aspect ratio",
+      "options": [
+        {
+          "value": "4 / 3",
+          "label": "Landscape (4:3)"
+        },
+        {
+          "value": "16 / 9",
+          "label": "Wide (16:9)"
+        },
+        {
+          "value": "21 / 9",
+          "label": "Ultrawide (21:9)"
+        },
+        {
+          "value": "1 / 1",
+          "label": "Square (1:1)"
+        },
+        {
+          "value": "4 / 5",
+          "label": "Portrait (4:5)"
+        },
+        {
+          "value": "3 / 4",
+          "label": "Portrait (3:4)"
+        },
+        {
+          "value": "screen",
+          "label": "Full screen"
+        }
+      ],
+      "default": "4 / 3"
+    },
+    {
+      "type": "select",
+      "id": "aspect_ratio_desktop",
+      "label": "Desktop aspect ratio",
+      "options": [
+        {
+          "value": "4 / 3",
+          "label": "Landscape (4:3)"
+        },
+        {
+          "value": "16 / 9",
+          "label": "Wide (16:9)"
+        },
+        {
+          "value": "21 / 9",
+          "label": "Ultrawide (21:9)"
+        },
+        {
+          "value": "1 / 1",
+          "label": "Square (1:1)"
+        },
+        {
+          "value": "4 / 5",
+          "label": "Portrait (4:5)"
+        },
+        {
+          "value": "3 / 4",
+          "label": "Portrait (3:4)"
+        },
+        {
+          "value": "screen",
+          "label": "Full screen"
+        }
+      ],
+      "default": "4 / 3"
+    },
+    {
+      "type": "select",
+      "id": "slider_style",
+      "label": "Slider style",
+      "options": [
+        {
+          "value": "accent",
+          "label": "Accent"
+        },
+        {
+          "value": "custom",
+          "label": "Custom"
+        }
+      ],
+      "default": "accent"
+    },
+    {
+      "type": "select",
+      "id": "accent_selected",
+      "label": "Slider accent",
+      "options": [
+        {
+          "value": "neutral",
+          "label": "Neutral"
+        },
+        {
+          "value": "soft",
+          "label": "Soft"
+        },
+        {
+          "value": "strong",
+          "label": "Strong"
+        }
+      ],
+      "default": "neutral",
+      "visible_if": "{{ block.settings.slider_style == 'accent' }}"
+    },
+    {
+      "type": "color",
+      "id": "slider_custom_color",
+      "label": "Custom slider color",
+      "default": "#000000",
+      "visible_if": "{{ block.settings.slider_style == 'custom' }}"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_border",
+      "label": "Show slider border",
+      "default": false
+    },
+    {
+      "type": "header",
+      "content": "Scroll animation"
+    },
+    {
+      "type": "checkbox",
+      "id": "intro_enabled",
+      "label": "Sweep in on scroll",
+      "info": "The divider glides from one edge to the centre the first time the slider scrolls into view.",
+      "default": false
+    },
+    {
+      "type": "select",
+      "id": "intro_from",
+      "label": "Sweep starts from",
+      "options": [
+        {
+          "value": "start",
+          "label": "Left or top edge"
+        },
+        {
+          "value": "end",
+          "label": "Right or bottom edge"
+        }
+      ],
+      "default": "start",
+      "visible_if": "{{ block.settings.intro_enabled }}"
+    },
+    {
+      "type": "range",
+      "id": "intro_duration",
+      "label": "Sweep duration",
+      "min": 0.4,
+      "max": 3,
+      "step": 0.1,
+      "unit": "s",
+      "default": 1.4,
+      "visible_if": "{{ block.settings.intro_enabled }}"
+    },
+    {
+      "type": "select",
+      "id": "intro_ease",
+      "label": "Sweep easing",
+      "options": [
+        {
+          "value": "out",
+          "label": "Out"
+        },
+        {
+          "value": "out-strong",
+          "label": "Out (strong)"
+        },
+        {
+          "value": "back",
+          "label": "Back"
+        },
+        {
+          "value": "in-out",
+          "label": "In out"
+        },
+        {
+          "value": "linear",
+          "label": "Linear"
+        }
+      ],
+      "default": "in-out",
+      "visible_if": "{{ block.settings.intro_enabled }}"
+    },
+    {
+      "type": "header",
+      "content": "Layout"
+    },
+    {
+      "type": "range",
+      "id": "padding_horizontal",
+      "min": 0,
+      "max": 10,
+      "step": 0.5,
+      "unit": "rem",
+      "label": "Horizontal padding",
+      "default": 0
+    }
+  ],
+  "blocks": [
+    {
+      "type": "_before_slide"
+    },
+    {
+      "type": "_after_slide"
+    }
+  ],
+  "presets": [
+    {
+      "name": "Before & After Slider",
+      "blocks": {
+        "before_slide": {
+          "type": "_before_slide",
+          "static": true,
+          "blocks": {
+            "badge": {
+              "type": "_badge",
+              "blocks": {
+                "label": {
+                  "type": "_badge_text",
+                  "settings": {
+                    "text": "Before"
+                  }
+                }
+              },
+              "block_order": [
+                "label"
+              ]
+            }
+          },
+          "block_order": [
+            "badge"
+          ]
+        },
+        "after_slide": {
+          "type": "_after_slide",
+          "static": true,
+          "blocks": {
+            "badge": {
+              "type": "_badge",
+              "blocks": {
+                "label": {
+                  "type": "_badge_text",
+                  "settings": {
+                    "text": "After"
+                  }
+                }
+              },
+              "block_order": [
+                "label"
+              ]
+            }
+          },
+          "block_order": [
+            "badge"
+          ]
+        }
+      }
+    }
+  ]
+}
+{% endschema %}

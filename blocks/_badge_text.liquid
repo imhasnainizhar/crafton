@@ -1,0 +1,171 @@
+{%- comment -%}
+  Badge Text — the label primitive for Badge (blocks/_badge.liquid). Inline
+  richtext plus the shared Text typography role (size, weight, casing) resolved
+  by snippets/typography-resolver.liquid. Colour is always inherited: the badge
+  surface owns the foreground, so this block never sets its own.
+  Depends on assets/marquee.js only for the shared [data-link-new-tab] hook.
+{%- endcomment -%}
+
+{% style %}
+  .badge-text--{{ block.id }} {
+    {% render 'typography-resolver', role: 'text', source: block.settings %}
+    display: inline-block;
+    margin: 0;
+    color: inherit;
+    line-height: {% if block.settings.override_line_height %}{{ block.settings.line_height }}{% else %}1.2{% endif %};
+  }
+
+  .badge-text--{{ block.id }} p {
+    margin: 0;
+  }
+
+  .badge-text--{{ block.id }} a {
+    color: inherit;
+    text-decoration: {% if block.settings.link_underline %}underline{% else %}none{% endif %};
+  }
+
+  .badge-text--{{ block.id }} a:hover {
+    text-decoration: underline;
+  }
+{% endstyle %}
+
+<span
+  class="badge-text badge-text--{{ block.id }}"
+  data-link-new-tab="{{ block.settings.link_new_tab }}"
+  {{ block.shopify_attributes }}
+>{{ block.settings.text }}</span>
+
+{% schema %}
+{
+  "name": "Badge Text",
+  "tag": null,
+  "settings": [
+    {
+      "type": "header",
+      "content": "Text",
+      "info": "The badge label. Font family, casing and Size Factor come from Theme settings > Typography > Body Text."
+    },
+    {
+      "type": "inline_richtext",
+      "id": "text",
+      "label": "Text",
+      "default": "Badge"
+    },
+    {
+      "type": "checkbox",
+      "id": "link_underline",
+      "label": "Underline Links",
+      "default": false
+    },
+    {
+      "type": "checkbox",
+      "id": "link_new_tab",
+      "label": "Open Links in New Tab",
+      "default": false
+    },
+    {
+      "type": "header",
+      "content": "Typography"
+    },
+    {
+      "type": "select",
+      "id": "font_size",
+      "label": "Size",
+      "info": "Approximate sizes are shown at Size Factor 1.",
+      "options": [
+        {
+          "value": "xxs",
+          "label": "XXS (~11px)"
+        },
+        {
+          "value": "xs",
+          "label": "XS (~12px)"
+        },
+        {
+          "value": "sm",
+          "label": "SM (~14px)"
+        },
+        {
+          "value": "md",
+          "label": "MD (~16px)"
+        },
+        {
+          "value": "lg",
+          "label": "LG (~18px)"
+        },
+        {
+          "value": "xl",
+          "label": "XL (~24px)"
+        },
+        {
+          "value": "xxl",
+          "label": "XXL (~32px)"
+        }
+      ],
+      "default": "xxs"
+    },
+    {
+      "type": "select",
+      "id": "font_weight",
+      "label": "Font Weight",
+      "options": [
+        {
+          "value": "normal",
+          "label": "Normal"
+        },
+        {
+          "value": "medium",
+          "label": "Medium"
+        },
+        {
+          "value": "semibold",
+          "label": "Semi-bold"
+        },
+        {
+          "value": "bold",
+          "label": "Bold"
+        }
+      ],
+      "default": "medium"
+    },
+    {
+      "type": "checkbox",
+      "id": "override_line_height",
+      "label": "Override Theme Line Height",
+      "default": false
+    },
+    {
+      "type": "range",
+      "id": "line_height",
+      "label": "Line Height",
+      "min": 0.8,
+      "max": 2.4,
+      "step": 0.1,
+      "default": 1.2,
+      "visible_if": "{{ block.settings.override_line_height }}"
+    },
+    {
+      "type": "select",
+      "id": "text_casing",
+      "label": "Text Casing",
+      "info": "On None, the text renders exactly as typed.",
+      "options": [
+        {
+          "value": "theme",
+          "label": "Theme"
+        },
+        {
+          "value": "none",
+          "label": "None"
+        }
+      ],
+      "default": "theme"
+    }
+  ],
+  "presets": [
+    {
+      "name": "Badge Text"
+    }
+  ]
+}
+{% endschema %}

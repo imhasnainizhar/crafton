@@ -113,3 +113,13 @@ existing `faq-` family: shared classes `.faq-section`, `.faq-section__inner`
 (was `__inner--{id}`), `.faq-list`, `.faq-question`, `.faq-question--bold`;
 custom property `--faq-min-height`. Locale key
 `theme.components.faq_item.placeholder_question`.
+
+## Block items grid, Before & After, Marquee, Announcement bar — 2026-10-10
+
+Brought over with Elewind names: `big-` (block items grid), `block-item`,
+`icon-block`, `ba-` (before & after), `badge`, `<before-after-slider>`,
+`<global-countdown>`, marquee / `scrolling-*` classes, `--bar-cap-*`. New
+setting id `layout` on Before & After (`split` | `slider`); new aspect ratio
+value `screen` on `_before_after`. Locale keys
+`theme.sections.announcement_bar.days|hours|minutes|seconds`,
+`theme.sections.before_after.slider_label`.

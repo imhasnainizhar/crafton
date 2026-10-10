@@ -159,3 +159,34 @@ media. Everything else is unchanged from Elewind.
 - Question Text's bold setting is a modifier class instead of an inline style.
 - The empty-question fallback uses the locale key
   `theme.components.faq_item.placeholder_question`.
+
+## 2026-10-10 — Block items grid, Before & After, Marquee, Announcement bar
+
+Elewind's sections, brought over unchanged except where noted.
+
+- Block Items Grid (`sections/block-items-grid.liquid`, blocks
+  `_block_items_grid`, `_block_item`, `icon`, `_number`, `image`, snippet
+  `carousel-preinit-width`). The carousel runs on the existing
+  `<container-carousel>`; stat numbers on `assets/stats-counter.js`.
+- Before & After (`sections/before-and-after.liquid`, blocks `_before_after`,
+  `_before_slide`, `_after_slide`, `_badge`, `_badge_text`, `_badge_icon`,
+  `_verification_icon`, snippet `badge`, `assets/before-after.js`).
+  - New Layout setting: "Text and slider" (Elewind's row) or "Slider only",
+    which skips the Rich content block and lets the slider span the section,
+    like the slider in Elewind's Comparison Editorial. The row settings hide
+    while Slider only is on.
+  - New preset "Before & After full width" (slider only, 21:9 desktop, 3:4
+    mobile, sweep in on scroll).
+  - The slider's aspect ratios add Ultrawide (21:9), Portrait (4:5) and Full
+    screen (viewport height).
+  - Before / After slides take Rich content and Badge children only (not
+    Elewind's Group block).
+- Marquee (`sections/marquee.liquid`, blocks `_marquee_item`, `_marquee_text`,
+  `_marquee_icon`, `brand_icon`, `assets/marquee.js`, snippet `bar-cap-vars`).
+- Announcement bar (`sections/announcement-bar.liquid`, reuses
+  `assets/marquee.js`). Not added to the header group; merchants add it there.
+- Icon block: removed Elewind's draw-on animation settings and markup. They
+  were never wired (`draw_on` was never assigned), and their scrub mode would
+  need GSAP.
+- Storefront strings moved to locale keys: `theme.sections.announcement_bar.*`
+  (countdown labels), `theme.sections.before_after.slider_label`.

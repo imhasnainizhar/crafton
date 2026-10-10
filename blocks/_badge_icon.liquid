@@ -1,0 +1,72 @@
+{%- comment -%}
+  Badge Icon (private) — compact icon child for blocks/_badge.liquid. Merchants
+  choose a custom SVG or an uploaded image. When neither is supplied, it uses
+  the shared sparkle icon from the public Icon block.
+{%- endcomment -%}
+
+<span class="badge-icon badge-icon--{{ block.id }}" {{ block.shopify_attributes }}>
+  {%- if block.settings.icon_source == 'upload' and block.settings.icon_image != blank -%}
+    {{ block.settings.icon_image | image_url: width: 64 | image_tag: alt: '', loading: 'lazy' }}
+  {%- elsif block.settings.icon_source == 'svg' and block.settings.icon_svg != blank -%}
+    {{ block.settings.icon_svg }}
+  {%- else -%}
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.35" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M12 2.75c.55 5.08 2.17 7.7 7.25 9.25-5.08.55-7.7 2.17-9.25 7.25-.55-5.08-2.17-7.7-7.25-9.25 5.08-.55 7.7-2.17 9.25-7.25Z" />
+      <path d="M19 3v4M21 5h-4" />
+    </svg>
+  {%- endif -%}
+</span>
+
+{% style %}
+  .badge-icon--{{ block.id }} {
+    display: inline-flex;
+    width: 12px;
+    height: 12px;
+    flex: 0 0 12px;
+    color: inherit;
+  }
+
+  .badge-icon--{{ block.id }} :is(svg, img) {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+  }
+{% endstyle %}
+
+{% schema %}
+{
+  "name": "Badge Icon",
+  "tag": null,
+  "settings": [
+    {
+      "type": "select",
+      "id": "icon_source",
+      "label": "Icon Source",
+      "options": [
+        { "value": "upload", "label": "Upload" },
+        { "value": "svg", "label": "Text" }
+      ],
+      "default": "svg"
+    },
+    {
+      "type": "html",
+      "id": "icon_svg",
+      "label": "SVG code",
+      "info": "Leave blank to use the default sparkle icon.",
+      "visible_if": "{{ block.settings.icon_source == 'svg' }}"
+    },
+    {
+      "type": "image_picker",
+      "id": "icon_image",
+      "label": "Icon image",
+      "visible_if": "{{ block.settings.icon_source == 'upload' }}"
+    }
+  ],
+  "presets": [
+    {
+      "name": "Badge Icon"
+    }
+  ]
+}
+{% endschema %}
