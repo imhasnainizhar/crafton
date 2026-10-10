@@ -1,0 +1,117 @@
+{%- comment -%}
+  Reusable overflow text track. It relies on the global Overflow Text settings
+  and a small ResizeObserver-based controller (it returns at once after the
+  first instance). Its CSS is the stylesheet tag below, compiled once.
+  Usage: text, mode (wrap|truncate|loop), class_name, id, tag (span|div),
+  duration (optional loop duration in seconds).
+
+  Caller schema: none. `mode` is a render parameter; callers that expose it
+  to merchants must use the values wrap, truncate, or loop.
+
+  Copy-paste global schema:
+  {
+    "type": "header",
+    "content": "Overflow Text",
+    "info": "Used by collection-name plates and other reusable text tracks."
+  },
+  {
+    "type": "range",
+    "id": "overflow_text_fade",
+    "label": "Fade width",
+    "min": 0,
+    "max": 40,
+    "step": 2,
+    "unit": "%",
+    "default": 12
+  },
+  {
+    "type": "range",
+    "id": "overflow_text_duration",
+    "label": "Loop duration",
+    "min": 2,
+    "max": 30,
+    "step": 1,
+    "unit": "s",
+    "default": 8
+  }
+{%- endcomment -%}
+{% stylesheet %}
+    [data-overflow-text] { display: block; inline-size: 100%; min-width: 0; max-width: 100%; overflow: hidden; position: relative; }
+    [data-overflow-text]::after { content: ''; position: absolute; inset-block: 0; pointer-events: none; }
+    [data-overflow-text] .overflow-text__track { display: inline-block; min-width: 100%; white-space: nowrap; }
+    [data-overflow-text][data-overflowing] { mask-image: linear-gradient(to right, #000 calc(100% - var(--overflow-text-fade)), transparent 100%); }
+    [data-overflow-text].overflow-text--wrap { overflow: visible; }
+    [data-overflow-text].overflow-text--wrap .overflow-text__track { display: block; min-width: 0; max-width: 100%; white-space: normal; overflow-wrap: anywhere; }
+    [data-overflow-text].overflow-text--truncate .overflow-text__track { overflow: hidden; text-overflow: ellipsis; }
+    [data-overflow-text].overflow-text--loop .overflow-text__track[aria-hidden='true'] { display: none; }
+    [data-overflow-text].overflow-text--loop[data-overflowing-loop] { display: flex; gap: 3rem; }
+    [data-overflow-text].overflow-text--loop[data-overflowing-loop] .overflow-text__track { display: inline-block; flex: 0 0 max-content; min-width: auto; animation: overflow-text-loop var(--overflow-text-duration) linear infinite; }
+    @keyframes overflow-text-loop {
+      from {
+        transform: translateX(0);
+      }
+      to {
+        transform: translateX(calc(-100% - 3rem));
+      }
+    }
+    @media (prefers-reduced-motion: reduce) { [data-overflow-text][data-overflowing-loop] .overflow-text__track { animation: none; } }
+{% endstylesheet %}
+{%- liquid
+  assign overflow_mode = mode | default: 'loop'
+  assign overflow_id = id | default: 'overflow-text-' | append: section.id | append: '-' | append: block.id
+  assign overflow_class = class_name | default: 'overflow-text'
+  assign overflow_fade = settings.overflow_text_fade | default: 12
+  assign overflow_duration = duration | default: settings.overflow_text_duration | default: 8
+  assign overflow_tag = 'span'
+  if tag == 'div'
+    assign overflow_tag = 'div'
+  endif
+-%}
+<{{ overflow_tag }}
+  id="{{ overflow_id }}"
+  class="{{ overflow_class }} overflow-text--{{ overflow_mode }}"
+  data-overflow-text
+  data-overflow-mode="{{ overflow_mode }}"
+  style="--overflow-text-fade: {{ overflow_fade }}%; --overflow-text-duration: {{ overflow_duration }}s;"
+>
+  <{{ overflow_tag }} class="overflow-text__track">{{ text }}</{{ overflow_tag }}>
+  {%- if overflow_mode == 'loop' -%}
+    <{{ overflow_tag }} class="overflow-text__track" aria-hidden="true">{{ text }}</{{ overflow_tag }}>
+  {%- endif -%}
+</{{ overflow_tag }}>
+{%- unless content_for_header contains 'overflow-text-controller' -%}
+  
+<script data-overflow-text-controller>
+  (() => {
+    if (window.ThemeOverflowText) return;
+    const update = (root) => {
+      const track = root.querySelector('.overflow-text__track');
+      if (!track) return;
+      const rootWidth = root.clientWidth;
+      if (!rootWidth) {
+        root.removeAttribute('data-overflowing');
+        root.removeAttribute('data-overflowing-loop');
+        return;
+      }
+      const overflowing = track.scrollWidth > rootWidth + 1;
+      root.toggleAttribute('data-overflowing', overflowing);
+      root.toggleAttribute('data-overflowing-loop', overflowing && root.dataset.overflowMode === 'loop');
+    };
+    const scan = (scope = document) => scope.querySelectorAll('[data-overflow-text]').forEach(update);
+    const observer = new ResizeObserver((entries) => entries.forEach((entry) => update(entry.target)));
+    window.ThemeOverflowText = { scan };
+    const boot = () => {
+      const nodes = document.querySelectorAll('[data-overflow-text]');
+      nodes.forEach((node) => observer.observe(node));
+      requestAnimationFrame(() => scan());
+    };
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot, { once: true });
+    else boot();
+    document.addEventListener('shopify:section:load', (event) => {
+      scan(event.target);
+      event.target.querySelectorAll?.('[data-overflow-text]').forEach((node) => observer.observe(node));
+    });
+  })();
+</script>
+{%- endunless -%}
+

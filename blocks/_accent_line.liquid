@@ -1,0 +1,178 @@
+{%- comment -%}
+  Accent Line (private)
+
+  - Small decorative rule used inside Rich Content, for example between a
+    subtitle and the heading below it.
+  - Color resolves through snippets/accent-resolver.liquid and the active color
+    scheme.
+  - A full-width flex wrapper hosts the line so alignment works in any parent,
+    even shells that force direct children to width: 100%.
+{%- endcomment -%}
+
+{%- liquid
+  assign align = 'inherit'
+  unless block.settings.alignment_inherit
+    assign align = block.settings.alignment | default: 'center'
+  endunless
+  assign justify = 'var(--align-x, center)'
+  if align == 'left'
+    assign justify = 'flex-start'
+  elsif align == 'center'
+    assign justify = 'center'
+  elsif align == 'right'
+    assign justify = 'flex-end'
+  endif
+-%}
+
+{%- style -%}
+  .accent-line-wrap--{{ block.id }} {
+    box-sizing: border-box;
+    display: flex;
+    width: fit-content;
+    justify-content: {{ justify }};
+    margin-block: {{ block.settings.spacing_top }}rem {{ block.settings.spacing_bottom }}rem;
+  }
+  .accent-line--{{ block.id }} {
+    box-sizing: border-box;
+    flex: 0 0 auto;
+    border: none;
+    margin: 0;
+    width: {{ block.settings.width }}px;
+    height: 0;
+    background-color: transparent;
+    border-top: {{ block.settings.thickness }}px {{ block.settings.line_style }} var(--color-accent-border);
+    opacity: {{ block.settings.opacity | divided_by: 100.0 }};
+  }
+{%- endstyle -%}
+
+<div
+  class="accent-line-wrap--{{ block.id }}"
+  style="{% render 'accent-resolver', source: block.settings %}"
+  {{ block.shopify_attributes }}
+>
+  <hr class="accent-line--{{ block.id }}">
+</div>
+
+{% schema %}
+{
+  "name": "Accent Line",
+  "tag": null,
+  "settings": [
+    {
+      "type": "header",
+      "content": "Accent Line",
+      "info": "A small decorative rule with adjustable width, thickness and alignment."
+    },
+    {
+      "type": "range",
+      "id": "width",
+      "min": 16,
+      "max": 600,
+      "step": 8,
+      "unit": "px",
+      "label": "Width",
+      "default": 48
+    },
+    {
+      "type": "range",
+      "id": "thickness",
+      "min": 0,
+      "max": 10,
+      "step": 1,
+      "unit": "px",
+      "label": "Thickness",
+      "default": 1
+    },
+    {
+      "type": "select",
+      "id": "line_style",
+      "label": "Style",
+      "options": [
+        {
+          "value": "solid",
+          "label": "Solid"
+        },
+        {
+          "value": "dashed",
+          "label": "Dashed"
+        },
+        {
+          "value": "dotted",
+          "label": "Dotted"
+        }
+      ],
+      "default": "solid"
+    },
+    {
+      "type": "select",
+      "id": "accent_selected",
+      "label": "Accent",
+      "options": [
+        {
+          "label": "Soft",
+          "value": "soft"
+        },
+        {
+          "label": "Neutral",
+          "value": "neutral"
+        },
+        {
+          "label": "Strong",
+          "value": "strong"
+        }
+      ],
+      "default": "neutral",
+      "info": "Chooses the accent color from the active color scheme."
+    },
+    {
+      "type": "range",
+      "id": "opacity",
+      "min": 0,
+      "max": 100,
+      "step": 5,
+      "unit": "%",
+      "label": "Opacity",
+      "default": 100
+    },
+    {
+      "type": "checkbox",
+      "id": "alignment_inherit",
+      "label": "Inherit Alignment",
+      "info": "Follow the parent layout's alignment.",
+      "default": true
+    },
+    {
+      "type": "text_alignment",
+      "id": "alignment",
+      "label": "Alignment",
+      "default": "center",
+      "visible_if": "{{ block.settings.alignment_inherit == false }}"
+    },
+    {
+      "type": "range",
+      "id": "spacing_top",
+      "min": 0,
+      "max": 4,
+      "step": 0.5,
+      "unit": "rem",
+      "label": "Spacing Above",
+      "default": 0
+    },
+    {
+      "type": "range",
+      "id": "spacing_bottom",
+      "min": 0,
+      "max": 4,
+      "step": 0.5,
+      "unit": "rem",
+      "label": "Spacing Below",
+      "default": 0
+    }
+  ],
+  "presets": [
+    {
+      "name": "Accent Line"
+    }
+  ]
+}
+{% endschema %}

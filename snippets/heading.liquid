@@ -1,0 +1,58 @@
+{%- comment -%}
+  Heading
+
+  Accepts:
+  - id: {String} Unique id (block.id) for scoped styles
+  - heading_text: {String}
+  - heading_tag: {String} h1-h6 or p (default: h2). SEMANTICS AND SEO ONLY —
+    the tag no longer influences size. Size comes from the caller's own
+    `font_size` step, resolved by snippets/typography-resolver.liquid.
+  - orientation: {String} 'horizontal' (default) or 'vertical'
+  - vertical_direction: {String} 'straight' (default) or 'inverted'; only used
+    when orientation is 'vertical'
+  - source: {Object} Caller settings (block.settings / section.settings).
+    Drives typography through the shared resolver, and turns the accent
+    treatment on; snippets/accent-typography.liquid owns the inherit-vs-custom
+    resolution and every accent_* setting id. Omit it and the heading renders
+    with resolver defaults and no accents.
+
+  Colour comes from the closest color scheme. Typography comes from the
+  Heading role: Theme settings > Typography > Heading plus the caller's own
+  Size, Font Weight, Line Height and Text Casing.
+{%- endcomment -%}
+
+{%- liquid
+  assign tag = heading_tag | default: 'h2'
+  assign orientation = orientation | default: 'horizontal'
+  assign vertical_direction = vertical_direction | default: 'straight'
+
+  # Accents are only applied to horizontal headings (vertical uses writing-mode),
+  # and only when the caller opted in by passing its settings object.
+  assign accents_on = false
+  if orientation != 'vertical' and source != blank
+    assign accents_on = true
+  endif
+  assign heading_selector = '#heading-' | append: id
+-%}
+
+{% style %}
+  #heading-{{ id }} {
+    {% render 'typography-resolver', role: 'heading', source: source %}
+    {% render 'color-role-resolver', mode: 'color', role: 'heading', source: source %}
+    text-align: var(--text-align, left);
+    {%- if orientation == 'vertical' %}
+    writing-mode: vertical-rl;
+    {%- if vertical_direction == 'inverted' %}
+    transform: rotate(180deg);
+    {%- endif %}
+    {%- endif %}
+  }
+{% endstyle %}
+
+<{{ tag }} class="custom-heading-element" id="heading-{{ id }}"
+  {%- if accents_on %} {% render 'accent-typography', source: source, mode: 'attributes' %}{% endif -%}
+>{{ heading_text }}</{{ tag }}>
+
+{%- if accents_on -%}
+  {% render 'accent-typography', source: source, selector: heading_selector %}
+{%- endif -%}

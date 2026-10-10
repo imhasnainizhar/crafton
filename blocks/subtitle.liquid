@@ -1,0 +1,608 @@
+{%- comment -%}
+  Subtitle
+
+  - Eyebrow text block; a thin wrapper over snippets/subtitle.liquid.
+  - Two styles: the small line above a heading, or a large low-contrast word
+    offset behind the heading that follows it (place it directly above). The
+    offset word takes its size from the same Size setting as any other
+    subtitle — pick a large step for it.
+  - Colour and surface are two independent axes. Style (Base/Accent) picks the
+    colour family and applies in both modes; Mode (Classic/Cookie) decides
+    whether there is a surface. Classic emits no background, border or padding
+    and never resolves accent contrast. All of that lives in the snippet.
+  - Accent Typography applies the shared accent engine to the whole text. This
+    block does not resolve those settings: it hands its settings object to
+    snippets/accent-typography.liquid, which inherits the global Typography
+    settings unless "Use Custom Accent Typography" is checked. The schema
+    fragment for those settings — ids and visible_if conditions alike — is
+    copy-pasted from that snippet's contract and must stay in sync with it.
+  - `accent_selected` follows Style: it is offered only on Accent, and only
+    then does the block resolve an accent. On Base the accent effect falls back
+    to the colour scheme's own --color-accent.
+{%- endcomment -%}
+
+{%- liquid
+  # The eyebrow icon would read as noise in front of the big offset word.
+  assign show_icon = block.settings.show_icon
+  if block.settings.style == 'offset'
+    assign show_icon = false
+  endif
+
+  assign subtitle_icon_image = null
+  if block.settings.icon_source == 'upload'
+    assign subtitle_icon_image = block.settings.icon_image
+  endif
+
+  # Stored as a percentage so the range stays integer-stepped.
+  assign offset_opacity = block.settings.opacity | divided_by: 100.0
+-%}
+
+{% render 'subtitle',
+  id: block.id,
+  text: block.settings.text,
+  show_icon: show_icon,
+  custom_icon: block.settings.custom_icon,
+  icon_image: subtitle_icon_image,
+  style: block.settings.style,
+  offset: block.settings.offset,
+  opacity: offset_opacity,
+  source: block.settings,
+  attributes: block.shopify_attributes
+%}
+
+{% schema %}
+{
+  "name": "Subtitle",
+  "settings": [
+    {
+      "type": "header",
+      "content": "Subtitle",
+      "info": "A small eyebrow line shown above headings."
+    },
+    {
+      "type": "text",
+      "id": "text",
+      "label": "Text",
+      "default": "INTRODUCING"
+    },
+    {
+      "type": "select",
+      "id": "style",
+      "label": "Style",
+      "info": "Offset renders a large word that the heading below overlaps. Place this block directly above that heading.",
+      "options": [
+        {
+          "value": "default",
+          "label": "Default"
+        },
+        {
+          "value": "offset",
+          "label": "Offset behind heading"
+        }
+      ],
+      "default": "default"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_icon",
+      "label": "Show icon",
+      "default": true,
+      "visible_if": "{{ block.settings.style == 'default' }}"
+    },
+    {
+      "type": "select",
+      "id": "icon_source",
+      "label": "Icon Source",
+      "options": [
+        {
+          "value": "upload",
+          "label": "Upload"
+        },
+        {
+          "value": "text",
+          "label": "Text"
+        }
+      ],
+      "default": "text",
+      "visible_if": "{{ block.settings.style == 'default' and block.settings.show_icon }}"
+    },
+    {
+      "type": "image_picker",
+      "id": "icon_image",
+      "label": "Icon image",
+      "visible_if": "{{ block.settings.style == 'default' and block.settings.show_icon and block.settings.icon_source == 'upload' }}"
+    },
+    {
+      "type": "html",
+      "id": "custom_icon",
+      "label": "Custom SVG icon",
+      "info": "Paste raw SVG code here to override the default thick circle.",
+      "visible_if": "{{ block.settings.style == 'default' and block.settings.show_icon and block.settings.icon_source == 'text' }}"
+    },
+    {
+      "type": "header",
+      "content": "Offset",
+      "visible_if": "{{ block.settings.style == 'offset' }}"
+    },
+    {
+      "type": "range",
+      "id": "offset",
+      "label": "Vertical Offset",
+      "info": "How far the heading below is pulled up over this word.",
+      "min": 0,
+      "max": 120,
+      "step": 2,
+      "unit": "px",
+      "default": 24,
+      "visible_if": "{{ block.settings.style == 'offset' }}"
+    },
+    {
+      "type": "range",
+      "id": "opacity",
+      "label": "Opacity",
+      "min": 5,
+      "max": 100,
+      "step": 5,
+      "unit": "%",
+      "default": 15,
+      "visible_if": "{{ block.settings.style == 'offset' }}"
+    },
+    {
+      "type": "header",
+      "content": "Colour & Mode",
+      "info": "Style picks the colour family and applies in both modes. Mode decides whether a surface sits behind the text: Classic has none at all."
+    },
+    {
+      "type": "select",
+      "id": "color_style",
+      "label": "Style",
+      "options": [
+        {
+          "value": "base",
+          "label": "Base"
+        },
+        {
+          "value": "accent",
+          "label": "Accent"
+        }
+      ],
+      "default": "base"
+    },
+    {
+      "type": "select",
+      "id": "accent_selected",
+      "label": "Accent",
+      "info": "Which accent this element uses. Independent of Mode.",
+      "options": [
+        {
+          "value": "neutral",
+          "label": "Neutral"
+        },
+        {
+          "value": "soft",
+          "label": "Soft"
+        },
+        {
+          "value": "strong",
+          "label": "Strong"
+        }
+      ],
+      "default": "neutral",
+      "visible_if": "{{ block.settings.color_style == 'accent' }}"
+    },
+    {
+      "type": "select",
+      "id": "cookie_mode",
+      "label": "Mode",
+      "options": [
+        {
+          "value": "classic",
+          "label": "Classic"
+        },
+        {
+          "value": "cookie",
+          "label": "Cookie"
+        }
+      ],
+      "default": "classic",
+      "visible_if": "{{ block.settings.style == 'default' }}"
+    },
+    {
+      "type": "select",
+      "id": "background_role",
+      "label": "Background",
+      "options": [
+        {
+          "value": "base",
+          "label": "Base"
+        },
+        {
+          "value": "surface",
+          "label": "Surface"
+        }
+      ],
+      "default": "surface",
+      "visible_if": "{{ block.settings.style == 'default' and block.settings.cookie_mode == 'cookie' and block.settings.color_style == 'base' }}"
+    },
+    {
+      "type": "select",
+      "id": "accent_contrast",
+      "label": "Accent Contrast",
+      "info": "Subtle: accent-coloured text, no fill. Filled: accent fill with a contrasting foreground.",
+      "options": [
+        {
+          "value": "subtle",
+          "label": "Subtle"
+        },
+        {
+          "value": "filled",
+          "label": "Filled"
+        }
+      ],
+      "default": "subtle",
+      "visible_if": "{{ block.settings.style == 'default' and block.settings.cookie_mode == 'cookie' and block.settings.color_style == 'accent' }}"
+    },
+    {
+      "type": "checkbox",
+      "id": "cookie_bg",
+      "label": "Show Background",
+      "default": true,
+      "visible_if": "{{ block.settings.style == 'default' and block.settings.cookie_mode == 'cookie' and block.settings.color_style == 'base' }}"
+    },
+    {
+      "type": "checkbox",
+      "id": "cookie_border",
+      "label": "Show Border",
+      "default": false,
+      "visible_if": "{{ block.settings.style == 'default' and block.settings.cookie_mode == 'cookie' }}"
+    },
+    {
+      "type": "select",
+      "id": "cookie_radius_style",
+      "label": "Border Radius",
+      "options": [
+        {
+          "value": "rounded",
+          "label": "Rounded"
+        },
+        {
+          "value": "custom",
+          "label": "Custom"
+        }
+      ],
+      "default": "rounded",
+      "visible_if": "{{ block.settings.style == 'default' and block.settings.cookie_mode == 'cookie' }}"
+    },
+    {
+      "type": "range",
+      "id": "cookie_border_radius",
+      "label": "Corner Radius",
+      "min": 0,
+      "max": 40,
+      "step": 1,
+      "unit": "px",
+      "default": 8,
+      "visible_if": "{{ block.settings.style == 'default' and block.settings.cookie_mode == 'cookie' and block.settings.cookie_radius_style == 'custom' }}"
+    },
+    {
+      "type": "range",
+      "id": "cookie_padding_inline",
+      "label": "Horizontal Padding",
+      "min": 0,
+      "max": 48,
+      "step": 1,
+      "unit": "px",
+      "default": 16,
+      "visible_if": "{{ block.settings.style == 'default' and block.settings.cookie_mode == 'cookie' }}"
+    },
+    {
+      "type": "range",
+      "id": "cookie_padding_block",
+      "label": "Vertical Padding",
+      "min": 0,
+      "max": 32,
+      "step": 1,
+      "unit": "px",
+      "default": 8,
+      "visible_if": "{{ block.settings.style == 'default' and block.settings.cookie_mode == 'cookie' }}"
+    },
+    {
+      "type": "header",
+      "content": "Typography",
+      "info": "Size applies to the Offset style too — pick a large step there."
+    },
+    {
+      "type": "select",
+      "id": "font_size",
+      "label": "Size",
+      "info": "Approximate sizes are shown at Size Factor 1.",
+      "options": [
+        {
+          "value": "xxs",
+          "label": "XXS (~11px)"
+        },
+        {
+          "value": "xs",
+          "label": "XS (~12px)"
+        },
+        {
+          "value": "sm",
+          "label": "SM (~14px)"
+        },
+        {
+          "value": "md",
+          "label": "MD (~16px)"
+        },
+        {
+          "value": "lg",
+          "label": "LG (~18px)"
+        },
+        {
+          "value": "xl",
+          "label": "XL (~24px)"
+        },
+        {
+          "value": "xxl",
+          "label": "XXL (~32px)"
+        }
+      ],
+      "default": "sm"
+    },
+    {
+      "type": "select",
+      "id": "font_weight",
+      "label": "Font Weight",
+      "options": [
+        {
+          "value": "normal",
+          "label": "Normal"
+        },
+        {
+          "value": "medium",
+          "label": "Medium"
+        },
+        {
+          "value": "semibold",
+          "label": "Semi-bold"
+        },
+        {
+          "value": "bold",
+          "label": "Bold"
+        }
+      ],
+      "default": "normal"
+    },
+    {
+      "type": "select",
+      "id": "font_style",
+      "label": "Font Style",
+      "options": [
+        {
+          "value": "normal",
+          "label": "Normal"
+        },
+        {
+          "value": "italic",
+          "label": "Italic"
+        }
+      ],
+      "default": "normal"
+    },
+    {
+      "type": "checkbox",
+      "id": "override_line_height",
+      "label": "Override Theme Line Height",
+      "default": false
+    },
+    {
+      "type": "range",
+      "id": "line_height",
+      "label": "Line Height",
+      "min": 0.8,
+      "max": 2.4,
+      "step": 0.1,
+      "default": 1.3,
+      "visible_if": "{{ block.settings.override_line_height }}"
+    },
+    {
+      "type": "select",
+      "id": "text_casing",
+      "label": "Text Casing",
+      "info": "On None, the text renders exactly as typed.",
+      "options": [
+        {
+          "value": "theme",
+          "label": "Theme"
+        },
+        {
+          "value": "none",
+          "label": "None"
+        }
+      ],
+      "default": "theme"
+    },
+    {
+      "type": "header",
+      "content": "Accent Typography",
+      "info": "Applies the shared accent effect engine to this text. Inherits Theme settings > Typography > Accent Typography unless the override below is enabled."
+    },
+    {
+      "type": "select",
+      "id": "accent_effect",
+      "label": "Accent Style",
+      "info": "Applies the Heading accent engine to the complete Subtitle text.",
+      "options": [
+        {
+          "value": "none",
+          "label": "None"
+        },
+        {
+          "value": "color",
+          "label": "Color"
+        },
+        {
+          "value": "italic",
+          "label": "Italic"
+        },
+        {
+          "value": "highlight",
+          "label": "Highlight"
+        },
+        {
+          "value": "highlight_marker",
+          "label": "Highlight (marker)"
+        },
+        {
+          "value": "underline",
+          "label": "Underline"
+        },
+        {
+          "value": "underline_sketch",
+          "label": "Underline (hand-drawn)"
+        },
+        {
+          "value": "underline_wavy",
+          "label": "Underline (wavy)"
+        },
+        {
+          "value": "circle",
+          "label": "Circle"
+        },
+        {
+          "value": "circle_sketch",
+          "label": "Circle (hand-drawn)"
+        },
+        {
+          "value": "oval",
+          "label": "Oval"
+        },
+        {
+          "value": "oval_sketch",
+          "label": "Oval (hand-drawn)"
+        }
+      ],
+      "default": "none"
+    },
+    {
+      "type": "checkbox",
+      "id": "use_custom_accent_typography",
+      "label": "Use Custom Accent Typography",
+      "default": false
+    },
+    {
+      "type": "header",
+      "content": "Custom Accent Animation",
+      "visible_if": "{{ block.settings.use_custom_accent_typography }}"
+    },
+    {
+      "type": "checkbox",
+      "id": "accent_use_font",
+      "label": "Use Accent Font",
+      "info": "Renders bold and italic text in the Accent Font. Set it in Theme settings > Accent Typography > Accent Font.",
+      "default": false,
+      "visible_if": "{{ block.settings.use_custom_accent_typography }}"
+    },
+    {
+      "type": "select",
+      "id": "accent_trigger",
+      "label": "Animation trigger",
+      "default": "in_view",
+      "visible_if": "{{ block.settings.use_custom_accent_typography }}",
+      "options": [
+        {
+          "value": "in_view",
+          "label": "Play once in view"
+        },
+        {
+          "value": "scrub",
+          "label": "Scrub with scroll"
+        }
+      ]
+    },
+    {
+      "type": "range",
+      "id": "accent_threshold",
+      "label": "Scroll threshold",
+      "info": "0 = draws across the whole scroll; higher tightens the draw toward the viewport center.",
+      "min": 0,
+      "max": 1,
+      "step": 0.1,
+      "default": 0.8,
+      "visible_if": "{{ block.settings.use_custom_accent_typography and block.settings.accent_trigger == 'scrub' }}"
+    },
+    {
+      "type": "range",
+      "id": "accent_stroke_width",
+      "label": "Stroke width",
+      "info": "For underline / circle / oval accents.",
+      "min": 1,
+      "max": 12,
+      "step": 1,
+      "unit": "px",
+      "default": 3,
+      "visible_if": "{{ block.settings.use_custom_accent_typography }}"
+    },
+    {
+      "type": "range",
+      "id": "accent_duration",
+      "label": "Animation duration",
+      "min": 100,
+      "max": 2000,
+      "step": 50,
+      "unit": "ms",
+      "default": 700,
+      "visible_if": "{{ block.settings.use_custom_accent_typography }}"
+    },
+    {
+      "type": "select",
+      "id": "accent_reverse",
+      "label": "Accent direction",
+      "default": "normal",
+      "visible_if": "{{ block.settings.use_custom_accent_typography }}",
+      "options": [
+        {
+          "value": "normal",
+          "label": "Forward"
+        },
+        {
+          "value": "opposite",
+          "label": "From opposite end"
+        },
+        {
+          "value": "erase",
+          "label": "Backward (erase)"
+        }
+      ]
+    },
+    {
+      "type": "checkbox",
+      "id": "accent_loop",
+      "label": "Loop accent",
+      "default": false,
+      "visible_if": "{{ block.settings.use_custom_accent_typography and block.settings.accent_trigger == 'in_view' }}"
+    },
+    {
+      "type": "select",
+      "id": "accent_loop_mode",
+      "label": "Loop mode",
+      "default": "yoyo",
+      "options": [
+        {
+          "value": "yoyo",
+          "label": "Yoyo (draw & undraw)"
+        },
+        {
+          "value": "restart",
+          "label": "Restart"
+        }
+      ],
+      "visible_if": "{{ block.settings.use_custom_accent_typography and block.settings.accent_loop and block.settings.accent_trigger == 'in_view' }}"
+    }
+  ],
+  "presets": [
+    {
+      "name": "Subtitle"
+    }
+  ]
+}
+{% endschema %}

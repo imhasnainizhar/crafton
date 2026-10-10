@@ -1,0 +1,140 @@
+{%- comment -%}
+  Label — one short line of emphasised text: a person's name on a review, a
+  title on a Promo Board. Replaces the old private Name block; a handle or
+  description now comes from a Caption composed next to it in a Group.
+  Heading-role type through snippets/typography-resolver.liquid, colour through
+  snippets/color-role-resolver.liquid, alignment from the inherited --text-align.
+{%- endcomment -%}
+
+{%- liquid
+  assign lbl_tag = block.settings.tag | default: 'p'
+-%}
+
+{% style %}
+  .lbl--{{ block.id }} {
+    margin: 0;
+    {% render 'typography-resolver', role: 'heading', source: block.settings %}
+    {% render 'color-role-resolver', mode: 'color', role: 'heading', source: block.settings %}
+    text-align: var(--text-align, left);
+    overflow-wrap: anywhere;
+  }
+{% endstyle %}
+
+<{{ lbl_tag }} class="lbl lbl--{{ block.id }}" {{ block.shopify_attributes }}>
+  {{- block.settings.label_text | escape -}}
+</{{ lbl_tag }}>
+
+{% schema %}
+{
+  "name": "Label",
+  "tag": null,
+  "settings": [
+    {
+      "type": "header",
+      "content": "Label",
+      "info": "A short line of emphasised text, such as a name or a title. Add a Caption beside it for smaller supporting text."
+    },
+    {
+      "type": "text",
+      "id": "label_text",
+      "label": "Text",
+      "default": "Alex M."
+    },
+    {
+      "type": "select",
+      "id": "tag",
+      "label": "Page structure tag",
+      "info": "Helps search engines read the page. It does not change how the text looks.",
+      "options": [
+        { "value": "p", "label": "Paragraph" },
+        { "value": "h2", "label": "H2" },
+        { "value": "h3", "label": "H3" },
+        { "value": "h4", "label": "H4" },
+        { "value": "h5", "label": "H5" },
+        { "value": "h6", "label": "H6" },
+        { "value": "span", "label": "None" }
+      ],
+      "default": "p"
+    },
+    {
+      "type": "header",
+      "content": "Typography"
+    },
+    {
+      "type": "select",
+      "id": "font_size",
+      "label": "Size",
+      "info": "Approximate sizes are shown at Size Factor 1.",
+      "options": [
+        { "value": "xxs", "label": "XXS (~16px)" },
+        { "value": "xs", "label": "XS (~18px)" },
+        { "value": "sm", "label": "SM (~22px)" },
+        { "value": "md", "label": "MD (~28px)" },
+        { "value": "lg", "label": "LG (~36px)" },
+        { "value": "xl", "label": "XL (~48px)" },
+        { "value": "xxl", "label": "XXL (~64px)" }
+      ],
+      "default": "xxs"
+    },
+    {
+      "type": "select",
+      "id": "font_weight",
+      "label": "Font Weight",
+      "options": [
+        { "value": "normal", "label": "Normal" },
+        { "value": "medium", "label": "Medium" },
+        { "value": "semibold", "label": "Semi-bold" },
+        { "value": "bold", "label": "Bold" }
+      ],
+      "default": "normal"
+    },
+    {
+      "type": "checkbox",
+      "id": "override_line_height",
+      "label": "Override Theme Line Height",
+      "default": false
+    },
+    {
+      "type": "range",
+      "id": "line_height",
+      "label": "Line Height",
+      "min": 0.8,
+      "max": 2.4,
+      "step": 0.1,
+      "default": 1.2,
+      "visible_if": "{{ block.settings.override_line_height }}"
+    },
+    {
+      "type": "select",
+      "id": "text_casing",
+      "label": "Text Casing",
+      "info": "On None, the text renders exactly as typed.",
+      "options": [
+        { "value": "theme", "label": "Theme" },
+        { "value": "none", "label": "None" }
+      ],
+      "default": "theme"
+    },
+    {
+      "type": "select",
+      "id": "text_color",
+      "label": "Color",
+      "info": "Automatic follows this block's own role, so a card set to Accent recolors it.",
+      "options": [
+        { "value": "auto", "label": "Automatic" },
+        { "value": "heading", "label": "Heading" },
+        { "value": "text", "label": "Text" },
+        { "value": "soft", "label": "Soft Text" },
+        { "value": "accent", "label": "Accent" },
+        { "value": "parent", "label": "Inherit From Parent" }
+      ],
+      "default": "auto"
+    }
+  ],
+  "presets": [
+    {
+      "name": "Label"
+    }
+  ]
+}
+{% endschema %}

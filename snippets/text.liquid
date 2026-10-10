@@ -1,0 +1,90 @@
+{%- comment -%}
+  Text — the theme's single body-copy primitive (§6 typography).
+
+  Replaces the former `paragraph` snippet, and with it the retired `label` and
+  `name` blocks: its ladder starts at caption size and its Fit Content width
+  covers the intrinsic-width cases those blocks served.
+
+  Accepts:
+  - id            {String}  Unique id (block.id) for scoped styles
+  - content       {String}  Richtext HTML
+  - source        {Object}  Caller settings. Drives typography through
+                            snippets/typography-resolver.liquid (role 'text')
+                            and colour through
+                            snippets/color-role-resolver.liquid (role 'text'),
+                            which reads source.text_color.
+  - max_width     {String}  CSS length, or 'fit' for intrinsic width (default 100%)
+  - space_top / space_bottom {String}
+                            Spacing token keys (none|xs|sm|md|lg|xl|2xl)
+  - truncate params: enable_truncate, truncate_lines, truncate_mode,
+                     read_more_text, transition_duration, popover_title, overlay_opacity
+  - popover params (dialog mode only): popover_color_scheme, popover_background_role,
+                     popover_max_height, popover_max_width, popover_animation, popover_fade,
+                     popover_mobile_layout, popover_full_width_mobile, popover_content_alignment
+
+  Colour comes from the closest colour context. The default `auto` resolves to
+  --color-text, which a card set to Accent repoints for its whole subtree - that
+  is how a Text block inside an accent card stays legible without being touched
+  individually. Text alignment is inherited via --text-align (§4); this snippet
+  never sets its own alignment.
+{%- endcomment -%}
+
+{%- liquid
+  assign t_max_width = max_width | default: '100%'
+  assign t_fit = false
+  if t_max_width == 'fit'
+    assign t_fit = true
+  endif
+
+-%}
+
+{% style %}
+  .text-block--{{ id }} {
+    {% render 'typography-resolver', role: 'text', source: source %}
+    {% render 'color-role-resolver', mode: 'color', role: 'text', source: source %}
+    text-align: var(--text-align, left);
+    {%- if t_fit %}
+    width: fit-content;
+    max-width: 100%;
+    {%- else %}
+    max-width: {{ t_max_width }};
+    {%- endif %}
+    margin-block-start: {% render 'space-token', key: space_top %};
+    margin-block-end: {% render 'space-token', key: space_bottom %};
+  }
+
+  .text-block--{{ id }} p {
+    margin: 0 0 0.5em;
+  }
+
+  .text-block--{{ id }} p:last-child {
+    margin-bottom: 0;
+  }
+
+  .text-block--{{ id }} a {
+    color: var(--color-link);
+  }
+{% endstyle %}
+
+<div class="text-block--{{ id }}">
+  {% render 'truncate-text',
+    id: id,
+    content: content,
+    enable: enable_truncate,
+    lines: truncate_lines,
+    mode: truncate_mode,
+    read_more_text: read_more_text,
+    transition: transition_duration,
+    popover_title: popover_title,
+    overlay_opacity: overlay_opacity,
+    popover_color_scheme: popover_color_scheme,
+    popover_background_role: popover_background_role,
+    popover_max_height: popover_max_height,
+    popover_max_width: popover_max_width,
+    popover_animation: popover_animation,
+    popover_fade: popover_fade,
+    popover_mobile_layout: popover_mobile_layout,
+    popover_full_width_mobile: popover_full_width_mobile,
+    popover_content_alignment: popover_content_alignment
+  %}
+</div>

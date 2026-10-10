@@ -1,0 +1,332 @@
+{%- comment -%}
+  Renders richtext content with an optional truncate / "read more" behavior.
+
+  Accepts:
+  - id            {String}  Unique id (block.id)
+  - content       {String}  Richtext HTML to render
+  - enable        {Boolean} Turn truncation on/off (when off, content is plain)
+  - lines         {Number}  Number of lines to clamp to (default 3)
+  - mode          {String}  'inline' (expand in place) | 'dialog' (popover/drawer)
+  - read_more_text{String}  Trigger label (default "Read more")
+  - transition    {Number}  Inline expand transition in ms (default 300)
+  - popover_title {String}  Heading shown in the popover/drawer header (dialog mode).
+                             Rendered through snippets/overflow-text.liquid in
+                             'loop' mode, so a title wider than the header row
+                             auto-scrolls instead of wrapping or clipping.
+
+  Popover / drawer look (dialog mode only) — all per-instance, set by the
+  caller block's own "Popover" settings:
+  - popover_color_scheme      {String}  Color scheme id, e.g. 'scheme-1'
+  - popover_background_role   {String}  'base' | 'surface'
+  - popover_max_height        {Number}  dvh the panel may grow to before its
+                                         body scrolls
+  - popover_max_width         {Number}  px; caps the popover, and the drawer
+                                         when Full Width On Mobile is off
+  - popover_animation         {Number}  ms; scale-pop (popover) / slide (drawer)
+                                         duration
+  - popover_fade              {Number}  %; height of the top/bottom scroll fade
+  - popover_mobile_layout     {String}  'popover' (stays centered) | 'drawer'
+                                         (bottom sheet below 768px)
+  - popover_full_width_mobile {Boolean} Drawer spans the full viewport width
+                                         on mobile; off caps it to Max Width
+  - popover_content_alignment {String}  'left' | 'center' | 'right' — text
+                                         alignment of the popover/drawer body
+
+  Typography (font-size/color) is inherited from the parent block wrapper.
+
+  The trigger sits inline at the end of the last visible line (not on its own
+  row): a right-floated spacer spanning all but one line pushes the floated
+  trigger down onto the final clamped line, and the text wraps around it.
+
+  Dialog mode opens either a centered popover (scales out from the direction
+  of the Read more trigger, transform-origin taken from the trigger's screen
+  position) or, in drawer layout on mobile, a bottom sheet that slides up.
+  Either way the header is a single row — close on the left, title on the
+  right — and the body scrolls with a fade painted in the panel's own surface
+  colour at both ends.
+{%- endcomment -%}
+
+{%- liquid
+  assign tt_lines = lines | default: 3
+  assign tt_mode = mode | default: 'inline'
+  assign tt_more = read_more_text | default: 'Read more'
+  assign tt_transition = transition | default: 300
+  assign tt_overlay_opacity = overlay_opacity | default: 60
+
+  assign tt_scheme = popover_color_scheme | default: 'scheme-1'
+  assign tt_bg_role = popover_background_role | default: 'base'
+  assign tt_max_height = popover_max_height | default: 80
+  assign tt_max_width = popover_max_width | default: 560
+  assign tt_pop_duration = popover_animation | default: 400
+  assign tt_fade = popover_fade | default: 8
+  assign tt_layout = popover_mobile_layout | default: 'popover'
+  assign tt_align = popover_content_alignment | default: 'left'
+  assign tt_title_id = 'truncate-popover-title-' | append: id
+
+  assign tt_full_width_mobile = popover_full_width_mobile
+  if tt_full_width_mobile == nil
+    assign tt_full_width_mobile = true
+  endif
+
+  capture tt_bg
+    render 'background-role-token', key: tt_bg_role
+  endcapture
+-%}
+
+{%- if enable == false or enable == 'false' or enable == blank -%}
+  {{ content }}
+{%- else -%}
+  <script src="{{ 'truncate-text.js' | asset_url }}" defer="defer"></script>
+
+  {% style %}
+    .truncate-text--{{ id }} {
+      display: block;
+    }
+    .truncate-text--{{ id }} .truncate-text__content {
+      overflow: hidden;
+      max-height: calc({{ tt_lines }} * 1lh);
+    }
+    .truncate-text--{{ id }} .truncate-text__spacer {
+      float: right;
+      width: 0;
+      height: calc(({{ tt_lines }} - 1) * 1lh);
+    }
+    .truncate-text--{{ id }} .truncate-text__toggle {
+      float: right;
+      clear: both;
+      display: inline;
+      margin: 0;
+      padding: 0;
+      background: none;
+      border: none;
+      cursor: pointer;
+      font: inherit;
+      text-decoration: underline;
+      color: currentColor;
+    }
+    .truncate-text--{{ id }}:not([expanded]) .truncate-text__toggle::before {
+      content: '\2026\00a0';
+      text-decoration: none;
+      display: inline-block;
+    }
+    .truncate-text--{{ id }}[expanded] .truncate-text__content {
+      max-height: none !important;
+    }
+    .truncate-text--{{ id }}[expanded] .truncate-text__spacer {
+      display: none;
+    }
+    .truncate-text--{{ id }}[expanded] .truncate-text__toggle {
+      float: none;
+      margin-left: 0.35em;
+    }
+
+    {%- if tt_mode == 'dialog' -%}
+      {%- comment -%}
+        Popover layout: centered in the viewport, scaling out from the
+        direction of the Read more trigger (transform-origin is set in JS
+        from the trigger's position). Drawer layout (mobile only, opted into
+        per-block) instead slides up from the bottom edge — see the
+        max-width: 767.98px block below. Either way the header is a single
+        row — close on the left, title on the right — and the body scrolls
+        with a fade painted in the panel's own surface colour at both ends.
+      {%- endcomment -%}
+      .truncate-text--{{ id }} .truncate-text__dialog {
+        position: fixed;
+        inset: 0;
+        margin: auto;
+        width: min({{ tt_max_width }}px, calc(100vw - 2rem));
+        max-width: calc(100vw - 2rem);
+        max-height: {{ tt_max_height }}dvh;
+        padding: 0;
+        border: none;
+        border-radius: var(--ds-layout-radius-mobile);
+        background-color: {{ tt_bg }};
+        color: var(--color-text);
+        overflow: hidden;
+        box-shadow: 0 24px 60px color-mix(in srgb, var(--color-shadow) 35%, transparent);
+        opacity: 0;
+        --tt-pop-duration: {{ tt_pop_duration }}ms;
+        --tt-fade: {{ tt_fade }}%;
+      }
+      .truncate-text--{{ id }} .truncate-text__dialog.is-open {
+        opacity: 1;
+      }
+      .truncate-text--{{ id }} .truncate-text__dialog::backdrop {
+        background-color: color-mix(in srgb, var(--color-shadow) {{ tt_overlay_opacity }}%, transparent);
+        opacity: 0;
+        transition: opacity var(--tt-pop-duration) ease;
+      }
+      .truncate-text--{{ id }} .truncate-text__dialog.is-open::backdrop {
+        opacity: 1;
+      }
+      .truncate-text--{{ id }} .truncate-text__dialog-inner {
+        box-sizing: border-box;
+        display: flex;
+        flex-direction: column;
+        max-height: {{ tt_max_height }}dvh;
+      }
+      .truncate-text--{{ id }} .truncate-text__dialog-head {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        flex: 0 0 auto;
+        padding: calc(1rem * var(--spacing-factor-vertical)) calc(1.25rem * var(--spacing-factor-horizontal));
+      }
+      .truncate-text--{{ id }} .truncate-text__dialog-title {
+        flex: 1 1 auto;
+        min-width: 0;
+        text-align: right;
+        font-family: var(--font-heading-family);
+        letter-spacing: var(--ls-heading, 0);
+        color: var(--color-heading);
+      }
+      .truncate-text--{{ id }} .truncate-text__scroll {
+        flex: 1 1 auto;
+        min-height: 0;
+        /* Only ever scroll vertically — never a horizontal scrollbar. */
+        overflow-y: auto;
+        overflow-x: hidden;
+        padding: 0 calc(1.25rem * var(--spacing-factor-horizontal)) calc(1.5rem * var(--spacing-factor-vertical));
+        --tt-fade-top: 0%;
+        --tt-fade-bottom: 0%;
+        mask-image: linear-gradient(
+          to bottom,
+          transparent 0,
+          #000 var(--tt-fade-top),
+          #000 calc(100% - var(--tt-fade-bottom)),
+          transparent 100%
+        );
+      }
+      .truncate-text--{{ id }} .truncate-text__scroll[data-fade-top] {
+        --tt-fade-top: var(--tt-fade);
+      }
+      .truncate-text--{{ id }} .truncate-text__scroll[data-fade-bottom] {
+        --tt-fade-bottom: var(--tt-fade);
+      }
+      .truncate-text--{{ id }} .truncate-text__dialog-content {
+        text-align: {{ tt_align }};
+        overflow-wrap: break-word;
+        word-break: break-word;
+      }
+      .truncate-text--{{ id }} .truncate-text__dialog-content img,
+      .truncate-text--{{ id }} .truncate-text__dialog-content video,
+      .truncate-text--{{ id }} .truncate-text__dialog-content iframe {
+        max-width: 100%;
+        height: auto;
+      }
+      .truncate-text--{{ id }} .truncate-text__dialog-content table,
+      .truncate-text--{{ id }} .truncate-text__dialog-content pre {
+        max-width: 100%;
+        overflow-x: auto;
+      }
+      .truncate-text--{{ id }} .truncate-text__close {
+        flex: 0 0 auto;
+        width: 2rem;
+        height: 2rem;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        background: none;
+        border: none;
+        cursor: pointer;
+        font-size: 1.5rem;
+        line-height: 1;
+        color: inherit;
+      }
+
+      @media screen and (min-width: 768px) {
+        .truncate-text--{{ id }} .truncate-text__dialog {
+          border-radius: var(--ds-layout-radius-desktop);
+        }
+      }
+
+      {%- if tt_layout == 'drawer' -%}
+        {%- comment -%}
+          Drawer layout: below 768px the same <dialog> is welded to the
+          bottom edge and slides up on open instead of scaling from the
+          trigger. Only the top corners round — a radius on the bottom would
+          float the sheet off the edge it's attached to. The backdrop fade
+          above is already pure CSS, so only the panel's own motion needs a
+          transition here (assets/truncate-text.js skips the scale WAAPI
+          animation for this mode and lets this transition run instead).
+        {%- endcomment -%}
+        @media screen and (max-width: 767.98px) {
+          .truncate-text--{{ id }} .truncate-text__dialog {
+            inset: auto 0 0 0;
+            margin: 0;
+            {%- if tt_full_width_mobile -%}
+              width: 100%;
+              max-width: 100%;
+            {%- else -%}
+              width: min({{ tt_max_width }}px, calc(100% - 2rem));
+              max-width: calc(100% - 2rem);
+              margin-inline: auto;
+            {%- endif -%}
+            max-height: {{ tt_max_height }}dvh;
+            border-radius: var(--ds-layout-radius-mobile) var(--ds-layout-radius-mobile) 0 0;
+            transform: translateY(100%);
+            transition: transform var(--tt-pop-duration) cubic-bezier(0.32, 0.72, 0, 1),
+                        opacity var(--tt-pop-duration) ease;
+          }
+          .truncate-text--{{ id }} .truncate-text__dialog.is-open {
+            transform: translateY(0);
+          }
+        }
+      {%- endif -%}
+
+      @media (prefers-reduced-motion: reduce) {
+        .truncate-text--{{ id }} .truncate-text__dialog,
+        .truncate-text--{{ id }} .truncate-text__dialog::backdrop {
+          transition: none;
+        }
+      }
+    {%- endif -%}
+  {% endstyle %}
+
+  <truncate-text
+    class="truncate-text--{{ id }}"
+    data-mode="{{ tt_mode }}"
+    data-lines="{{ tt_lines }}"
+    data-transition="{{ tt_transition }}"
+    data-popover-duration="{{ tt_pop_duration }}"
+  >
+    <div class="truncate-text__content rte">
+      <span class="truncate-text__spacer" aria-hidden="true"></span>
+      <button
+        type="button"
+        class="truncate-text__toggle"
+        data-more-text="{{ tt_more | escape }}"
+        data-less-text="{{ 'Show less' }}"
+      >
+        {{ tt_more }}
+      </button>
+      {{ content }}
+    </div>
+
+    {%- if tt_mode == 'dialog' -%}
+      <dialog class="truncate-text__dialog color-{{ tt_scheme }}" data-mobile-layout="{{ tt_layout }}">
+        <div class="truncate-text__dialog-inner">
+          <div class="truncate-text__dialog-head">
+            <button type="button" class="truncate-text__close" aria-label="Close">&times;</button>
+            {%- if popover_title != blank -%}
+              <div class="truncate-text__dialog-title">
+                {% render 'overflow-text',
+                  text: popover_title,
+                  mode: 'loop',
+                  tag: 'div',
+                  id: tt_title_id,
+                  class_name: 'overflow-text truncate-text__dialog-title-track'
+                %}
+              </div>
+            {%- endif -%}
+          </div>
+          <div class="truncate-text__scroll">
+            <div class="truncate-text__dialog-content rte">
+              {{ content }}
+            </div>
+          </div>
+        </div>
+      </dialog>
+    {%- endif -%}
+  </truncate-text>
+{%- endif -%}

@@ -1,0 +1,288 @@
+{%- comment -%}
+  SUBTITLE — §11 text primitive.
+
+  Accepts:
+  - text: {String} Subtitle text
+  - show_icon: {Boolean} Whether to show the icon (default: true)
+  - icon_image: {Object} Shopify image; takes precedence over custom_icon
+  - custom_icon: {String} Custom SVG HTML code
+  - class: {String} extra class names
+  - attributes: {String} raw attributes (block.shopify_attributes, data-motion-*)
+
+  Optional — pass `id` (block.id / section.id) to get a SCOPED instance with
+  the extra controls below. Callers that omit `id` keep the plain `.subtitle`
+  rule and are completely unaffected:
+  - id: {String} scopes the per-instance style tag as `.subtitle--{{ id }}`
+  - style: {String} 'default' | 'offset' (default: 'default')
+  - offset: {Number} px the following content is pulled up over this one
+  - opacity: {Number} 0–1, applied in the 'offset' style
+  - source: {Object} caller settings; drives typography through
+    snippets/typography-resolver.liquid (role 'subtitle'), the cookie surface
+    below, and the accent effect through snippets/accent-typography.liquid.
+
+  COOKIE SURFACE. Two independent axes, both read from `source`:
+    source.color_style  'base' | 'accent'   — which colour family
+    source.cookie_mode  'classic' | 'cookie' — whether there is a surface
+
+  Classic emits NO background, border or padding, and never calls
+  accent-contrast-resolver. Cookie + base paints a Base/Surface fill with
+  normal text colour; cookie + accent resolves fg/bg through
+  accent-contrast-resolver per source.accent_contrast.
+
+  ACCENT TYPOGRAPHY. `source.accent_effect` applies the shared accent engine to
+  the whole subtitle text (the [data-accent-target] channel). Motion settings
+  are owned by snippets/accent-typography.liquid, which inherits Theme settings
+  > Typography > Accent Typography unless source.use_custom_accent_typography
+  is on. Scoped instances only — the effect needs a selector.
+
+  The 'offset' style renders a large, low-contrast word that the following
+  content — normally a Heading block — overlaps from below. It is pulled up by
+  a negative block-end margin; the heading then paints over it purely by
+  document order, so no z-index or sibling selector is needed. Place it
+  directly above its heading. It takes its size from the caller's own Size
+  setting like any other subtitle — pick a large step for it.
+
+  Colour comes from the closest color scheme; typography from the Subtitle
+  role in Theme settings > Typography plus the caller's own controls. There are
+  no global Subtitle surface settings — the pill is Cookie mode plus the
+  caller's own cookie_* ids.
+
+  ----------------------------------------------------------------------------
+
+  SCHEMA CONTRACT — the ids this snippet reads off `source`, all of them
+  copy-pasted into the caller's {% schema %} from the owning snippet. See
+  blocks/subtitle.liquid for the canonical fragment.
+
+    typography      font_size, font_weight, font_style, override_line_height,
+                    line_height, text_casing
+                    -> snippets/typography-resolver.liquid (role 'subtitle');
+                       line_height carries
+                       "visible_if": "{{ block.settings.override_line_height }}"
+
+    colour          color_style ('base' | 'accent'), accent_selected
+                    -> snippets/accent-resolver.liquid. accent_selected carries
+                       "visible_if": "{{ block.settings.color_style == 'accent' }}"
+                       and is resolved only on Accent — in both modes. On Base
+                       the accent effect falls back to the scheme's own
+                       --color-accent.
+
+    surface         cookie_mode ('classic' | 'cookie'), background_role,
+                    accent_contrast, cookie_bg, cookie_border,
+                    cookie_radius_style, cookie_border_radius,
+                    cookie_padding_inline, cookie_padding_block
+                    -> every one of them visible_if
+                       "{{ block.settings.cookie_mode == 'cookie' }}" plus its
+                       own term; the whole group also requires
+                       "{{ block.settings.style == 'default' }}", because the
+                       offset ghost word never takes a surface.
+
+    accent effect   accent_effect, use_custom_accent_typography,
+                    accent_trigger, accent_threshold, accent_stroke_width,
+                    accent_duration, accent_reverse, accent_loop,
+                    accent_loop_mode
+                    -> snippets/accent-typography.liquid owns the whole group,
+                       including its visible_if shape. Copy that snippet's
+                       contract verbatim; the ids are read by name.
+
+  Swap `block.settings` for `section.settings` when the caller is a section.
+{%- endcomment -%}
+
+{% stylesheet %}
+  .subtitle {
+    display: flex;
+    align-items: center;
+    gap: 0.5em;
+    color: var(--color-heading);
+  }
+
+  /* Unscoped callers (no `id`): the theme's plain Subtitle role. */
+  .subtitle--plain {
+    font-size: var(--fs-subtitle);
+    font-family: var(--font-subtitle-family);
+    font-weight: var(--font-subtitle-weight, 600);
+  }
+
+  .subtitle--accent-color { color: var(--color-accent); }
+
+  /* Cookie mode IS the chip, so the padding and radius controls always act —
+     the fill and border on top of them stay opt-in.
+     inline-flex so the surface hugs the text instead of spanning the row. */
+  .subtitle--cookie {
+    display: inline-flex;
+    padding-inline: var(--st-pad-inline);
+    padding-block: var(--st-pad-block);
+    border-radius: var(--st-radius);
+  }
+
+  .subtitle--cookie-bg { background-color: var(--st-bg); }
+  .subtitle--cookie-border { border: 1px solid var(--st-border); }
+
+  /* The icon always takes the resolved foreground — accent colour in Classic +
+     Accent, the accent-contrast foreground on a filled cookie surface. */
+  .subtitle .subtitle__icon {
+    color: inherit;
+    display: inline-flex;
+    width: 1.2em;
+    height: 1.2em;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .subtitle .subtitle__icon svg {
+    width: 100%;
+    height: 100%;
+    color: currentColor;
+  }
+{% endstylesheet %}
+
+{%- liquid
+  if show_icon == nil
+    assign show_icon = true
+  endif
+
+  assign st_scoped = false
+  if id != blank
+    assign st_scoped = true
+  endif
+
+  assign st_class = 'subtitle'
+  if st_scoped
+    assign st_class = 'subtitle--' | append: id
+  endif
+
+  assign st_style = style | default: 'default'
+  assign st_offset = offset | default: 24
+  assign st_opacity = opacity | default: 1
+
+  # --- Accent effect --------------------------------------------------------
+  # Needs a scope selector, so it is a scoped-instance feature only.
+  assign st_accent_effect = source.accent_effect | default: 'none'
+  unless st_scoped
+    assign st_accent_effect = 'none'
+  endunless
+  assign st_accent_selector = '.subtitle--' | append: id
+
+  # --- Cookie surface resolution -------------------------------------------
+  # A surface exists only in cookie mode, and never for the offset ghost word.
+  assign st_color_style = source.color_style | default: 'base'
+  assign st_cookie = false
+  if source.cookie_mode == 'cookie' and st_style != 'offset'
+    assign st_cookie = true
+  endif
+
+  assign st_accent_surface = false
+  if st_cookie and st_color_style == 'accent'
+    assign st_accent_surface = true
+  endif
+
+  # Filled always fills; every other combination needs the explicit opt-in.
+  assign st_has_bg = false
+  if st_cookie
+    if st_accent_surface and source.accent_contrast == 'filled'
+      assign st_has_bg = true
+    elsif source.cookie_bg
+      assign st_has_bg = true
+    endif
+  endif
+
+  assign st_has_border = false
+  if st_cookie and source.cookie_border
+    assign st_has_border = true
+  endif
+
+  assign st_radius = '999px'
+  if source.cookie_radius_style == 'custom'
+    assign st_radius = source.cookie_border_radius | default: 8 | append: 'px'
+  endif
+  assign st_pad_inline = source.cookie_padding_inline | default: 16
+  assign st_pad_block = source.cookie_padding_block | default: 8
+
+  # Base-style surfaces resolve their fill through the shared Base/Surface role.
+  capture st_base_bg
+    render 'background-role-token', key: source.background_role
+  endcapture
+-%}
+
+{%- if st_scoped -%}
+{% style %}
+  .{{ st_class }} {
+    {%- if st_color_style == 'accent' %}
+    /* Style is the colour axis and applies in BOTH modes, so the chosen accent
+       is resolved here — not only when a cookie surface exists. */
+    {% render 'accent-resolver', source: source %}
+    {%- endif %}
+    {% render 'typography-resolver', role: 'subtitle', source: source %}
+    {%- if st_accent_surface %}
+    {% render 'accent-contrast-resolver', source: source %}
+    {%- endif %}
+    {%- if st_accent_effect != 'none' %}
+    --accent-decoration-color: var(--color-accent);
+    {%- endif %}
+    {%- if st_cookie %}
+    --st-pad-inline: {{ st_pad_inline }}px;
+    --st-pad-block: {{ st_pad_block }}px;
+    --st-radius: {{ st_radius }};
+    {%- if st_has_bg and st_accent_surface == false %} --st-bg: {{ st_base_bg }};{% endif %}
+    {%- if st_has_border %} --st-border: {% if st_accent_surface %}var(--color-accent-border){% else %}var(--color-border){% endif %};{% endif %}
+    {%- endif %}
+  }
+
+  {%- if st_style == 'offset' %}
+    /* Pulled up so the following heading overlaps it. The heading paints on
+       top by document order alone — deliberately no position/z-index here, so
+       this works whatever element Shopify wraps the block in. */
+    .{{ st_class }} {
+      opacity: {{ st_opacity }};
+      margin-block-end: calc(-1 * {{ st_offset }}px);
+      line-height: 1;
+    }
+  {%- endif %}
+{% endstyle %}
+{%- elsif st_color_style == 'accent' or st_cookie -%}
+{% style %}
+  {%- comment -%} Unscoped instance that still needs per-call values: there is no id, so it shares `.subtitle--plain`'s weight on `.subtitle`. {%- endcomment -%}
+  .subtitle--plain {
+    {%- if st_color_style == 'accent' %}{% render 'accent-resolver', source: source %}{% endif %}
+    {%- if st_accent_surface %}{% render 'accent-contrast-resolver', source: source %}{% endif %}
+    {%- if st_cookie %}
+    --st-pad-inline: {{ st_pad_inline }}px;
+    --st-pad-block: {{ st_pad_block }}px;
+    --st-radius: {{ st_radius }};
+    {%- if st_has_bg and st_accent_surface == false %} --st-bg: {{ st_base_bg }};{% endif %}
+    {%- if st_has_border %} --st-border: {% if st_accent_surface %}var(--color-accent-border){% else %}var(--color-border){% endif %};{% endif %}
+    {%- endif %}
+  }
+{% endstyle %}
+{%- endif -%}
+
+<span
+  class="subtitle{% if st_scoped %} {{ st_class }}{% else %} subtitle--plain{% endif %}{% if st_color_style == 'accent' and st_accent_surface == false %} subtitle--accent-color{% endif %}{% if st_cookie %} subtitle--cookie{% if st_has_bg and st_accent_surface == false %} subtitle--cookie-bg{% endif %}{% if st_has_border %} subtitle--cookie-border{% endif %}{% endif %}{% if class != blank %} {{ class }}{% endif %}"
+  {%- if st_accent_effect != 'none' %} {% render 'accent-typography',
+    source: source,
+    mode: 'attributes'
+  %}{% endif %}
+  {%- if attributes != blank %} {{ attributes }}{% endif %}
+>
+  {%- if show_icon -%}
+    <span class="subtitle__icon">
+      {%- if icon_image != blank -%}
+        {{ icon_image | image_url: width: 48 | image_tag: alt: '', loading: 'lazy' }}
+      {%- elsif custom_icon != blank -%}
+        {{ custom_icon }}
+      {%- else -%}
+        <!-- Default Solid Dot Icon -->
+        <svg viewBox="0 0 24 24" fill="currentColor" stroke="none">
+          <circle cx="12" cy="12" r="6"></circle>
+        </svg>
+      {%- endif -%}
+    </span>
+  {%- endif -%}
+
+  <span class="subtitle__text"{% if st_accent_effect != 'none' %} data-accent-target{% endif %}>
+    {{ text | default: 'Subtitle text' }}
+  </span>
+</span>
+
+{%- if st_accent_effect != 'none' -%}
+  {% render 'accent-typography', source: source, selector: st_accent_selector %}
+{%- endif -%}
