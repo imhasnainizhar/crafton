@@ -1,0 +1,251 @@
+{%- comment -%}
+  Brand Icon — uses a per-block SVG or image, then the store favicon, then the
+  store name. Marquee Item lists this public theme block directly; there is no
+  marquee-specific duplicate.
+{%- endcomment -%}
+
+{%- liquid
+  assign brand_image = blank
+  if block.settings.icon_source == 'upload'
+    assign brand_image = block.settings.icon_image | default: settings.favicon
+  elsif block.settings.icon_svg == blank
+    assign brand_image = settings.favicon
+  endif
+  assign brand_name = shop.name | default: 'Brand'
+
+  # Style is the only colour axis here. Brand Icon has no Cookie mode: it is a
+  # bare mark with no backing surface, so there is no background, border or
+  # padding to configure.
+  assign brand_color = 'var(--color-text)'
+  if block.settings.style == 'accent'
+    assign brand_color = 'var(--color-accent)'
+  endif
+
+  assign brand_width_min_mobile = block.settings.width_min_mobile | default: 96
+  assign brand_width_max_mobile = block.settings.width_max_mobile | default: 140
+  assign brand_width_min_desktop = block.settings.width_min_desktop | default: 140
+  assign brand_width_max_desktop = block.settings.width_max_desktop | default: 180
+-%}
+
+{% style %}
+  {% if block.settings.style == 'accent' %}
+    .brand-icon--{{ block.id }} {
+      {% render 'accent-resolver', source: block.settings %}
+    }
+  {% endif %}
+
+  .brand-icon--{{ block.id }} {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    box-sizing: content-box;
+    color: {{ brand_color }};
+    --brand-width: {% render 'fluid-clamp', min: brand_width_min_mobile, max: brand_width_max_mobile %};
+    width: var(--brand-width);
+    height: {% if block.settings.height_mode == 'custom' %}{{ block.settings.height_mobile }}px{% else %}auto{% endif %};
+  }
+  .brand-icon--{{ block.id }} svg,
+  .brand-icon--{{ block.id }} img {
+    width: 100%;
+    height: {% if block.settings.height_mode == 'custom' %}100%{% else %}auto{% endif %};
+    object-fit: contain;
+  }
+  .brand-icon--{{ block.id }} .brand-icon__name {
+    max-width: 100%;
+    overflow: hidden;
+    font-family: var(--font-heading-family);
+    font-size: var(--fs-heading-xl);
+    font-style: var(--font-heading-style);
+    font-weight: var(--font-heading-weight);
+    line-height: 1.1;
+    letter-spacing: 1.1;
+    text-align: center;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  @media (min-width: 768px) {
+    .brand-icon--{{ block.id }} {
+      --brand-width: {% render 'fluid-clamp', min: brand_width_min_desktop, max: brand_width_max_desktop %};
+      width: var(--brand-width);
+      height: {% if block.settings.height_mode == 'custom' %}{{ block.settings.height_desktop }}px{% else %}auto{% endif %};
+    }
+  }
+{% endstyle %}
+
+<span class="brand-icon brand-icon--{{ block.id }}" {{ block.shopify_attributes }}>
+  {% if block.settings.icon_source == 'svg' and block.settings.icon_svg != blank %}
+    {{ block.settings.icon_svg }}
+  {% elsif brand_image != blank %}
+    {{ brand_image | image_url: width: 800 | image_tag: alt: shop.name, loading: 'lazy' }}
+  {% else %}
+    <span class="brand-icon__name">{{ brand_name }}</span>
+  {% endif %}
+</span>
+
+{% schema %}
+{
+  "name": "Brand Icon",
+  "tag": null,
+  "settings": [
+    {
+      "type": "header",
+      "content": "Brand Icon",
+      "info": "Uses Theme Settings > Logo > Favicon by default, then displays the store name when no image is available."
+    },
+    {
+      "type": "select",
+      "id": "icon_source",
+      "label": "Icon Source",
+      "options": [
+        {
+          "value": "upload",
+          "label": "Upload"
+        },
+        {
+          "value": "svg",
+          "label": "Svg"
+        }
+      ],
+      "default": "upload"
+    },
+    {
+      "type": "image_picker",
+      "id": "icon_image",
+      "label": "Custom Icon",
+      "info": "Overrides the theme favicon for this item only.",
+      "visible_if": "{{ block.settings.icon_source == 'upload' }}"
+    },
+    {
+      "type": "html",
+      "id": "icon_svg",
+      "label": "Icon (SVG code)",
+      "info": "Paste SVG code. Use stroke=\"currentColor\" or fill=\"currentColor\" so it follows the color scheme.",
+      "visible_if": "{{ block.settings.icon_source == 'svg' }}"
+    },
+    {
+      "type": "select",
+      "id": "style",
+      "label": "Style",
+      "info": "Base uses the scheme text colour; Accent uses the selected accent colour.",
+      "options": [
+        {
+          "value": "base",
+          "label": "Base"
+        },
+        {
+          "value": "accent",
+          "label": "Accent"
+        }
+      ],
+      "default": "base"
+    },
+    {
+      "type": "select",
+      "id": "accent_selected",
+      "label": "Choose Accent",
+      "options": [
+        {
+          "value": "neutral",
+          "label": "Neutral"
+        },
+        {
+          "value": "soft",
+          "label": "Soft"
+        },
+        {
+          "value": "strong",
+          "label": "Strong"
+        }
+      ],
+      "default": "neutral",
+      "visible_if": "{{ block.settings.style == 'accent' }}"
+    },
+    {
+      "type": "range",
+      "id": "width_min_mobile",
+      "label": "Mobile Width Minimum",
+      "min": 40,
+      "max": 280,
+      "step": 4,
+      "unit": "px",
+      "default": 96
+    },
+    {
+      "type": "range",
+      "id": "width_max_mobile",
+      "label": "Mobile Width Maximum",
+      "min": 40,
+      "max": 280,
+      "step": 4,
+      "unit": "px",
+      "default": 140
+    },
+    {
+      "type": "range",
+      "id": "width_min_desktop",
+      "label": "Desktop Width Minimum",
+      "min": 40,
+      "max": 400,
+      "step": 4,
+      "unit": "px",
+      "default": 140
+    },
+    {
+      "type": "range",
+      "id": "width_max_desktop",
+      "label": "Desktop Width Maximum",
+      "min": 40,
+      "max": 400,
+      "step": 4,
+      "unit": "px",
+      "default": 180
+    },
+    {
+      "type": "select",
+      "id": "height_mode",
+      "label": "Height",
+      "options": [
+        {
+          "value": "auto",
+          "label": "Auto"
+        },
+        {
+          "value": "custom",
+          "label": "Custom"
+        }
+      ],
+      "info": "It is highly recommended to use height auto mode",
+      "default": "auto"
+    },
+    {
+      "type": "range",
+      "id": "height_mobile",
+      "label": "Mobile Height",
+      "min": 40,
+      "max": 280,
+      "step": 4,
+      "unit": "px",
+      "default": 140,
+      "visible_if": "{{ block.settings.height_mode == 'custom' }}"
+    },
+    {
+      "type": "range",
+      "id": "height_desktop",
+      "label": "Desktop Height",
+      "min": 40,
+      "max": 400,
+      "step": 4,
+      "unit": "px",
+      "default": 180,
+      "visible_if": "{{ block.settings.height_mode == 'custom' }}"
+    }
+  ],
+  "presets": [
+    {
+      "name": "Brand Icon"
+    }
+  ]
+}
+{% endschema %}

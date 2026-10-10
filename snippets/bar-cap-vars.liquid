@@ -1,0 +1,26 @@
+{%- comment -%}
+  Cap-only override for slim bar sections (Announcement Bar, Announcement
+  Slider, Marquee). These sections never carry the full Design System
+  override — they have no cards, no gutter-scoped content, nothing a
+  `section_design_mode` panel would apply to. They only ever need a maximum
+  width, so they carry a single `Enable Section Width` checkbox instead.
+
+  Off by default, same as the global cap: resolves to `none` (unconstrained)
+  unless the section's own `design_enable_section_width` is on, ignoring any saved
+  select value while it's off — matching the hidden-until-enabled behavior
+  documented for the Design System cap in docs/design-system.md.
+
+  Outputs --bar-cap-mobile / --bar-cap-desktop. Usage:
+    max-width: var(--bar-cap-mobile);
+    margin-inline: auto;
+{%- endcomment -%}
+{%- liquid
+  assign cap_mobile = 'none'
+  assign cap_desktop = 'none'
+  if section_settings.design_enable_section_width
+    assign cap_mobile = section_settings.design_section_width_mobile
+    assign cap_desktop = section_settings.design_section_width_desktop
+  endif
+-%}
+--bar-cap-mobile: {% render 'cap-token', key: cap_mobile %};
+--bar-cap-desktop: {% render 'cap-token', key: cap_desktop %};
