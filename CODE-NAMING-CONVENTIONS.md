@@ -103,3 +103,13 @@ Nothing new named. Brought over with Elewind names: sections `image`, `video`,
 snippet `media-overlay-tint` (`.mc-content`, `.media-tint`); `<video-section>`,
 `<media-autoplay>`. Locale keys `theme.sections.video.close`,
 `theme.sections.video.popover_title`, `theme.sections.video.watch_on_youtube`.
+
+## FAQ section — 2026-10-10
+
+Brought over with Elewind names: section `faq`, blocks `_faq_list`,
+`_faq_item`, `_faq_question`; `.faq-section--{id}`, `.faq-list--{id}`,
+`.faq-item*`, `--faq-*` custom properties, `data-faq-list`. New, inside the
+existing `faq-` family: shared classes `.faq-section`, `.faq-section__inner`
+(was `__inner--{id}`), `.faq-list`, `.faq-question`, `.faq-question--bold`;
+custom property `--faq-min-height`. Locale key
+`theme.components.faq_item.placeholder_question`.

@@ -1,0 +1,342 @@
+{%- comment -%}
+  FAQ List — the column of FAQ Items inside the FAQ section. Item style
+  (background cards or dividers), padding and surface are block settings;
+  gap, radius, border and shadow come from the section's --faq-* tokens. The
+  inline script owns opening/closing, single-open and the height animation.
+{%- endcomment -%}
+{%- liquid
+  assign item_style = block.settings.item_style | default: 'background'
+
+  # Entrance: the FAQ section's Animations group staggers the questions.
+  assign anim = section.settings
+-%}
+
+{% style %}
+  .faq-list--{{ block.id }} {
+    --faq-item-padding-x: {{ block.settings.item_padding_x }}rem;
+    --faq-item-padding-y: {{ block.settings.item_padding_y }}rem;
+    --faq-answer-gap: {{ block.settings.answer_gap }}rem;
+    --faq-item-surface: {% render 'background-role-token', key: block.settings.background_role %};
+    {% render 'motion-reveal', part: 'vars', from: anim %}
+  }
+{% endstyle %}
+
+<div
+  class="faq-list faq-list--{{ block.id }} {% render 'motion-reveal', part: 'class', from: anim, group: true %}"
+  data-faq-list
+  data-style="{{ item_style }}"
+  data-open-first="{{ block.settings.open_first_default }}"
+  data-single-open="{{ block.settings.single_open }}"
+  data-allow-close="{{ block.settings.allow_close }}"
+  {{ block.shopify_attributes }}
+>
+  {%- comment -%}
+    "Open first item": render the first item open in the HTML so its answer is
+    in the first paint (no layout shift when the script runs). The match string
+    is the one-line opening tag in blocks/_faq_item.liquid.
+  {%- endcomment -%}
+  {%- capture faq_items -%}{% content_for 'blocks' %}{%- endcapture -%}
+  {%- if block.settings.open_first_default -%}
+    {{ faq_items | replace_first: '<details class="faq-item"', '<details open class="faq-item"' }}
+  {%- else -%}
+    {{ faq_items }}
+  {%- endif -%}
+</div>
+
+<script>
+  (() => {
+    const list = document.querySelector('.faq-list--{{ block.id }}');
+    if (!list) return;
+
+    const getItems = () => Array.from(list.querySelectorAll('details.faq-item'))
+      .filter((item) => item.parentElement === list);
+
+    const getPanel = (item) => item.querySelector('.faq-item__answer-wrap');
+    const reduceMotion = () => window.matchMedia
+      && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    const finishOpen = (item, panel) => {
+      panel.style.height = 'auto';
+      item.removeAttribute('data-faq-animating');
+    };
+
+    const openItem = (item, animate = true) => {
+      const panel = getPanel(item);
+      if (!panel) return;
+
+      window.clearTimeout(item.faqTimer);
+      item.setAttribute('open', '');
+      item.setAttribute('data-faq-animating', 'open');
+
+      if (!animate || reduceMotion()) {
+        finishOpen(item, panel);
+        return;
+      }
+
+      panel.style.height = '0px';
+      window.requestAnimationFrame(() => {
+        panel.style.height = `${panel.scrollHeight}px`;
+      });
+
+      item.faqTimer = window.setTimeout(() => finishOpen(item, panel), 360);
+    };
+
+    const closeItem = (item, animate = true) => {
+      const panel = getPanel(item);
+      if (!panel || !item.open) return;
+
+      window.clearTimeout(item.faqTimer);
+      item.setAttribute('data-faq-animating', 'close');
+
+      if (!animate || reduceMotion()) {
+        item.removeAttribute('open');
+        panel.style.height = '0px';
+        item.removeAttribute('data-faq-animating');
+        return;
+      }
+
+      panel.style.height = `${panel.scrollHeight}px`;
+      panel.offsetHeight;
+      window.requestAnimationFrame(() => {
+        panel.style.height = '0px';
+      });
+
+      item.faqTimer = window.setTimeout(() => {
+        item.removeAttribute('open');
+        item.removeAttribute('data-faq-animating');
+      }, 360);
+    };
+
+    const closeSiblings = (activeItem, items = getItems(), animate = true) => {
+      if (list.dataset.singleOpen !== 'true') return;
+      items.forEach((item) => {
+        if (item !== activeItem) {
+          closeItem(item, animate);
+        }
+      });
+    };
+
+    const firstOpenItem = (items) => items.find((item) => item.open);
+
+    const enforceInitialState = () => {
+      const items = getItems();
+      if (items.length === 0) return;
+
+      if (list.dataset.openFirst === 'true' && !firstOpenItem(items)) {
+        openItem(items[0], false);
+      }
+
+      const activeItem = firstOpenItem(items);
+      if (activeItem) {
+        getItems().forEach((item) => {
+          const panel = getPanel(item);
+          if (!panel) return;
+          panel.style.height = item.open ? 'auto' : '0px';
+        });
+        closeSiblings(activeItem, items, false);
+      }
+    };
+
+    if (list.dataset.faqReady !== 'true') {
+      list.addEventListener('click', (event) => {
+        const summary = event.target instanceof Element ? event.target.closest('summary') : null;
+        if (!summary || summary.parentElement?.parentElement !== list) return;
+
+        const item = summary.parentElement;
+        if (!(item instanceof HTMLDetailsElement)) return;
+
+        event.preventDefault();
+
+        if (
+          item.open
+          && list.dataset.allowClose !== 'true'
+        ) {
+          return;
+        }
+
+        if (item.open) {
+          closeItem(item);
+        } else {
+          openItem(item);
+          closeSiblings(item);
+        }
+      });
+
+      document.addEventListener('shopify:block:select', (event) => {
+        const item = event.target instanceof Element ? event.target.closest('details.faq-item') : null;
+        if (!item || item.parentElement !== list) return;
+        openItem(item, false);
+        closeSiblings(item);
+      });
+
+      list.dataset.faqReady = 'true';
+    }
+
+    // The items are already parsed (this script follows the list markup), so
+    // apply the initial open state now, before first paint. Waiting for
+    // DOMContentLoaded opened the first answer late, shifting the layout and
+    // delaying the page's largest paint.
+    enforceInitialState();
+  })();
+</script>
+
+{% stylesheet %}
+  .faq-list {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 0px;
+    padding-inline: 0;
+    box-sizing: border-box;
+  }
+
+  .faq-list[data-style='background'] {
+    gap: var(--faq-item-gap);
+  }
+
+  .faq-list .faq-item {
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  .faq-list[data-style='background'] .faq-item {
+    background: var(--faq-item-surface);
+    border: var(--faq-item-border-width) solid var(--color-border);
+    border-radius: var(--faq-item-radius);
+    box-shadow: var(--faq-item-shadow);
+    overflow: hidden;
+  }
+
+  .faq-list[data-style='divider'] .faq-item {
+    border-bottom: var(--faq-item-border-width) solid var(--color-border);
+  }
+
+  .faq-list[data-style='divider'] .faq-item:first-child {
+    border-top: var(--faq-item-border-width) solid var(--color-border);
+  }
+{% endstylesheet %}
+
+{% schema %}
+{
+  "name": "FAQ List",
+  "tag": null,
+  "settings": [
+    {
+      "type": "header",
+      "content": "Layout"
+    },
+    {
+      "type": "select",
+      "id": "background_role",
+      "label": "FAQ Item Surface",
+      "info": "Applies the selected color-scheme surface to every nested FAQ item using the Background item style.",
+      "options": [
+        { "value": "base", "label": "Base" },
+        { "value": "surface", "label": "Surface" }
+      ],
+      "default": "surface"
+    },
+    {
+      "type": "checkbox",
+      "id": "single_open",
+      "label": "Only one item open at a time",
+      "default": true
+    },
+    {
+      "type": "checkbox",
+      "id": "allow_close",
+      "label": "Allow closing open item",
+      "info": "When off, one FAQ item always stays open after the first item is opened.",
+      "default": true
+    },
+    {
+      "type": "checkbox",
+      "id": "open_first_default",
+      "label": "Open first item by default",
+      "default": true
+    },
+    {
+      "type": "header",
+      "content": "FAQ Item Styling"
+    },
+    {
+      "type": "select",
+      "id": "item_style",
+      "label": "Item Style",
+      "options": [
+        {
+          "value": "background",
+          "label": "Background"
+        },
+        {
+          "value": "divider",
+          "label": "Dividers"
+        }
+      ],
+      "default": "background"
+    },
+    {
+      "type": "range",
+      "id": "item_padding_x",
+      "min": 0,
+      "max": 4,
+      "step": 0.1,
+      "unit": "rem",
+      "label": "Item Horizontal Padding (rem)",
+      "default": 1.4
+    },
+    {
+      "type": "range",
+      "id": "item_padding_y",
+      "min": 0,
+      "max": 3,
+      "step": 0.1,
+      "unit": "rem",
+      "label": "Item Vertical Padding (rem)",
+      "default": 1.1
+    },
+    {
+      "type": "range",
+      "id": "answer_gap",
+      "min": 0,
+      "max": 2,
+      "step": 0.1,
+      "unit": "rem",
+      "label": "Answer Gap (rem)",
+      "default": 0.8
+    }
+  ],
+  "blocks": [
+    { "type": "_faq_item" }
+  ],
+  "presets": [
+    {
+      "name": "FAQ List",
+      "blocks": [
+        { "type": "_faq_item" },
+        {
+          "type": "_faq_item",
+          "settings": {
+            "question": "What makes your products different?",
+            "answer": "<p>We focus on clean, effective ingredients and rigorous testing so you get results without compromise.</p>"
+          }
+        },
+        {
+          "type": "_faq_item",
+          "settings": {
+            "question": "How long does shipping take?",
+            "answer": "<p>Orders ship within 1-2 business days and typically arrive within 3-7 business days.</p>"
+          }
+        },
+        {
+          "type": "_faq_item",
+          "settings": {
+            "question": "Can I return a product if I'm not satisfied?",
+            "answer": "<p>Yes, we offer a 30-day satisfaction guarantee on all purchases.</p>"
+          }
+        }
+      ]
+    }
+  ]
+}
+{% endschema %}

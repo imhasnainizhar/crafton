@@ -139,3 +139,23 @@ Elewind's media sections, media only. Everything else is unchanged from Elewind.
   have; "Disable all animations" still turns it off.
 - Image's Overlay Opacity now shows only in Overlay mode, as in Video.
 - Video's popover strings moved to `theme.sections.video.*` locale keys.
+
+## 2026-10-10 — FAQ section
+
+Elewind's FAQ (`sections/faq.liquid`, `blocks/_faq_list.liquid`,
+`blocks/_faq_item.liquid`, `blocks/_faq_question.liquid`), without background
+media. Everything else is unchanged from Elewind.
+
+- No background image or video: the color scheme paints the section. Dropped
+  the Background settings (mobile / desktop type, images, videos, loop,
+  overlay opacity), the overlay and the `media-block.js` load. Full screen
+  height and minimum height stay, under a Height header.
+- CSS split per Crafton's rules: static rules in each file's `{% stylesheet %}`
+  on the shared classes `.faq-section`, `.faq-list`, `.faq-question`; the
+  scoped `{% style %}` tags only set custom properties.
+- Desktop item border and radius now read the item tokens
+  (`--ds-item-border-width-desktop`, `--ds-item-radius-desktop`) instead of
+  Elewind's layout tokens, so "Item radius (desktop)" applies on desktop.
+- Question Text's bold setting is a modifier class instead of an inline style.
+- The empty-question fallback uses the locale key
+  `theme.components.faq_item.placeholder_question`.

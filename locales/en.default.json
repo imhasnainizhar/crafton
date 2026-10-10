@@ -123,6 +123,9 @@
           "other": "{{ count }} posts"
         },
         "open_blog": "Open {{ title }}"
+      },
+      "faq_item": {
+        "placeholder_question": "Question"
       }
     },
     "sections": {

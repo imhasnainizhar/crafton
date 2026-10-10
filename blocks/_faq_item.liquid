@@ -1,0 +1,154 @@
+{%- comment -%}
+  FAQ Item — one question/answer as a native <details> inside an FAQ List.
+  The list's inline script owns opening/closing and the height animation;
+  this block only renders the markup and its shared styles.
+{%- endcomment -%}
+{% stylesheet %}
+  .faq-item {
+    color: var(--color-text);
+  }
+
+  .faq-item summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    min-height: 3rem;
+    padding: var(--faq-item-padding-y) var(--faq-item-padding-x);
+    color: var(--color-heading);
+    font-family: var(--font-body-family);
+    font-size: var(--fs-body);
+    line-height: 1.4;
+    text-align: left;
+    cursor: pointer;
+    list-style: none;
+  }
+
+  .faq-item summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .faq-item__question {
+    min-width: 0;
+  }
+
+  .faq-item__icon {
+    position: relative;
+    flex: 0 0 16px;
+    width: 16px;
+    height: 16px;
+    color: var(--color-heading);
+    transition: transform 0.24s ease;
+  }
+
+  .faq-item__icon::before,
+  .faq-item__icon::after {
+    content: "";
+    position: absolute;
+    inset: 50% auto auto 50%;
+    width: 16px;
+    height: 1.5px;
+    background: currentColor;
+    border-radius: 999px;
+    transform: translate(-50%, -50%);
+    transition: transform 0.2s ease, opacity 0.2s ease;
+  }
+
+  .faq-item__icon::after {
+    transform: translate(-50%, -50%) rotate(90deg);
+  }
+
+  .faq-item[open] .faq-item__icon {
+    transform: rotate(45deg);
+  }
+
+  .faq-item__answer-wrap {
+    height: 0;
+    overflow: hidden;
+    transition: height 0.3s ease;
+    will-change: height;
+  }
+
+  .faq-item[open] .faq-item__answer-wrap {
+    height: auto;
+  }
+
+  .faq-item__answer {
+    padding: 0 var(--faq-item-padding-x) var(--faq-item-padding-y);
+    color: var(--color-text);
+    font-family: var(--font-body-family);
+    font-size: var(--fs-body);
+    line-height: 1.6;
+    text-align: left;
+  }
+
+  .faq-item__answer::before {
+    content: "";
+    display: block;
+    height: var(--faq-answer-gap);
+  }
+
+  .faq-item__answer p {
+    margin: 0 0 0.7em;
+  }
+
+  .faq-item__answer p:last-child {
+    margin-bottom: 0;
+  }
+{% endstylesheet %}
+
+{%- comment -%}
+  Keep the opening details tag (class "faq-item") on one line: _faq_list
+  matches that exact string to server-render its first item open.
+{%- endcomment -%}
+<details class="faq-item" {{ block.shopify_attributes }}>
+  <summary>
+    <span class="faq-item__question">
+      {%- if block.blocks.size > 0 -%}
+        {% content_for 'blocks' %}
+      {%- elsif block.settings.question != blank -%}
+        {{ block.settings.question | escape }}
+      {%- else -%}
+        {{ 'theme.components.faq_item.placeholder_question' | t }}
+      {%- endif -%}
+    </span>
+    <span class="faq-item__icon" aria-hidden="true"></span>
+  </summary>
+
+  <div class="faq-item__answer-wrap">
+    <div class="faq-item__answer-inner">
+      <div class="faq-item__answer">
+        {{ block.settings.answer }}
+      </div>
+    </div>
+  </div>
+</details>
+
+{% schema %}
+{
+  "name": "FAQ Item",
+  "settings": [
+    {
+      "type": "text",
+      "id": "question",
+      "label": "Question",
+      "default": "Question Text goes here?"
+    },
+    {
+      "type": "richtext",
+      "id": "answer",
+      "label": "Answer",
+      "default": "<p>Answer text goes here.</p>"
+    }
+  ],
+  "tag": null,
+  "blocks": [
+    { "type": "_faq_question" }
+  ],
+  "presets": [
+    {
+      "name": "FAQ Item"
+    }
+  ]
+}
+{% endschema %}
