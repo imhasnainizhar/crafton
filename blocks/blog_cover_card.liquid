@@ -1,0 +1,682 @@
+{%- comment -%}
+  Blog Cover Card (`bcc-`) — one whole Shopify blog as a card, in two modes:
+    flow    → the picture, then the content under it;
+    overlay → the content laid over the picture, on an optional scrim.
+  The card owns the picture (its own image, else the latest post's), its
+  shape, the mode, the surface and the colour scheme; the text is composed
+  from Blog Title, Blog Description, Blog Author and Button children, which
+  read `closest.blog` — this card's picked blog.
+
+  TAB ICON. Inside Tabbed Blogs each tab may carry an icon; the tab's panel
+  publishes it down the cascade as `data-card-tab-icon` + --card-tab-icon,
+  because a card cannot read its parent's settings. The card decides where it
+  shows: before the title (the Blog Title's built-in slot) or over the picture
+  in one of four corners. Anywhere else no icon is published and nothing shows.
+
+  The whole card opens the blog through one stretched link under the content;
+  only real links and buttons inside the content take the pointer, so a
+  Button without a link falls through to the card link. Shape is the card's
+  own ratio, or — on "Follow the section" — the --bcc-ratio a composing
+  section publishes (Featured / Tabbed Blogs), else 4:5. Surface radius,
+  border and shadow are the Design System's item tokens.
+  Depends on: snippets/alignments.liquid, snippets/space-token.liquid,
+  snippets/color-role-resolver.liquid, the _blog_* field blocks and button.
+{%- endcomment -%}
+
+{%- liquid
+  assign s = block.settings
+  assign bl = s.blog
+  assign latest = bl.articles.first
+  assign layout = s.layout_mode | default: 'flow'
+  assign overlay_style = s.overlay_style | default: 'gradient'
+
+  assign img = s.image | default: latest.image
+  assign url = bl.url
+
+  # A card set to its own ratio carries it; otherwise the section's ratio.
+  assign own_ratio_m = blank
+  assign own_ratio_d = blank
+  if s.media_ratio_mobile != 'section'
+    assign own_ratio_m = s.media_ratio_mobile
+  endif
+  if s.media_ratio_desktop != 'section'
+    assign own_ratio_d = s.media_ratio_desktop
+  endif
+
+  assign surface = false
+  if layout == 'flow' and s.enable_surface
+    assign surface = true
+  endif
+
+  # Card colour: Surface is the scheme's surface with its own text colours;
+  # Accent is the scheme's neutral accent with its contrast colour as the text
+  # (every child follows through color-role-resolver). It paints the card
+  # background in flow and the shade behind the text in overlay.
+  assign card_accent = false
+  if s.background_role == 'accent'
+    if surface or layout == 'overlay'
+      assign card_accent = true
+    endif
+  endif
+  assign card_bg = 'var(--color-surface)'
+  if card_accent
+    assign card_bg = 'var(--surface-accent)'
+  endif
+
+  case s.overlay_align_y
+    when 'top'
+      assign overlay_y = 'flex-start'
+    when 'middle'
+      assign overlay_y = 'center'
+    else
+      assign overlay_y = 'flex-end'
+  endcase
+
+  assign scheme_class = blank
+  if s.scheme_source == 'block' and s.color_scheme != blank
+    assign scheme_class = 'color-' | append: s.color_scheme
+  endif
+
+  assign link_title = bl.title | default: ''
+  assign link_label = 'theme.components.blog_card.open_blog' | t: title: link_title
+
+  # Tab icon placement (shown only when a hosting tab publishes an icon).
+  assign icon_pos = s.tab_icon_position | default: 'title'
+  assign icon_y = 'top'
+  if s.tab_icon_y == 'bottom'
+    assign icon_y = 'bottom'
+  endif
+  assign icon_x = 'left'
+  if s.tab_icon_x == 'right'
+    assign icon_x = 'right'
+  endif
+  assign icon_inset = s.card_padding | default: 'sm'
+  if icon_inset == 'none'
+    assign icon_inset = 'xs'
+  endif
+-%}
+
+{%- comment -%}
+  One content_for per file. The field children read closest.blog, which Shopify
+  resolves to this card's own blog setting (the nearest ancestor block setting
+  of that type), so nothing has to be passed down.
+{%- endcomment -%}
+{%- capture card_content -%}{% content_for 'blocks' %}{%- endcapture -%}
+
+{%- comment -%}
+  Static rules live in the stylesheet tag on the shared `.bcc` class; the state
+  modifiers on the root (framed / surface / bare / border / auto-height /
+  linked / icon-*) pick the branches. The style tag only publishes this card's values.
+{%- endcomment -%}
+{% stylesheet %}
+  .bcc {
+    position: relative;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    min-width: 0;
+    align-self: stretch;
+    color: var(--color-text);
+    isolation: isolate;
+  }
+
+  .bcc--auto-height { align-self: flex-start; }
+
+  /* Surface or overlay: the card itself is the visible item. */
+  .bcc--framed {
+    border-radius: var(--ds-item-radius-mobile);
+    box-shadow: var(--ds-item-shadow-mobile);
+    overflow: hidden;
+  }
+
+  .bcc--surface { background-color: var(--bcc-card-bg); }
+
+  .bcc--framed.bcc--border {
+    border: var(--ds-item-border-width-mobile) solid var(--color-border);
+  }
+
+  .bcc--linked { cursor: pointer; }
+
+  .bcc__media {
+    position: relative;
+    display: block;
+    width: 100%;
+    flex: 0 0 auto;
+    aspect-ratio: var(--bcc-own-ratio, var(--bcc-ratio, 4/5));
+    overflow: hidden;
+    background-color: var(--color-surface);
+  }
+
+  /* No surface: the thumbnail is the visible item, so it takes the radius. */
+  .bcc--bare .bcc__media { border-radius: var(--ds-item-radius-mobile); }
+
+  .bcc--bare.bcc--border .bcc__media {
+    border: var(--ds-item-border-width-mobile) solid var(--color-border);
+  }
+
+  /* Overlay: the picture IS the card, the content sits on it. */
+  .bcc[data-bcc-layout='overlay'] .bcc__media { flex: 1 1 auto; }
+
+  .bcc__image {
+    position: absolute;
+    inset: 0;
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.6s cubic-bezier(0.2, 0.7, 0.2, 1);
+  }
+
+  .bcc__image--placeholder {
+    background-color: color-mix(in srgb, var(--color-text) 6%, transparent);
+    fill: color-mix(in srgb, var(--color-text) 28%, transparent);
+  }
+
+  .bcc:hover .bcc__image,
+  .bcc:focus-within .bcc__image {
+    transform: scale(1.04);
+  }
+
+  .bcc__scrim {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    pointer-events: none;
+    background: var(--bcc-scrim);
+  }
+
+  .bcc__content {
+    --align-x: var(--align-x-mobile, flex-start);
+    --text-align: var(--text-align-mobile, left);
+    position: relative;
+    z-index: 4;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    align-items: var(--align-x);
+    text-align: var(--text-align);
+    gap: var(--bcc-gap);
+    min-width: 0;
+    /* The stretched link underneath opens the blog; only real links and
+       buttons in here take the pointer. */
+    pointer-events: none;
+    padding: var(--bcc-pad);
+  }
+
+  .bcc[data-bcc-layout='flow'] .bcc__content { flex: 1 1 auto; }
+  .bcc--bare .bcc__content { padding: var(--bcc-pad) 0 0; }
+
+  .bcc[data-bcc-layout='overlay'] .bcc__content {
+    position: absolute;
+    inset: 0;
+    justify-content: var(--bcc-overlay-y);
+  }
+
+  .bcc__content > * {
+    max-width: 100%;
+  }
+
+  .bcc__content :is(a[href], button, input, select, textarea, label) {
+    position: relative;
+    z-index: 1;
+    pointer-events: auto;
+  }
+
+  .bcc__link {
+    position: absolute;
+    inset: 0;
+    z-index: 3;
+    border-radius: inherit;
+  }
+
+  .bcc__link:focus-visible {
+    outline: 2px solid var(--color-heading);
+    outline-offset: 2px;
+  }
+
+  /* ------------------------------------------------------------ tab icon */
+
+  .bcc .bcc-tab-icon {
+    display: none;
+    flex: 0 0 auto;
+    background-image: var(--card-tab-icon, none);
+    background-position: center;
+    background-repeat: no-repeat;
+    background-size: contain;
+  }
+
+  .bcc .bcc-tab-icon--title {
+    width: 1.05em;
+    height: 1.05em;
+    margin-inline-end: 0.4em;
+    vertical-align: -0.12em;
+  }
+
+  .bcc .bcc-tab-icon--media {
+    position: absolute;
+    z-index: 2;
+    top: var(--bcc-icon-inset);
+    left: var(--bcc-icon-inset);
+    width: var(--bcc-icon-size);
+    height: var(--bcc-icon-size);
+  }
+
+  .bcc--icon-bottom .bcc-tab-icon--media { top: auto; bottom: var(--bcc-icon-inset); }
+  .bcc--icon-right .bcc-tab-icon--media { left: auto; right: var(--bcc-icon-inset); }
+
+  .bcc--icon-plate .bcc-tab-icon--media {
+    box-sizing: content-box;
+    padding: calc(var(--bcc-icon-size) * 0.28);
+    border-radius: 50%;
+    background-color: var(--color-base);
+    background-origin: content-box;
+    background-clip: border-box;
+    box-shadow: var(--ds-item-shadow-mobile);
+  }
+
+  [data-card-tab-icon] .bcc[data-bcc-icon='media'] .bcc-tab-icon--media { display: block; }
+  [data-card-tab-icon] .bcc[data-bcc-icon='title'] .bcc-tab-icon--title { display: inline-block; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .bcc__image { transition: none; }
+    .bcc:hover .bcc__image,
+    .bcc:focus-within .bcc__image { transform: none; }
+  }
+
+  @media (min-width: 768px) {
+    .bcc--framed {
+      border-radius: var(--ds-item-radius-desktop);
+      box-shadow: var(--ds-item-shadow-desktop);
+    }
+
+    .bcc--framed.bcc--border { border-width: var(--ds-item-border-width-desktop); }
+
+    .bcc--bare .bcc__media { border-radius: var(--ds-item-radius-desktop); }
+    .bcc--bare.bcc--border .bcc__media { border-width: var(--ds-item-border-width-desktop); }
+
+    .bcc__content {
+      --align-x: var(--align-x-desktop, flex-start);
+      --text-align: var(--text-align-desktop, left);
+    }
+  }
+{% endstylesheet %}
+
+{% style %}
+  .bcc--{{ block.id }} {
+    {% render 'alignments', source: s %}
+    {% if own_ratio_m != blank %}--bcc-own-ratio: {{ own_ratio_m }};{% endif %}
+    {% if card_accent %}
+      {% render 'color-role-resolver', mode: 'context', source: s, content_color: 'accent', accent: 'neutral', accent_contrast: 'filled' %}
+    {% endif %}
+    --bcc-card-bg: {{ card_bg }};
+    --bcc-gap: {% render 'space-token', key: s.content_gap %};
+    --bcc-pad: {% render 'space-token', key: s.card_padding %};
+    --bcc-icon-inset: {% render 'space-token', key: icon_inset %};
+    --bcc-icon-size: {{ s.tab_icon_size }}px;
+    {% if layout == 'overlay' %}
+      --bcc-overlay-y: {{ overlay_y }};
+      {% if overlay_style == 'gradient' %}
+        --bcc-scrim: linear-gradient(to {% if s.overlay_align_y == 'top' %}bottom{% else %}top{% endif %}, color-mix(in srgb, {{ card_bg }} {{ s.overlay_opacity }}%, transparent), transparent 85%);
+      {% else %}
+        --bcc-scrim: color-mix(in srgb, {{ card_bg }} {{ s.overlay_opacity }}%, transparent);
+      {% endif %}
+    {% endif %}
+  }
+
+  @media (min-width: 768px) {
+    .bcc--{{ block.id }} {
+      {% if own_ratio_d != blank %}--bcc-own-ratio: {{ own_ratio_d }};{% elsif own_ratio_m != blank %}--bcc-own-ratio: var(--bcc-ratio, 4/5);{% endif %}
+    }
+  }
+{% endstyle %}
+
+<div
+  class="bcc bcc--{{ block.id }}{% if surface or layout == 'overlay' %} bcc--framed{% endif %}{% if surface %} bcc--surface{% endif %}{% if surface == false and layout == 'flow' %} bcc--bare{% endif %}{% if s.enable_border %} bcc--border{% endif %}{% if s.height_mode == 'auto' %} bcc--auto-height{% endif %}{% if url != blank %} bcc--linked{% endif %}{% if icon_y == 'bottom' %} bcc--icon-bottom{% endif %}{% if icon_x == 'right' %} bcc--icon-right{% endif %}{% if s.tab_icon_plate %} bcc--icon-plate{% endif %}{% if scheme_class != blank %} {{ scheme_class }}{% endif %}"
+  data-bcc-layout="{{ layout }}"
+  data-bcc-icon="{{ icon_pos }}"
+  {{ block.shopify_attributes }}
+>
+  <div class="bcc__media">
+    {%- if img != blank -%}
+      {{
+        img
+        | image_url: width: 1400
+        | image_tag:
+          class: 'bcc__image',
+          loading: 'lazy',
+          widths: '360,540,720,900,1200,1400',
+          sizes: '(min-width: 990px) 33vw, (min-width: 768px) 50vw, 90vw',
+          alt: img.alt
+      }}
+    {%- else -%}
+      {{ 'blog-apparel-1' | placeholder_svg_tag: 'bcc__image bcc__image--placeholder' }}
+    {%- endif -%}
+    {%- if layout == 'overlay' and overlay_style != 'none' -%}
+      <span class="bcc__scrim" aria-hidden="true"></span>
+    {%- endif -%}
+    <span class="bcc-tab-icon bcc-tab-icon--media" aria-hidden="true"></span>
+  </div>
+
+  {%- if url != blank -%}
+    <a class="bcc__link" href="{{ url }}" aria-label="{{ link_label | escape }}"></a>
+  {%- endif -%}
+
+  <div class="bcc__content">
+    {{ card_content }}
+  </div>
+</div>
+
+{% schema %}
+{
+  "name": "Blog Cover Card",
+  "tag": null,
+  "settings": [
+    {
+      "type": "header",
+      "content": "Blog"
+    },
+    {
+      "type": "blog",
+      "id": "blog",
+      "label": "Blog"
+    },
+    {
+      "type": "image_picker",
+      "id": "image",
+      "label": "Image",
+      "info": "Uses the latest post's image when empty."
+    },
+    {
+      "type": "header",
+      "content": "Layout"
+    },
+    {
+      "type": "select",
+      "id": "layout_mode",
+      "label": "Content placement",
+      "info": "Flow puts the text under the picture. Overlay lays it on the picture.",
+      "options": [
+        { "value": "flow", "label": "Flow — under the picture" },
+        { "value": "overlay", "label": "Overlay — on the picture" }
+      ],
+      "default": "flow"
+    },
+    {
+      "type": "select",
+      "id": "media_ratio_mobile",
+      "label": "Picture shape (mobile)",
+      "options": [
+        { "value": "section", "label": "Follow the section" },
+        { "value": "1/1", "label": "1:1" },
+        { "value": "4/5", "label": "4:5" },
+        { "value": "3/4", "label": "3:4" },
+        { "value": "2/3", "label": "2:3" },
+        { "value": "4/3", "label": "4:3" },
+        { "value": "3/2", "label": "3:2" },
+        { "value": "16/9", "label": "16:9" }
+      ],
+      "default": "section",
+      "info": "Follow the section gives every card in the section one shape (4:5 elsewhere)."
+    },
+    {
+      "type": "select",
+      "id": "media_ratio_desktop",
+      "label": "Picture shape (desktop)",
+      "options": [
+        { "value": "section", "label": "Follow the section" },
+        { "value": "1/1", "label": "1:1" },
+        { "value": "4/5", "label": "4:5" },
+        { "value": "3/4", "label": "3:4" },
+        { "value": "2/3", "label": "2:3" },
+        { "value": "4/3", "label": "4:3" },
+        { "value": "3/2", "label": "3:2" },
+        { "value": "16/9", "label": "16:9" }
+      ],
+      "default": "section"
+    },
+    {
+      "type": "select",
+      "id": "height_mode",
+      "label": "Card height",
+      "info": "Stretch matches the tallest card beside it. Auto follows its own content.",
+      "options": [
+        { "value": "stretch", "label": "Stretch" },
+        { "value": "auto", "label": "Auto" }
+      ],
+      "default": "stretch",
+      "visible_if": "{{ block.settings.layout_mode != 'overlay' }}"
+    },
+    {
+      "type": "text_alignment",
+      "id": "align_x_mobile",
+      "label": "Text alignment (mobile)",
+      "default": "left"
+    },
+    {
+      "type": "text_alignment",
+      "id": "align_x_desktop",
+      "label": "Text alignment (desktop)",
+      "default": "left"
+    },
+    {
+      "type": "header",
+      "content": "Overlay",
+      "visible_if": "{{ block.settings.layout_mode == 'overlay' }}"
+    },
+    {
+      "type": "select",
+      "id": "overlay_align_y",
+      "label": "Text position",
+      "options": [
+        { "value": "top", "label": "Top" },
+        { "value": "middle", "label": "Middle" },
+        { "value": "bottom", "label": "Bottom" }
+      ],
+      "default": "bottom",
+      "visible_if": "{{ block.settings.layout_mode == 'overlay' }}"
+    },
+    {
+      "type": "select",
+      "id": "overlay_style",
+      "label": "Shade behind the text",
+      "options": [
+        { "value": "gradient", "label": "Gradient" },
+        { "value": "flat", "label": "Even" },
+        { "value": "none", "label": "None" }
+      ],
+      "default": "gradient",
+      "visible_if": "{{ block.settings.layout_mode == 'overlay' }}"
+    },
+    {
+      "type": "range",
+      "id": "overlay_opacity",
+      "label": "Shade strength",
+      "min": 0,
+      "max": 100,
+      "step": 5,
+      "unit": "%",
+      "default": 55,
+      "visible_if": "{{ block.settings.layout_mode == 'overlay' and block.settings.overlay_style != 'none' }}"
+    },
+    {
+      "type": "header",
+      "content": "Tab icon",
+      "info": "In Tabbed Blogs, shows the icon of the tab this card is in."
+    },
+    {
+      "type": "select",
+      "id": "tab_icon_position",
+      "label": "Icon placement",
+      "options": [
+        { "value": "title", "label": "Before the title" },
+        { "value": "media", "label": "On the picture" }
+      ],
+      "default": "title"
+    },
+    {
+      "type": "select",
+      "id": "tab_icon_y",
+      "label": "Icon position (vertical)",
+      "options": [
+        { "value": "top", "label": "Top" },
+        { "value": "bottom", "label": "Bottom" }
+      ],
+      "default": "top",
+      "visible_if": "{{ block.settings.tab_icon_position == 'media' }}"
+    },
+    {
+      "type": "select",
+      "id": "tab_icon_x",
+      "label": "Icon position (horizontal)",
+      "options": [
+        { "value": "left", "label": "Left" },
+        { "value": "right", "label": "Right" }
+      ],
+      "default": "left",
+      "visible_if": "{{ block.settings.tab_icon_position == 'media' }}"
+    },
+    {
+      "type": "range",
+      "id": "tab_icon_size",
+      "label": "Icon size",
+      "min": 16,
+      "max": 64,
+      "step": 2,
+      "unit": "px",
+      "default": 28,
+      "visible_if": "{{ block.settings.tab_icon_position == 'media' }}"
+    },
+    {
+      "type": "checkbox",
+      "id": "tab_icon_plate",
+      "label": "Round background behind the icon",
+      "info": "Keeps the icon readable on a busy picture.",
+      "default": true,
+      "visible_if": "{{ block.settings.tab_icon_position == 'media' }}"
+    },
+    {
+      "type": "header",
+      "content": "Surface"
+    },
+    {
+      "type": "checkbox",
+      "id": "enable_surface",
+      "label": "Card background",
+      "info": "Puts the picture and the text on one background. Off, the text sits straight on the page.",
+      "default": false,
+      "visible_if": "{{ block.settings.layout_mode != 'overlay' }}"
+    },
+    {
+      "type": "select",
+      "id": "background_role",
+      "label": "Card color",
+      "info": "Surface uses the color scheme's surface color and its normal text colors. Accent uses the scheme's neutral accent and its contrast color for the text. Paints the card background, or the shade behind the text in overlay.",
+      "options": [
+        { "value": "surface", "label": "Surface" },
+        { "value": "accent", "label": "Accent" }
+      ],
+      "default": "surface",
+      "visible_if": "{{ block.settings.layout_mode == 'overlay' or block.settings.enable_surface }}"
+    },
+    {
+      "type": "checkbox",
+      "id": "enable_border",
+      "label": "Border",
+      "info": "Uses the Design System's item border width.",
+      "default": false
+    },
+    {
+      "type": "header",
+      "content": "Colors"
+    },
+    {
+      "type": "select",
+      "id": "scheme_source",
+      "label": "Color scheme",
+      "info": "Card gives this card its own scheme, so its card color and text colors come from that scheme.",
+      "options": [
+        { "value": "section", "label": "Same as the section" },
+        { "value": "block", "label": "Card" }
+      ],
+      "default": "section"
+    },
+    {
+      "type": "color_scheme",
+      "id": "color_scheme",
+      "label": "Card color scheme",
+      "default": "scheme_1",
+      "visible_if": "{{ block.settings.scheme_source == 'block' }}"
+    },
+    {
+      "type": "header",
+      "content": "Spacing"
+    },
+    {
+      "type": "select",
+      "id": "content_gap",
+      "label": "Space between text lines",
+      "options": [
+        { "value": "none", "label": "None" },
+        { "value": "xs", "label": "Extra small" },
+        { "value": "sm", "label": "Small" },
+        { "value": "md", "label": "Medium" },
+        { "value": "lg", "label": "Large" }
+      ],
+      "default": "xs"
+    },
+    {
+      "type": "select",
+      "id": "card_padding",
+      "label": "Text padding",
+      "info": "Without a card background, only the space above the text is used.",
+      "options": [
+        { "value": "none", "label": "None" },
+        { "value": "xs", "label": "Extra small" },
+        { "value": "sm", "label": "Small" },
+        { "value": "md", "label": "Medium" },
+        { "value": "lg", "label": "Large" }
+      ],
+      "default": "sm"
+    }
+  ],
+  "blocks": [
+    { "type": "_blog_title" },
+    { "type": "_blog_description" },
+    { "type": "_blog_author" },
+    { "type": "button" }
+  ],
+  "presets": [
+    {
+      "name": "Blog Cover Card",
+      "blocks": {
+        "title": { "type": "_blog_title" },
+        "description": { "type": "_blog_description" },
+        "author": { "type": "_blog_author" },
+        "button": {
+          "type": "button",
+          "settings": { "text": "Read the blog", "style": "outline" }
+        }
+      },
+      "block_order": ["title", "description", "author", "button"]
+    },
+    {
+      "name": "Blog Cover Card: Overlay",
+      "settings": {
+        "layout_mode": "overlay",
+        "media_ratio_mobile": "4/5",
+        "media_ratio_desktop": "4/5",
+        "scheme_source": "block",
+        "color_scheme": "scheme_2",
+        "card_padding": "md",
+        "tab_icon_position": "media"
+      },
+      "blocks": {
+        "title": { "type": "_blog_title" },
+        "description": { "type": "_blog_description" }
+      },
+      "block_order": ["title", "description"]
+    }
+  ]
+}
+{% endschema %}

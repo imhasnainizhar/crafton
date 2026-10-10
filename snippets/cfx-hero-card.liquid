@@ -1,0 +1,50 @@
+{%- comment -%}
+  FEATURED COLLECTION — mocked collection (hero) card (TEMPORARY).
+
+  The hero card is the media only; the overlay and the Rich Content laid over
+  it belong to the calling block's hero box.
+  This snippet is the only place the Featured Collection section says what that
+  card looks like, so the real collection card replaces its body and nothing
+  else moves. Shape comes from --cfx-hero-ratio-*, painted by the section.
+  Markup only; every style lives in the section's scoped style tag.
+
+  Accepts:
+  - media   {String, optional}  'collection' (default) | 'image' | 'video'
+  - coll    {Collection, optional} source for the automatic image
+  - image   {Image, optional}   custom image, used when media is 'image'
+  - video   {Video, optional}   custom video, used when media is 'video'
+  - alt     {String, optional}  accessible name fallback for the image
+
+  Usage:
+    {% render 'cfx-hero-card', media: block.settings.hero_media,
+       coll: coll, image: block.settings.hero_image,
+       video: block.settings.hero_video %}
+  Schema: none — every value above is a setting of the calling block.
+{%- endcomment -%}
+
+<div class="cfx-hero" data-cfx-hero>
+  <div class="cfx-hero__media">
+    {%- if media == 'video' and video != blank -%}
+      {{
+        video
+        | video_tag: class: 'cfx-hero__image', image_size: '1600x', autoplay: true, loop: true, muted: true, controls: false
+      }}
+    {%- else -%}
+      {%- liquid
+        assign hero_image = image
+        if media == 'collection'
+          assign hero_image = coll.image | default: coll.featured_image | default: image
+        endif
+      -%}
+      {%- if hero_image != blank -%}
+        {{
+          hero_image
+          | image_url: width: 2000
+          | image_tag: class: 'cfx-hero__image', loading: 'lazy', sizes: '(min-width: 768px) 100vw, 100vw', widths: '400,600,800,1200,1600,2000', alt: alt
+        }}
+      {%- else -%}
+        {{ 'collection-1' | placeholder_svg_tag: 'cfx-hero__image cfx-hero__image--placeholder' }}
+      {%- endif -%}
+    {%- endif -%}
+  </div>
+</div>

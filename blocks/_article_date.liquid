@@ -1,0 +1,132 @@
+{%- comment -%}
+  Article Date — the publish date of the closest article (`closest.article`)
+  in a <time> element, formatted by Shopify's localized date formats.
+  Text-role type through snippets/typography-resolver.liquid, colour through
+  snippets/color-role-resolver.liquid.
+{%- endcomment -%}
+
+{% stylesheet %}
+  .art-date {
+    margin: 0;
+    white-space: nowrap;
+  }
+{% endstylesheet %}
+
+{%- liquid
+  assign art = closest.article
+  assign published = art.published_at | default: 'now'
+  assign fmt = block.settings.date_format | default: 'date'
+-%}
+
+{% style %}
+  .art-date--{{ block.id }} {
+    {% render 'typography-resolver', role: 'text', source: block.settings %}
+    {% render 'color-role-resolver', mode: 'color', role: 'soft', source: block.settings %}
+  }
+{% endstyle %}
+
+<p class="art-date art-date--{{ block.id }}" {{ block.shopify_attributes }}>
+  <time datetime="{{ published | date: '%Y-%m-%dT%H:%M:%SZ' }}">
+    {{- published | time_tag: format: fmt | strip_html -}}
+  </time>
+</p>
+
+{% schema %}
+{
+  "name": "Article Date",
+  "tag": null,
+  "settings": [
+    {
+      "type": "header",
+      "content": "Article Date",
+      "info": "The day the article was published."
+    },
+    {
+      "type": "select",
+      "id": "date_format",
+      "label": "Date style",
+      "options": [
+        { "value": "date", "label": "Month day, year" },
+        { "value": "abbreviated_date", "label": "Short month" },
+        { "value": "month_day_year", "label": "Month day year" }
+      ],
+      "default": "abbreviated_date"
+    },
+    {
+      "type": "header",
+      "content": "Typography"
+    },
+    {
+      "type": "select",
+      "id": "font_size",
+      "label": "Size",
+      "options": [
+        { "value": "xxs", "label": "Extra small" },
+        { "value": "xs", "label": "Small" },
+        { "value": "sm", "label": "Medium" },
+        { "value": "md", "label": "Body" }
+      ],
+      "default": "xs"
+    },
+    {
+      "type": "select",
+      "id": "font_weight",
+      "label": "Font Weight",
+      "options": [
+        { "value": "normal", "label": "Normal" },
+        { "value": "medium", "label": "Medium" },
+        { "value": "semibold", "label": "Semi-bold" },
+        { "value": "bold", "label": "Bold" }
+      ],
+      "default": "normal"
+    },
+    {
+      "type": "checkbox",
+      "id": "override_line_height",
+      "label": "Override Theme Line Height",
+      "default": false
+    },
+    {
+      "type": "range",
+      "id": "line_height",
+      "label": "Line Height",
+      "min": 0.8,
+      "max": 2.4,
+      "step": 0.1,
+      "default": 1.4,
+      "visible_if": "{{ block.settings.override_line_height }}"
+    },
+    {
+      "type": "select",
+      "id": "text_casing",
+      "label": "Text Casing",
+      "info": "On None, the text renders exactly as typed.",
+      "options": [
+        { "value": "theme", "label": "Theme" },
+        { "value": "none", "label": "None" }
+      ],
+      "default": "theme"
+    },
+    {
+      "type": "select",
+      "id": "text_color",
+      "label": "Color",
+      "info": "Automatic follows this block's own role, so a card set to Accent recolors it.",
+      "options": [
+        { "value": "auto", "label": "Automatic" },
+        { "value": "heading", "label": "Heading" },
+        { "value": "text", "label": "Text" },
+        { "value": "soft", "label": "Soft Text" },
+        { "value": "accent", "label": "Accent" },
+        { "value": "parent", "label": "Inherit From Parent" }
+      ],
+      "default": "auto"
+    }
+  ],
+  "presets": [
+    {
+      "name": "Article Date"
+    }
+  ]
+}
+{% endschema %}

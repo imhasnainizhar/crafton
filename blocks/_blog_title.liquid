@@ -1,0 +1,164 @@
+{%- comment -%}
+  Blog Title — the title of the closest blog (`closest.blog`): the Blog Card's
+  picked blog, or the page's blog on the blog template. It always carries an
+  empty, hidden tab-icon slot before the text; the Blog Card shows it, painted
+  from --card-tab-icon, only when a tab hosting the card publishes an icon
+  (Tabbed Blogs) and the card places the icon before the title.
+  Heading-role type through snippets/typography-resolver.liquid, colour through
+  snippets/color-role-resolver.liquid, alignment from the inherited --text-align.
+{%- endcomment -%}
+
+{% stylesheet %}
+  .blg-title {
+    margin: 0;
+    text-align: var(--text-align, left);
+    overflow-wrap: anywhere;
+  }
+
+  .blg-title--clamp {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: var(--blg-title-lines);
+    line-clamp: var(--blg-title-lines);
+    overflow: hidden;
+  }
+{% endstylesheet %}
+
+{%- liquid
+  assign bl = closest.blog
+  assign tag = block.settings.tag | default: 'h3'
+  assign title = bl.title
+  if title == blank
+    assign title = 'theme.components.blog_card.placeholder_title' | t
+  endif
+-%}
+
+{% style %}
+  .blg-title--{{ block.id }} {
+    {% render 'typography-resolver', role: 'heading', source: block.settings %}
+    {% render 'color-role-resolver', mode: 'color', role: 'heading', source: block.settings %}
+    {% if block.settings.max_lines > 0 %}--blg-title-lines: {{ block.settings.max_lines }};{% endif %}
+  }
+{% endstyle %}
+
+<{{ tag }} class="blg-title blg-title--{{ block.id }}{% if block.settings.max_lines > 0 %} blg-title--clamp{% endif %}" {{ block.shopify_attributes }}>
+  <span class="bcc-tab-icon bcc-tab-icon--title" aria-hidden="true"></span>
+  {{- title | escape -}}
+</{{ tag }}>
+
+{% schema %}
+{
+  "name": "Blog Title",
+  "tag": null,
+  "settings": [
+    {
+      "type": "header",
+      "content": "Blog Title",
+      "info": "Shows the name of the blog this block sits in."
+    },
+    {
+      "type": "select",
+      "id": "tag",
+      "label": "Page structure tag",
+      "info": "Helps search engines read the page. It does not change how the text looks.",
+      "options": [
+        { "value": "h1", "label": "H1" },
+        { "value": "h2", "label": "H2" },
+        { "value": "h3", "label": "H3" },
+        { "value": "h4", "label": "H4" },
+        { "value": "p", "label": "Paragraph" }
+      ],
+      "default": "h3"
+    },
+    {
+      "type": "range",
+      "id": "max_lines",
+      "label": "Maximum lines",
+      "info": "Longer titles end with an ellipsis. 0 shows the whole title.",
+      "min": 0,
+      "max": 6,
+      "step": 1,
+      "default": 0
+    },
+    {
+      "type": "header",
+      "content": "Typography"
+    },
+    {
+      "type": "select",
+      "id": "font_size",
+      "label": "Size",
+      "info": "Approximate sizes are shown at Size Factor 1.",
+      "options": [
+        { "value": "xxs", "label": "XXS (~16px)" },
+        { "value": "xs", "label": "XS (~18px)" },
+        { "value": "sm", "label": "SM (~22px)" },
+        { "value": "md", "label": "MD (~28px)" },
+        { "value": "lg", "label": "LG (~36px)" },
+        { "value": "xl", "label": "XL (~48px)" },
+        { "value": "xxl", "label": "XXL (~64px)" }
+      ],
+      "default": "md"
+    },
+    {
+      "type": "select",
+      "id": "font_weight",
+      "label": "Font Weight",
+      "options": [
+        { "value": "normal", "label": "Normal" },
+        { "value": "medium", "label": "Medium" },
+        { "value": "semibold", "label": "Semi-bold" },
+        { "value": "bold", "label": "Bold" }
+      ],
+      "default": "semibold"
+    },
+    {
+      "type": "checkbox",
+      "id": "override_line_height",
+      "label": "Override Theme Line Height",
+      "default": false
+    },
+    {
+      "type": "range",
+      "id": "line_height",
+      "label": "Line Height",
+      "min": 0.8,
+      "max": 2.4,
+      "step": 0.1,
+      "default": 1.2,
+      "visible_if": "{{ block.settings.override_line_height }}"
+    },
+    {
+      "type": "select",
+      "id": "text_casing",
+      "label": "Text Casing",
+      "info": "On None, the text renders exactly as typed.",
+      "options": [
+        { "value": "theme", "label": "Theme" },
+        { "value": "none", "label": "None" }
+      ],
+      "default": "theme"
+    },
+    {
+      "type": "select",
+      "id": "text_color",
+      "label": "Color",
+      "info": "Automatic follows this block's own role, so a card set to Accent recolors it.",
+      "options": [
+        { "value": "auto", "label": "Automatic" },
+        { "value": "heading", "label": "Heading" },
+        { "value": "text", "label": "Text" },
+        { "value": "soft", "label": "Soft Text" },
+        { "value": "accent", "label": "Accent" },
+        { "value": "parent", "label": "Inherit From Parent" }
+      ],
+      "default": "auto"
+    }
+  ],
+  "presets": [
+    {
+      "name": "Blog Title"
+    }
+  ]
+}
+{% endschema %}

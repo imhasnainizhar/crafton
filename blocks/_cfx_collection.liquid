@@ -1,0 +1,1734 @@
+{%- comment -%}
+  FEATURED COLLECTION — Collection block (`cfx-`).
+  One collection: its hero, its products, and the layout they sit in. Because
+  this block composes the collection, it dictates the stage — grid or carousel
+  per breakpoint, the carousel style, the shapes, the overlap and the View More
+  region. The section around it is only a shell.
+
+  STAGE. Two columns: `.cfx-lead` (the hero — a picture, or a Classic panel,
+  plus an empty content box) and `.cfx-items` (the products). With
+  "Content over hero" on, the controller moves the Rich Content placed right
+  before this block into that box, where hero_content_x / hero_content_y place
+  it. This block accepts no child blocks. A phone always stacks the columns.
+  On a desktop carousel the style decides:
+    classic → stacked, both carousel ends free to bleed;
+    flyover → side by side, swiped cards pass OVER the hero (the only style
+              where "Hero overlapping" applies);
+    tunnel  → side by side, swiped cards pass UNDER the hero and are cut at its
+              outer edge, so they never reappear on the far side; the hero
+              column is an opaque cover the full height of the row.
+  Hero right mirrors the row, the cut side, the fade side and — through
+  `data-cfx-mirror` — the swipe direction.
+
+  CLIPPING. The carousel viewport never overflow-clips; `carousel_bleed` cuts
+  it with a `clip-path` (open vertically so hover lift and shadows escape):
+  off, at the content edge; on, not at all, so cards run to the screen edge
+  where the section shell clips them. Tunnel adds one more `clip-path` on the stage,
+  cutting the hero side at the hero's outer edge.
+
+  SLIDES are one fluid width: a clamp() interpolated between slide_width_mobile
+  and slide_width_desktop (Swiper runs slidesPerView: auto).
+
+  PRODUCT CARDS are the shared overlay card (snippets/collection-product-card
+  .liquid). This block styles them through the card's own hooks on the stage:
+  data-opc-plate / data-opc-cart / data-opc-price and --opc-ratio.
+
+  EDGE FADE sits OUTSIDE the items box, in the strip between the content edge
+  and the screen edge, so a card at rest is never faded. Its width is that
+  strip, measured by the controller into --cfx-edge-start / --cfx-edge-end.
+
+  Depends on: snippets/cfx-hero-card.liquid, snippets/collection-product-card.liquid,
+  snippets/ldx-state.liquid, snippets/motion-reveal.liquid, and the
+  section's assets (swiper-bundle, loader-fetch/state, collection-featured.js).
+{%- endcomment -%}
+
+{%- liquid
+  assign s = block.settings
+  assign sec = section.settings
+  assign coll = s.collection
+  assign anim = section.settings
+
+  assign carousel_m = false
+  if s.layout_mobile == 'carousel'
+    assign carousel_m = true
+  endif
+  assign carousel_d = false
+  if s.layout_desktop == 'carousel'
+    assign carousel_d = true
+  endif
+  assign grid_m = true
+  if carousel_m
+    assign grid_m = false
+  endif
+  assign grid_d = true
+  if carousel_d
+    assign grid_d = false
+  endif
+
+  # Hero: off, a Media card, or a Classic text panel.
+  assign hero_on = s.hero_enabled
+  assign media_on = false
+  assign panel_on = false
+  if hero_on
+    if s.hero_variant == 'classic'
+      assign panel_on = true
+    else
+      assign media_on = true
+    endif
+  endif
+  # Where the hero's Rich Content sits over the picture.
+  assign hero_x = 'flex-start'
+  if s.hero_content_x == 'center'
+    assign hero_x = 'center'
+  endif
+  case s.hero_content_y
+    when 'top'
+      assign hero_y = 'flex-start'
+    when 'center'
+      assign hero_y = 'center'
+    else
+      assign hero_y = 'flex-end'
+  endcase
+
+  # Carousel style. Flyover and Tunnel only lay out side by side on a desktop
+  # carousel; everywhere else the stage stacks.
+  assign style = 'classic'
+  if hero_on
+    assign style = s.carousel_style
+  endif
+  assign side = false
+  if carousel_d and style != 'classic'
+    assign side = true
+  endif
+  assign hero_end = false
+  if side and s.hero_position == 'right'
+    assign hero_end = true
+  endif
+
+  assign overlap_m = 0
+  if carousel_m and style == 'flyover'
+    assign overlap_m = s.carousel_overlap_mobile
+  endif
+  assign overlap_d = 0
+  if side and style == 'flyover'
+    assign overlap_d = s.carousel_overlap_desktop
+  endif
+
+  # Product card hooks: the button icon as a mask image, and price type.
+  assign card_icon_url = blank
+  case s.card_cart_icon
+    when 'cart'
+      assign card_icon_url = 'icon-cart.svg' | asset_url
+    when 'plus'
+      assign card_icon_url = 'icon-plus.svg' | asset_url
+    when 'custom'
+      if s.card_cart_icon_image != blank
+        assign card_icon_url = s.card_cart_icon_image | image_url: width: 96
+      endif
+  endcase
+
+  # Beside a Flyover / Tunnel carousel the hero takes its own, taller shapes.
+  assign hero_ratio_d = s.hero_ratio_desktop
+  if side
+    assign hero_ratio_d = s.hero_ratio_side
+  endif
+
+  # Fixed hero width is one fluid clamp, linearly interpolated between the
+  # mobile and desktop px widths (it only applies beside a Flyover / Tunnel
+  # carousel, i.e. on desktop).
+  if s.hero_width_mode == 'fixed'
+    capture hero_w
+      render 'fluid-clamp', min: s.hero_width_px_mobile, max: s.hero_width_px
+    endcapture
+    assign hero_w = hero_w | strip
+  else
+    assign hero_w = s.hero_width_desktop | append: '%'
+  endif
+
+  # Stage clip, as clip-path insets. -100vw leaves a side to the section
+  # shell (the screen edge); 0 cuts it at the stage.
+  assign clip_l = '-100vw'
+  assign clip_r = '-100vw'
+  if side and style == 'tunnel'
+    if hero_end
+      assign clip_r = '0'
+    else
+      assign clip_l = '0'
+    endif
+  endif
+  assign clip_d = blank
+  if clip_l != '-100vw' or clip_r != '-100vw'
+    assign clip_d = 'inset(-100vh ' | append: clip_r | append: ' -100vh ' | append: clip_l | append: ')'
+  endif
+
+  # Full-width hero: only the hero leaves the section rail, and only in the
+  # stacked layouts (a grid or a Classic carousel) — never beside a Flyover /
+  # Tunnel carousel. Content, tabs and products keep the rail.
+  # Slide size: one fluid width (default), or a number of slides per view —
+  # one pair for a Classic carousel, another for Flyover / Tunnel. A count is
+  # turned into a width in CSS, from the carousel column's width in container
+  # units: the whole stage when stacked, the stage less the hero column and
+  # the gap (plus any Flyover overlap) side by side.
+  assign spv_on = false
+  if s.slide_sizing == 'count'
+    assign spv_on = true
+    if style == 'classic'
+      assign spv_m = s.slides_per_view_mobile
+      assign spv_d = s.slides_per_view_desktop
+    else
+      assign spv_m = s.slides_per_view_side_mobile
+      assign spv_d = s.slides_per_view_side_desktop
+    endif
+    assign spv_gaps_m = spv_m | minus: 1
+    assign spv_gaps_d = spv_d | minus: 1
+    if s.hero_width_mode == 'fixed'
+      assign spv_hero_w = 'var(--cfx-hero-width)'
+    else
+      assign spv_hero_w = s.hero_width_desktop | append: 'cqw'
+    endif
+  endif
+  # Carousel bleed decides where cards stop, as a clip-path on the viewport:
+  #   cut  (bleed off) → at the content edge;
+  #   open (bleed on)  → no clip, cards run on to the screen edge.
+  # Side by side, the hero side is never cut here: it keeps its Flyover /
+  # Tunnel behaviour (Tunnel's cut is the stage / panel clip above).
+  assign bleed_mode = 'cut'
+  if s.carousel_bleed
+    assign bleed_mode = 'open'
+  endif
+  assign cut_l_d = '0'
+  assign cut_r_d = '0'
+  if side
+    if hero_end
+      assign cut_r_d = '-100vw'
+    else
+      assign cut_l_d = '-100vw'
+    endif
+  endif
+  # Hero matches the product card height: a card is its width x its ratio,
+  # so the height is computed in CSS from the slide width (carousel) or the
+  # column width (grid), per breakpoint.
+  assign hero_match = false
+  if hero_on and s.hero_match_cards
+    assign hero_match = true
+  endif
+  assign hero_full = false
+  if s.full_width and hero_on and side == false
+    assign hero_full = true
+  endif
+
+  assign fade_on = false
+  if s.edge_fade and s.carousel_bleed
+    if carousel_m or carousel_d
+      assign fade_on = true
+    endif
+  endif
+
+  # One fluid slide width, interpolated between the two breakpoint widths.
+  capture slide_w
+    render 'fluid-clamp', min: s.slide_width_mobile, max: s.slide_width_desktop
+  endcapture
+
+  # One shape for every card; the card itself carries it (--opc-ratio).
+  assign card_ratio_m = s.card_ratio_mobile | default: '4/5'
+  assign card_ratio_d = s.card_ratio_desktop | default: '4/5'
+
+  assign hero_content = false
+  if hero_on and s.content_over_hero
+    assign hero_content = true
+  endif
+
+  # Products. Emptiness comes from the count, never from `.products.size`,
+  # which would break the paginate tag below.
+  # "Limit products" off: View More keeps going until the collection ends.
+  assign render_limit = s.products_max
+  if s.products_limit == false
+    assign render_limit = coll.all_products_count | default: 0 | at_least: s.products_step
+  endif
+  assign batch_size = s.products_step
+  if batch_size > render_limit
+    assign batch_size = render_limit
+  endif
+  assign total_products = coll.all_products_count | default: 0
+  assign has_products = false
+  if total_products > 0
+    assign has_products = true
+  endif
+  # At the limit, a View collection tile can take over from View More.
+  assign collection_link = false
+  if s.products_limit != false and s.products_limit_link and sec.more_mode != 'redirect' and sec.collection_label != blank
+    if total_products > render_limit
+      assign collection_link = true
+    endif
+  endif
+  if total_products > render_limit
+    assign total_products = render_limit
+  endif
+  # Page total is computed here, not read off paginate: it is the loader's
+  # end-of-list signal. Liquid has no ceil, hence the round-up by hand.
+  assign cfx_pages = total_products | plus: batch_size | minus: 1 | divided_by: batch_size
+  if cfx_pages < 1
+    assign cfx_pages = 1
+  endif
+  assign cfx_current = 1
+
+  # Editor samples fill the layout the merchant chose, so an unpicked preset
+  # reads as a real grid or carousel instead of four lonely cards.
+  assign sample_count = s.products_initial
+  if sample_count < 4
+    assign sample_count = 4
+  endif
+  if sample_count > 12
+    assign sample_count = 12
+  endif
+
+  assign hero_alt = coll.title
+  if hero_alt == blank
+    assign hero_alt = 'onboarding.collection_title' | t
+  endif
+
+  assign more_btn_class = 'cfx-more__btn'
+  if sec.more_variant == 'text'
+    assign more_btn_class = more_btn_class | append: ' cfx-more__btn--text'
+    if sec.more_underline
+      assign more_btn_class = more_btn_class | append: ' cfx-more__btn--underline'
+    endif
+  endif
+-%}
+
+{%- if has_products -%}
+  {%- paginate coll.products by batch_size -%}
+    {%- assign cfx_current = paginate.current_page -%}
+    {%- capture cfx_slides -%}
+      {%- for product in coll.products -%}
+        <div class="cfx-slide swiper-slide" data-cfx-item>
+          {% render 'collection-product-card', product: product, index: forloop.index %}
+        </div>
+      {%- endfor -%}
+    {%- endcapture -%}
+  {%- endpaginate -%}
+{%- else -%}
+  {%- capture cfx_slides -%}
+    {%- for i in (1..sample_count) -%}
+      <div class="cfx-slide swiper-slide" data-cfx-item>
+        {% render 'collection-product-card', index: i %}
+      </div>
+    {%- endfor -%}
+  {%- endcapture -%}
+{%- endif -%}
+
+{% style %}
+  .cfx-stage--{{ block.id }} {
+    --cfx-overlap: {{ overlap_m }}px;
+    --cfx-hero-width: {{ hero_w }};
+    --cfx-scrim: {{ s.hero_scrim }};
+    --cfx-columns: {{ s.grid_columns_mobile }};
+    --opc-ratio: {{ card_ratio_m }};
+    {%- comment -%}
+      Card colour: Surface is the card's own default (the scheme's surface
+      and heading colour). Accent publishes the scheme's neutral accent and
+      its contrast colour; the button inverts them.
+    {%- endcomment -%}
+    {% if s.card_color == 'accent' %}
+      --opc-plate-bg: var(--color-accent-neutral);
+      --opc-plate-fg: var(--color-accent-neutral-contrast);
+      --opc-cart-bg: var(--opc-plate-fg);
+      --opc-cart-fg: var(--opc-plate-bg);
+    {% endif %}
+    {%- comment -%} Glass look: Frosted or Liquid, Touch or Full (snippets/glass-resolver). {%- endcomment -%}
+    {% if s.card_plate == 'glass' %}
+      {% if s.card_color == 'accent' %}
+        {% render 'glass-resolver', style: s.card_glass_style, strength: s.card_glass_strength, color: 'var(--color-accent-neutral)', weight: 'heavy', prefix: 'opc-glass' %}
+      {% else %}
+        {% render 'glass-resolver', style: s.card_glass_style, strength: s.card_glass_strength, prefix: 'opc-glass' %}
+      {% endif %}
+    {% endif %}
+    {% if s.card_plate_radius != blank %}{% if s.card_plate == 'solid' or s.card_plate == 'glass' and s.card_float %}--opc-plate-radius: {{ s.card_plate_radius }}px;{% endif %}{% endif %}
+    --opc-price-size: var(--fs-text-{{ s.card_price_size }});
+    --opc-price-weight: {{ s.card_price_weight }};
+    {% if card_icon_url != blank %}--opc-cart-icon: url('{{ card_icon_url }}');{% endif %}
+    {% if spv_on %}
+      --cfx-slide-w: calc((100cqw - {{ spv_gaps_m }} * var(--ds-item-gap-mobile)) / {{ spv_m }});
+    {% else %}
+      --cfx-slide-w: {{ slide_w | strip }};
+    {% endif %}
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: var(--ds-layout-gap-mobile);
+  }
+
+  {% if hero_full %}
+    /* Full-width hero: the hero alone steps out of the section rail — negative
+       inline margins only — with square corners. */
+    .cfx-stage--{{ block.id }} .cfx-lead {
+      margin-inline: calc(-1 * var(--ds-layout-gutter-mobile));
+    }
+  {% endif %}
+
+  /* ---------------------------------------------------------------- lead */
+
+  .cfx-stage--{{ block.id }} .cfx-lead {
+    position: relative;
+    z-index: 2;
+    display: flex;
+    flex-direction: column;
+    gap: var(--ds-layout-gap-mobile);
+    min-width: 0;
+  }
+
+  /* The hero box holds the picture, its overlay and the Rich Content laid
+     over it, and carries the corners so the overlay follows them. */
+  /* Opaque ground behind the picture, so a placeholder or a video that has not
+     painted yet never lets a Tunnel card show through. */
+  .cfx-stage--{{ block.id }} .cfx-herobox {
+    position: relative;
+    overflow: hidden;
+    border-radius: {% if hero_full %}0{% else %}var(--ds-layout-radius-mobile){% endif %};
+    background-color: var(--color-surface);
+  }
+
+  .cfx-stage--{{ block.id }} .cfx-hero__media {
+    position: relative;
+    overflow: hidden;
+    {% if s.hero_ratio_mobile != 'auto' %}aspect-ratio: {{ s.hero_ratio_mobile }};{% endif %}
+  }
+
+  .cfx-stage--{{ block.id }} .cfx-hero__image {
+    display: block;
+    width: 100%;
+    height: {% if s.hero_ratio_mobile != 'auto' %}100%{% else %}auto{% endif %};
+    object-fit: cover;
+  }
+
+  .cfx-stage--{{ block.id }} .cfx-hero__scrim {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    pointer-events: none;
+    background-color: color-mix(in srgb, var(--color-shadow) calc(var(--cfx-scrim) * 1%), transparent);
+  }
+
+  /* Rich Content over the picture (moved in by the controller when "Content
+     over hero" is on): placed by the hero content position; its width, text
+     alignment and surface are its own settings. */
+  .cfx-stage--{{ block.id }} .cfx-hero__content {
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    display: flex;
+    flex-direction: column;
+    align-items: {{ hero_x }};
+    justify-content: {{ hero_y }};
+    padding: clamp(1rem, 4vw, 2.5rem);
+    pointer-events: none;
+  }
+
+  .cfx-stage--{{ block.id }} .cfx-hero__content > * {
+    max-width: 100%;
+    pointer-events: auto;
+  }
+
+  .cfx-stage--{{ block.id }} .cfx-hero__content:empty { display: none; }
+
+  {% if panel_on %}
+    /* Classic hero: the Rich Content on a plain panel in the section's base
+       colour — opaque, so a Tunnel carousel disappears behind it. */
+    .cfx-stage--{{ block.id }} .cfx-herobox {
+      background-color: var(--color-base);
+      {% if s.hero_border %}border: var(--ds-layout-border-width-mobile, 1px) solid var(--color-border);{% endif %}
+    }
+
+    .cfx-stage--{{ block.id }} .cfx-hero,
+    .cfx-stage--{{ block.id }} .cfx-hero__scrim { display: none; }
+
+    .cfx-stage--{{ block.id }} .cfx-hero__content { position: static; }
+  {% endif %}
+
+  /* --------------------------------------------------------------- items */
+
+  .cfx-stage--{{ block.id }} .cfx-items {
+    position: relative;
+    /* Flyover is the one style that passes over the hero; every other style
+       keeps the hero on top, which is what hides a Tunnel card. */
+    z-index: {% if style == 'flyover' %}3{% else %}1{% endif %};
+    min-width: 0;
+    margin-top: calc(-1 * var(--cfx-overlap));
+  }
+
+  .cfx-stage--{{ block.id }} .cfx-items__viewport {
+    /* One axis only: a blanket overflow:hidden would clip card hover lift and
+       shadow along with the track. */
+    overflow-x: clip;
+    overflow-y: visible;
+  }
+
+  /* A mirrored carousel runs right to left; its cards still read left to right. */
+  .cfx-stage--{{ block.id }} .cfx-items__viewport[dir='rtl'] .cfx-track > * { direction: ltr; }
+
+  /* Static (uninitialized) layout is a real grid, with Swiper's own slide
+     sizing neutralised. Swiper owns the box only once it initializes. */
+  .cfx-stage--{{ block.id }} .cfx-items__viewport:not(.swiper-initialized) .cfx-track {
+    display: grid;
+    grid-template-columns: repeat(var(--cfx-columns), minmax(0, 1fr));
+    gap: var(--ds-item-gap-mobile);
+    transition-property: none;
+  }
+
+  .cfx-stage--{{ block.id }} .cfx-items__viewport:not(.swiper-initialized) .cfx-slide {
+    width: auto;
+  }
+
+
+
+  /* A carousel slide is one fluid width (Swiper runs slidesPerView: auto). */
+  .cfx-stage--{{ block.id }} .cfx-items__viewport.swiper-initialized .cfx-slide,
+  .cfx-stage--{{ block.id }} .cfx-items__viewport.swiper-initialized .cfx-more {
+    width: var(--cfx-slide-w);
+  }
+
+  /* Edge fades live outside the items box, in the strip up to the screen edge. */
+  .cfx-stage--{{ block.id }} .cfx-fade {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    z-index: 4;
+    display: none;
+    pointer-events: none;
+  }
+
+  .cfx-stage--{{ block.id }} .cfx-fade--start {
+    right: 100%;
+    width: var(--cfx-edge-start, var(--ds-layout-gutter-mobile));
+    background: linear-gradient(to left, transparent, var(--color-base));
+  }
+
+  .cfx-stage--{{ block.id }} .cfx-fade--end {
+    left: 100%;
+    width: var(--cfx-edge-end, var(--ds-layout-gutter-mobile));
+    background: linear-gradient(to right, transparent, var(--color-base));
+  }
+
+  {% if grid_m and s.products_initial < render_limit %}
+    /* Mobile grid holds back the rest of the first render until View More. */
+    .cfx-stage--{{ block.id }} .cfx-slide:nth-child(n + {{ s.products_initial | plus: 1 }}):not([data-cfx-revealed]):not(.cfx-slide--skeleton) {
+      display: none;
+    }
+  {% endif %}
+
+  /* ----------------------------------------------------------- view more */
+
+  /* The control is the track's last cell. In a carousel that makes it the tile
+     after the final card; in a grid the track IS a grid, so it spans every
+     column as a centred row under the cards. One position, both layouts. */
+  .cfx-stage--{{ block.id }} .cfx-more {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* A retired control leaves the track ([hidden] alone loses to display:flex).
+     In a carousel the tile is as tall as the cards, so the button sits centred
+     on both axes. Loading placeholders are ordinary slides (.cfx-slide--skeleton)
+     and size exactly like the cards they stand for. */
+  .cfx-stage--{{ block.id }} .cfx-more[hidden] { display: none; }
+
+  .cfx-stage--{{ block.id }} .cfx-items__viewport.swiper-initialized .cfx-more {
+    height: auto;
+    align-self: stretch;
+  }
+
+  .cfx-stage--{{ block.id }} .cfx-items__viewport:not(.swiper-initialized) .cfx-more {
+    grid-column: 1 / -1;
+    justify-self: center;
+    margin-top: var(--ds-layout-gap-mobile);
+  }
+
+  {% if sec.carousel_load == 'auto' %}
+    /* Auto-loading carousel: the tile would be a button nobody needs. The
+       View collection tile still shows once the product limit is reached. */
+    .cfx-stage--{{ block.id }} .cfx-items__viewport.swiper-initialized .cfx-more:not(.cfx-more--collection) { display: none; }
+  {% endif %}
+
+  .cfx-stage--{{ block.id }} .cfx-more__btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1.75rem;
+    border: 1px solid var(--color-button-border, var(--color-border));
+    border-radius: 999px;
+    background-color: var(--color-button, transparent);
+    color: var(--color-button-text, var(--color-text));
+    font-size: var(--fs-text-sm);
+    cursor: pointer;
+    text-decoration: none;
+  }
+
+  .cfx-stage--{{ block.id }} .cfx-more__btn--text {
+    padding: 0.25rem 0;
+    border: 0;
+    background: none;
+    color: var(--color-text);
+  }
+
+  .cfx-stage--{{ block.id }} .cfx-more__btn--underline {
+    text-decoration: underline;
+    text-underline-offset: 0.25em;
+  }
+
+  /* Loading: the placeholders in the track are the busy state; the button
+     only steps back so it cannot be tapped twice. */
+  .cfx-stage--{{ block.id }} .cfx-more__btn[aria-busy='true'] {
+    opacity: 0.5;
+    pointer-events: none;
+  }
+
+    /* Stage and cards enter with the section's motion (snippets/motion-reveal). Only the
+       first render animates: cards added later land after the entrance has finished. */
+    .cfx-stage--{{ block.id }} {
+      {% render 'motion-reveal', part: 'vars', from: anim %}
+    }
+
+  /* ------------------------------------------------ mobile-only carousel */
+
+  @media (max-width: 767.98px) {
+    {% if carousel_m %}
+      /* The viewport never overflow-clips a carousel; bleed cuts it with a
+         clip-path, open vertically so hover lift and shadows escape. */
+      .cfx-stage--{{ block.id }} .cfx-items__viewport { overflow: visible; }
+      {% if bleed_mode == 'cut' %}
+        .cfx-stage--{{ block.id }} .cfx-items__viewport { clip-path: inset(-100vh 0px -100vh 0px); }
+      {% endif %}
+      {% if fade_on %}
+        .cfx-stage--{{ block.id }} .cfx-fade { display: block; }
+      {% endif %}
+    {% endif %}
+  }
+
+  /* ------------------------------------------------------------- desktop */
+
+  @media (min-width: 768px) {
+    .cfx-stage--{{ block.id }} {
+      --cfx-overlap: {{ overlap_d }}px;
+      --cfx-columns: {{ s.grid_columns_desktop }};
+      --opc-ratio: {{ card_ratio_d }};
+      gap: var(--ds-layout-gap-desktop);
+    }
+
+    {% if hero_full %}
+      .cfx-stage--{{ block.id }} .cfx-lead {
+        margin-inline: calc(-1 * var(--ds-layout-gutter-desktop));
+      }
+    {% endif %}
+
+    .cfx-stage--{{ block.id }} .cfx-lead { gap: var(--ds-layout-gap-desktop); }
+
+    .cfx-stage--{{ block.id }} .cfx-herobox {
+      {% unless hero_full %}border-radius: var(--ds-layout-radius-desktop);{% endunless %}
+      {% if panel_on and s.hero_border %}border-width: var(--ds-layout-border-width-desktop, 1px);{% endif %}
+    }
+
+    .cfx-stage--{{ block.id }} .cfx-hero__media {
+      {% if hero_ratio_d != 'auto' %}
+        aspect-ratio: {{ hero_ratio_d }};
+      {% elsif s.hero_ratio_mobile != 'auto' %}
+        aspect-ratio: auto;
+      {% endif %}
+    }
+
+    .cfx-stage--{{ block.id }} .cfx-hero__image {
+      height: {% if hero_ratio_d != 'auto' %}100%{% else %}auto{% endif %};
+    }
+
+    .cfx-stage--{{ block.id }} .cfx-items__viewport:not(.swiper-initialized) .cfx-track {
+      gap: var(--ds-item-gap-desktop);
+    }
+
+
+    .cfx-stage--{{ block.id }} .cfx-items__viewport:not(.swiper-initialized) .cfx-more {
+      margin-top: var(--ds-layout-gap-desktop);
+    }
+
+    .cfx-stage--{{ block.id }} .cfx-fade--start { width: var(--cfx-edge-start, var(--ds-layout-gutter-desktop)); }
+    .cfx-stage--{{ block.id }} .cfx-fade--end { width: var(--cfx-edge-end, var(--ds-layout-gutter-desktop)); }
+
+    {% if grid_m and grid_d == false and s.products_initial < render_limit %}
+      /* Desktop is a carousel: every slide is a slide again. */
+      .cfx-stage--{{ block.id }} .cfx-slide:nth-child(n + {{ s.products_initial | plus: 1 }}):not([data-cfx-revealed]):not(.cfx-slide--skeleton) {
+        display: block;
+      }
+    {% endif %}
+
+    {% if grid_d and grid_m == false and s.products_initial < render_limit %}
+      .cfx-stage--{{ block.id }} .cfx-slide:nth-child(n + {{ s.products_initial | plus: 1 }}):not([data-cfx-revealed]):not(.cfx-slide--skeleton) {
+        display: none;
+      }
+    {% endif %}
+
+    {% if carousel_d %}
+      .cfx-stage--{{ block.id }} .cfx-items__viewport { overflow: visible; }
+      {% if bleed_mode == 'cut' %}
+        .cfx-stage--{{ block.id }} .cfx-items__viewport { clip-path: inset(-100vh {{ cut_r_d }} -100vh {{ cut_l_d }}); }
+      {% endif %}
+      {% if clip_d != blank %}
+        .cfx-stage--{{ block.id }} { clip-path: {{ clip_d }}; }
+      {% endif %}
+      {% if fade_on %}
+        {% if side == false %}
+          .cfx-stage--{{ block.id }} .cfx-fade { display: block; }
+        {% elsif hero_end %}
+          .cfx-stage--{{ block.id }} .cfx-fade--start { display: block; }
+        {% else %}
+          .cfx-stage--{{ block.id }} .cfx-fade--end { display: block; }
+        {% endif %}
+      {% endif %}
+    {% endif %}
+
+    {% if side %}
+      .cfx-stage--{{ block.id }} {
+        flex-direction: {% if hero_end %}row-reverse{% else %}row{% endif %};
+        align-items: center;
+      }
+
+      .cfx-stage--{{ block.id }} .cfx-lead {
+        flex: 0 0 var(--cfx-hero-width);
+        max-width: 100%;
+      }
+
+      {% if style == 'tunnel' %}
+        /* Tunnel: the whole hero column is the tunnel mouth — an opaque cover
+           as tall as the row, the hero centred in it — so cards passing under
+           never show above, below or around the picture. */
+        .cfx-stage--{{ block.id }} .cfx-lead {
+          align-self: stretch;
+          justify-content: center;
+          background-color: var(--color-base);
+        }
+      {% endif %}
+
+      .cfx-stage--{{ block.id }} .cfx-items {
+        flex: 1 1 0;
+        margin-top: 0;
+        {% if hero_end %}
+          margin-right: calc(-1 * var(--cfx-overlap));
+        {% else %}
+          margin-left: calc(-1 * var(--cfx-overlap));
+        {% endif %}
+      }
+    {% endif %}
+  }
+  {% if spv_on or hero_match %}
+    /* Width container: slides per view and the matched hero height are both
+       measured from this box's own width, in container units. */
+    .cfx-stage--{{ block.id }} { container-type: inline-size; }
+  {% endif %}
+
+  {% if spv_on %}
+    @media (min-width: 768px) {
+      .cfx-stage--{{ block.id }} {
+        {% if side %}
+          --cfx-slide-w: calc((100cqw - {{ spv_hero_w }} - var(--ds-layout-gap-desktop) + var(--cfx-overlap) - {{ spv_gaps_d }} * var(--ds-item-gap-desktop)) / {{ spv_d }});
+        {% else %}
+          --cfx-slide-w: calc((100cqw - {{ spv_gaps_d }} * var(--ds-item-gap-desktop)) / {{ spv_d }});
+        {% endif %}
+      }
+    }
+  {% endif %}
+
+  {% if hero_match %}
+    /* Hero matches the product card height, at every screen size. A card is
+       its width x its shape, so the height is that same sum: the slide width
+       in a carousel, the column width (from the stage's own width, through
+       container units) in a grid. It replaces the picture shape. */
+    .cfx-stage--{{ block.id }} {
+      --cfx-card-h: {% if carousel_m %}calc(var(--cfx-slide-w) / (var(--opc-ratio))){% else %}calc((100cqw - (var(--cfx-columns) - 1) * var(--ds-item-gap-mobile)) / var(--cfx-columns) / (var(--opc-ratio))){% endif %};
+    }
+
+    .cfx-stage--{{ block.id }} .cfx-hero__media {
+      aspect-ratio: auto;
+      height: var(--cfx-card-h);
+    }
+
+    .cfx-stage--{{ block.id }} .cfx-hero__image { height: 100%; }
+
+    {% if panel_on %}
+      .cfx-stage--{{ block.id }} .cfx-herobox { min-height: var(--cfx-card-h); }
+    {% endif %}
+
+    @media (min-width: 768px) {
+      .cfx-stage--{{ block.id }} {
+        --cfx-card-h: {% if carousel_d %}calc(var(--cfx-slide-w) / (var(--opc-ratio))){% else %}calc((100cqw - (var(--cfx-columns) - 1) * var(--ds-item-gap-desktop)) / var(--cfx-columns) / (var(--opc-ratio))){% endif %};
+      }
+    }
+  {% endif %}
+{% endstyle %}
+
+<div
+  class="cfx-stage cfx-stage--{{ block.id }} {% render 'motion-reveal', part: 'class', from: anim %} cfx-stage--{{ style }}{% if side %} cfx-stage--side{% endif %}{% unless hero_on %} cfx-stage--no-hero{% endunless %}{% if hero_full %} cfx-stage--hero-full{% endif %}"
+  data-cfx-stage
+  data-cfx-panel="{{ block.id }}"
+  data-cfx-layout-mobile="{{ s.layout_mobile }}"
+  data-cfx-layout-desktop="{{ s.layout_desktop }}"
+  {% if hero_content %}data-cfx-hero-content{% endif %}
+  data-opc-plate="{{ s.card_plate }}"
+  {% if s.card_plate == 'glass' and s.card_float %}data-opc-float{% endif %}
+  data-opc-cart="{{ s.card_cart }}"
+  {% unless s.card_price %}data-opc-price="hidden"{% endunless %}
+  {% unless s.card_compare %}data-opc-compare="hidden"{% endunless %}
+  {% if card_icon_url != blank %}data-opc-icon="mask"{% endif %}
+  {% if side and hero_end %}data-cfx-mirror{% endif %}
+  data-cfx-initial="{{ s.products_initial }}"
+  data-cfx-step="{{ s.products_step }}"
+  data-cfx-max="{{ render_limit }}"
+  data-cfx-total="{{ total_products }}"
+  {{ block.shopify_attributes }}
+>
+  {%- if hero_on -%}
+    <div class="cfx-lead">
+      <div class="cfx-herobox">
+        {%- if media_on -%}
+          {% render 'cfx-hero-card',
+            media: s.hero_media,
+            coll: coll,
+            image: s.hero_image,
+            video: s.hero_video,
+            alt: hero_alt
+          %}
+          <div class="cfx-hero__scrim" aria-hidden="true"></div>
+        {%- endif -%}
+        {%- comment -%}
+          Filled by the controller with the Rich Content placed right before
+          this block, when "Content over hero" is on.
+        {%- endcomment -%}
+        <div class="cfx-hero__content" data-cfx-herocontent></div>
+      </div>
+    </div>
+  {%- endif -%}
+
+  <div
+    class="cfx-items"
+    data-cfx-items
+    data-cfx-pages="{{ cfx_pages }}"
+    data-cfx-page="{{ cfx_current }}"
+  >
+    {%- if fade_on -%}
+      <span class="cfx-fade cfx-fade--start" aria-hidden="true"></span>
+      <span class="cfx-fade cfx-fade--end" aria-hidden="true"></span>
+    {%- endif -%}
+
+    <div class="cfx-items__viewport swiper" data-cfx-viewport>
+      <div
+        class="cfx-track swiper-wrapper {% render 'motion-reveal', part: 'class', from: anim, group: true %}"
+        id="cfx-track-{{ block.id }}"
+        data-cfx-track
+      >
+        {{ cfx_slides }}
+
+        {%- comment -%}
+          The View More control is the track's last cell, so ONE position is
+          right in both layouts. It is not a slide (no .cfx-slide class), so it
+          stays out of slide counting, out of the motion group's selector and
+          out of the held-back rule.
+        {%- endcomment -%}
+        {%- if sec.more_mode == 'redirect' and sec.more_label != blank -%}
+          <div class="cfx-more swiper-slide" data-cfx-more-wrap>
+            <a class="{{ more_btn_class }}" href="{{ coll.url | default: '#' }}">{{ sec.more_label }}</a>
+          </div>
+        {%- elsif sec.more_mode == 'load' and sec.more_label != blank -%}
+          <div class="cfx-more swiper-slide" data-cfx-more-wrap>
+            <button type="button" class="{{ more_btn_class }}" data-cfx-more aria-controls="cfx-track-{{ block.id }}">
+              <span>{{ sec.more_label }}</span>
+            </button>
+          </div>
+        {%- endif -%}
+
+        {%- comment -%}
+          Shown by the controller once every product the limit allows is on the
+          page. Loading placeholders are parked before this tile and View More.
+        {%- endcomment -%}
+        {%- if collection_link -%}
+          <div class="cfx-more cfx-more--collection swiper-slide" data-cfx-collection-wrap hidden>
+            <a class="{{ more_btn_class }}" href="{{ coll.url }}">{{ sec.collection_label }}</a>
+          </div>
+        {%- endif -%}
+      </div>
+    </div>
+
+    {%- comment -%} One loading placeholder, cloned once per card the next page brings. {%- endcomment -%}
+    <template data-cfx-skeleton data-ldx-effect="{{ sec.skeleton_reveal | default: 'fade' }}">
+      <div class="cfx-slide cfx-slide--skeleton swiper-slide">
+        {%- render 'collection-product-card', skeleton: true -%}
+      </div>
+    </template>
+
+    {% render 'ldx-state', uid: block.id, retry_label: sec.retry_label, retry_icon: true %}
+  </div>
+</div>
+
+{% schema %}
+{
+  "name": "Collection",
+  "tag": null,
+  "settings": [
+    {
+      "type": "header",
+      "content": "Collection"
+    },
+    {
+      "type": "collection",
+      "id": "collection",
+      "label": "Collection"
+    },
+    {
+      "type": "checkbox",
+      "id": "products_limit",
+      "label": "Limit products",
+      "info": "Off: visitors can keep loading more until they have seen the whole collection.",
+      "default": true
+    },
+    {
+      "type": "range",
+      "id": "products_max",
+      "label": "Products to show",
+      "min": 4,
+      "max": 24,
+      "step": 1,
+      "default": 12,
+      "visible_if": "{{ block.settings.products_limit != false }}"
+    },
+    {
+      "type": "checkbox",
+      "id": "products_limit_link",
+      "label": "Show a View collection button at the limit",
+      "info": "Once every allowed product is showing, a button takes visitors to the full collection. Its text is set on the section.",
+      "default": false,
+      "visible_if": "{{ block.settings.products_limit != false }}"
+    },
+    {
+      "type": "range",
+      "id": "products_initial",
+      "label": "Products shown at first",
+      "info": "Grid only — a carousel always holds every product it rendered.",
+      "min": 2,
+      "max": 24,
+      "step": 1,
+      "default": 8,
+      "visible_if": "{{ block.settings.layout_mobile == 'grid' or block.settings.layout_desktop == 'grid' }}"
+    },
+    {
+      "type": "range",
+      "id": "products_step",
+      "label": "Products added per click",
+      "min": 2,
+      "max": 24,
+      "step": 1,
+      "default": 8
+    },
+    {
+      "type": "header",
+      "content": "Layout"
+    },
+    {
+      "type": "select",
+      "id": "layout_mobile",
+      "label": "Products on mobile",
+      "options": [
+        {
+          "value": "grid",
+          "label": "Grid"
+        },
+        {
+          "value": "carousel",
+          "label": "Carousel"
+        }
+      ],
+      "default": "carousel"
+    },
+    {
+      "type": "select",
+      "id": "layout_desktop",
+      "label": "Products on desktop",
+      "options": [
+        {
+          "value": "grid",
+          "label": "Grid"
+        },
+        {
+          "value": "carousel",
+          "label": "Carousel"
+        }
+      ],
+      "default": "carousel"
+    },
+    {
+      "type": "checkbox",
+      "id": "full_width",
+      "label": "Full-width hero",
+      "info": "Runs the hero to the screen edges with square corners. Content, tabs and products keep the page margins. Grid and Classic carousel only.",
+      "default": false,
+      "visible_if": "{{ block.settings.hero_enabled and block.settings.layout_desktop == 'grid' or block.settings.hero_enabled and block.settings.carousel_style == 'classic' }}"
+    },
+    {
+      "type": "range",
+      "id": "grid_columns_mobile",
+      "label": "Columns (mobile)",
+      "min": 1,
+      "max": 3,
+      "step": 1,
+      "default": 2,
+      "visible_if": "{{ block.settings.layout_mobile == 'grid' }}"
+    },
+    {
+      "type": "range",
+      "id": "grid_columns_desktop",
+      "label": "Columns (desktop)",
+      "min": 2,
+      "max": 6,
+      "step": 1,
+      "default": 4,
+      "visible_if": "{{ block.settings.layout_desktop == 'grid' }}"
+    },
+    {
+      "type": "header",
+      "content": "Hero"
+    },
+    {
+      "type": "checkbox",
+      "id": "hero_enabled",
+      "label": "Show hero",
+      "default": true
+    },
+    {
+      "type": "checkbox",
+      "id": "content_over_hero",
+      "label": "Content over hero",
+      "info": "Moves the Rich Content placed right before this block into its hero — over the picture, or onto the Classic panel.",
+      "default": false,
+      "visible_if": "{{ block.settings.hero_enabled }}"
+    },
+    {
+      "type": "select",
+      "id": "hero_variant",
+      "label": "Hero style",
+      "options": [
+        {
+          "value": "media",
+          "label": "Media"
+        },
+        {
+          "value": "classic",
+          "label": "Classic"
+        }
+      ],
+      "default": "media",
+      "info": "Classic shows the hero content on a plain panel, without a picture.",
+      "visible_if": "{{ block.settings.hero_enabled }}"
+    },
+    {
+      "type": "select",
+      "id": "hero_content_x",
+      "label": "Hero content position (horizontal)",
+      "options": [
+        {
+          "value": "left",
+          "label": "Left"
+        },
+        {
+          "value": "center",
+          "label": "Center"
+        }
+      ],
+      "default": "left",
+      "visible_if": "{{ block.settings.hero_enabled }}"
+    },
+    {
+      "type": "select",
+      "id": "hero_content_y",
+      "label": "Hero content position (vertical)",
+      "options": [
+        {
+          "value": "top",
+          "label": "Top"
+        },
+        {
+          "value": "center",
+          "label": "Center"
+        },
+        {
+          "value": "bottom",
+          "label": "Bottom"
+        }
+      ],
+      "default": "bottom",
+      "visible_if": "{{ block.settings.hero_enabled and block.settings.hero_variant == 'media' }}"
+    },
+    {
+      "type": "select",
+      "id": "hero_media",
+      "label": "Picture comes from",
+      "options": [
+        {
+          "value": "collection",
+          "label": "The collection"
+        },
+        {
+          "value": "image",
+          "label": "My own image"
+        },
+        {
+          "value": "video",
+          "label": "My own video"
+        }
+      ],
+      "default": "collection",
+      "visible_if": "{{ block.settings.hero_enabled and block.settings.hero_variant == 'media' }}"
+    },
+    {
+      "type": "image_picker",
+      "id": "hero_image",
+      "label": "Image",
+      "visible_if": "{{ block.settings.hero_enabled and block.settings.hero_variant == 'media' and block.settings.hero_media == 'image' }}"
+    },
+    {
+      "type": "video",
+      "id": "hero_video",
+      "label": "Video",
+      "visible_if": "{{ block.settings.hero_enabled and block.settings.hero_variant == 'media' and block.settings.hero_media == 'video' }}"
+    },
+    {
+      "type": "checkbox",
+      "id": "hero_border",
+      "label": "Border around the hero",
+      "default": false,
+      "visible_if": "{{ block.settings.hero_enabled and block.settings.hero_variant == 'classic' }}"
+    },
+    {
+      "type": "range",
+      "id": "hero_scrim",
+      "label": "Hero overlay opacity",
+      "min": 0,
+      "max": 80,
+      "step": 5,
+      "unit": "%",
+      "default": 20,
+      "visible_if": "{{ block.settings.hero_enabled and block.settings.hero_variant == 'media' }}"
+    },
+    {
+      "type": "checkbox",
+      "id": "hero_match_cards",
+      "label": "Match product card height",
+      "info": "The hero is exactly as tall as a product card at every screen size, instead of following a picture shape.",
+      "default": false,
+      "visible_if": "{{ block.settings.hero_enabled }}"
+    },
+    {
+      "type": "select",
+      "id": "hero_ratio_mobile",
+      "label": "Picture shape (mobile)",
+      "options": [
+        {
+          "value": "auto",
+          "label": "Natural"
+        },
+        {
+          "value": "1/1",
+          "label": "1:1"
+        },
+        {
+          "value": "4/5",
+          "label": "4:5"
+        },
+        {
+          "value": "3/4",
+          "label": "3:4"
+        },
+        {
+          "value": "2/3",
+          "label": "2:3"
+        },
+        {
+          "value": "4/3",
+          "label": "4:3"
+        },
+        {
+          "value": "3/2",
+          "label": "3:2"
+        },
+        {
+          "value": "16/9",
+          "label": "16:9"
+        },
+        {
+          "value": "21/9",
+          "label": "21:9"
+        }
+      ],
+      "default": "4/3",
+      "visible_if": "{{ block.settings.hero_enabled and block.settings.hero_variant == 'media' and block.settings.hero_match_cards != true }}"
+    },
+    {
+      "type": "select",
+      "id": "hero_ratio_desktop",
+      "label": "Picture shape (desktop)",
+      "options": [
+        {
+          "value": "auto",
+          "label": "Natural"
+        },
+        {
+          "value": "1/1",
+          "label": "1:1"
+        },
+        {
+          "value": "4/5",
+          "label": "4:5"
+        },
+        {
+          "value": "3/4",
+          "label": "3:4"
+        },
+        {
+          "value": "2/3",
+          "label": "2:3"
+        },
+        {
+          "value": "4/3",
+          "label": "4:3"
+        },
+        {
+          "value": "3/2",
+          "label": "3:2"
+        },
+        {
+          "value": "16/9",
+          "label": "16:9"
+        },
+        {
+          "value": "21/9",
+          "label": "21:9"
+        }
+      ],
+      "default": "16/9",
+      "visible_if": "{{ block.settings.hero_enabled and block.settings.hero_variant == 'media' and block.settings.layout_desktop == 'grid' or block.settings.carousel_style == 'classic' }}",
+      "info": "Used when the hero sits above the products."
+    },
+    {
+      "type": "select",
+      "id": "hero_ratio_side",
+      "label": "Picture shape (beside the carousel)",
+      "options": [
+        {
+          "value": "1/1",
+          "label": "1:1"
+        },
+        {
+          "value": "4/5",
+          "label": "Portrait (4:5)"
+        },
+        {
+          "value": "2/3",
+          "label": "Tall (2:3)"
+        }
+      ],
+      "default": "1/1",
+      "info": "Desktop, when the carousel style is Flyover or Tunnel.",
+      "visible_if": "{{ block.settings.hero_enabled and block.settings.hero_variant == 'media' and block.settings.layout_desktop == 'carousel' and block.settings.carousel_style != 'classic' and block.settings.hero_match_cards != true }}"
+    },
+    {
+      "type": "select",
+      "id": "hero_width_mode",
+      "label": "Hero width",
+      "options": [
+        {
+          "value": "percent",
+          "label": "Percentage"
+        },
+        {
+          "value": "fixed",
+          "label": "Fixed"
+        }
+      ],
+      "default": "percent",
+      "visible_if": "{{ block.settings.hero_enabled and block.settings.layout_desktop == 'carousel' and block.settings.carousel_style != 'classic' }}"
+    },
+    {
+      "type": "range",
+      "id": "hero_width_desktop",
+      "label": "Hero takes",
+      "min": 30,
+      "max": 70,
+      "step": 5,
+      "unit": "%",
+      "default": 45,
+      "visible_if": "{{ block.settings.hero_enabled and block.settings.layout_desktop == 'carousel' and block.settings.carousel_style != 'classic' and block.settings.hero_width_mode == 'percent' }}"
+    },
+    {
+      "type": "range",
+      "id": "hero_width_px_mobile",
+      "label": "Hero width (mobile)",
+      "info": "The hero width grows smoothly from the mobile width on a small screen to the desktop width on a wide one. It sits beside the carousel on desktop only; a phone always shows it full width.",
+      "min": 160,
+      "max": 720,
+      "step": 10,
+      "unit": "px",
+      "default": 320,
+      "visible_if": "{{ block.settings.hero_enabled and block.settings.layout_desktop == 'carousel' and block.settings.carousel_style != 'classic' and block.settings.hero_width_mode == 'fixed' }}"
+    },
+    {
+      "type": "range",
+      "id": "hero_width_px",
+      "label": "Hero width (desktop)",
+      "min": 240,
+      "max": 960,
+      "step": 20,
+      "unit": "px",
+      "default": 480,
+      "visible_if": "{{ block.settings.hero_enabled and block.settings.layout_desktop == 'carousel' and block.settings.carousel_style != 'classic' and block.settings.hero_width_mode == 'fixed' }}"
+    },
+    {
+      "type": "header",
+      "content": "Carousel"
+    },
+    {
+      "type": "select",
+      "id": "carousel_style",
+      "label": "Carousel style",
+      "options": [
+        {
+          "value": "classic",
+          "label": "Classic"
+        },
+        {
+          "value": "flyover",
+          "label": "Flyover"
+        },
+        {
+          "value": "tunnel",
+          "label": "Tunnel"
+        }
+      ],
+      "default": "classic",
+      "info": "Classic sits under the hero. Flyover and Tunnel sit beside it on desktop, and swiped cards pass over or under it.",
+      "visible_if": "{{ block.settings.hero_enabled and block.settings.layout_mobile == 'carousel' or block.settings.layout_desktop == 'carousel' }}"
+    },
+    {
+      "type": "select",
+      "id": "hero_position",
+      "label": "Carousel and hero position",
+      "options": [
+        {
+          "value": "left",
+          "label": "Hero left"
+        },
+        {
+          "value": "right",
+          "label": "Hero right"
+        }
+      ],
+      "default": "left",
+      "visible_if": "{{ block.settings.hero_enabled and block.settings.layout_desktop == 'carousel' and block.settings.carousel_style != 'classic' }}"
+    },
+    {
+      "type": "range",
+      "id": "carousel_overlap_mobile",
+      "label": "Hero overlapping (mobile)",
+      "min": 0,
+      "max": 160,
+      "step": 4,
+      "unit": "px",
+      "default": 0,
+      "visible_if": "{{ block.settings.hero_enabled and block.settings.layout_mobile == 'carousel' and block.settings.carousel_style == 'flyover' }}"
+    },
+    {
+      "type": "range",
+      "id": "carousel_overlap_desktop",
+      "label": "Hero overlapping (desktop)",
+      "min": 0,
+      "max": 320,
+      "step": 8,
+      "unit": "px",
+      "default": 0,
+      "visible_if": "{{ block.settings.hero_enabled and block.settings.layout_desktop == 'carousel' and block.settings.carousel_style == 'flyover' }}"
+    },
+    {
+      "type": "checkbox",
+      "id": "carousel_bleed",
+      "label": "Carousel bleed",
+      "info": "Cards run past the page margin to the screen edge. Off, cards stop at the content edge.",
+      "default": true,
+      "visible_if": "{{ block.settings.layout_mobile == 'carousel' or block.settings.layout_desktop == 'carousel' }}"
+    },
+    {
+      "type": "checkbox",
+      "id": "edge_fade",
+      "label": "Screen-edge fade",
+      "info": "Fades cards as they leave the content area toward the screen edge. Needs Carousel bleed.",
+      "default": false,
+      "visible_if": "{{ block.settings.carousel_bleed and block.settings.layout_mobile == 'carousel' or block.settings.carousel_bleed and block.settings.layout_desktop == 'carousel' }}"
+    },
+    {
+      "type": "select",
+      "id": "slide_sizing",
+      "label": "Slide size",
+      "options": [
+        {
+          "value": "width",
+          "label": "Set a width"
+        },
+        {
+          "value": "count",
+          "label": "Slides per view"
+        }
+      ],
+      "default": "width",
+      "info": "Slides per view fits exactly that many cards across the carousel; a half shows a peek of the next one. Set a width keeps one card size that grows with the screen.",
+      "visible_if": "{{ block.settings.layout_mobile == 'carousel' or block.settings.layout_desktop == 'carousel' }}"
+    },
+    {
+      "type": "range",
+      "id": "slides_per_view_mobile",
+      "label": "Slides per view (mobile)",
+      "min": 1,
+      "max": 4,
+      "step": 0.5,
+      "default": 1.5,
+      "visible_if": "{{ block.settings.slide_sizing == 'count' and block.settings.carousel_style == 'classic' or block.settings.slide_sizing == 'count' and block.settings.hero_enabled == false }}"
+    },
+    {
+      "type": "range",
+      "id": "slides_per_view_desktop",
+      "label": "Slides per view (desktop)",
+      "min": 1,
+      "max": 8,
+      "step": 0.5,
+      "default": 4,
+      "visible_if": "{{ block.settings.slide_sizing == 'count' and block.settings.carousel_style == 'classic' or block.settings.slide_sizing == 'count' and block.settings.hero_enabled == false }}"
+    },
+    {
+      "type": "range",
+      "id": "slides_per_view_side_mobile",
+      "label": "Slides per view, Flyover / Tunnel (mobile)",
+      "min": 1,
+      "max": 4,
+      "step": 0.5,
+      "default": 1.5,
+      "visible_if": "{{ block.settings.slide_sizing == 'count' and block.settings.hero_enabled and block.settings.carousel_style != 'classic' }}"
+    },
+    {
+      "type": "range",
+      "id": "slides_per_view_side_desktop",
+      "label": "Slides per view, Flyover / Tunnel (desktop)",
+      "info": "Counted across the carousel beside the hero.",
+      "min": 1,
+      "max": 6,
+      "step": 0.5,
+      "default": 2.5,
+      "visible_if": "{{ block.settings.slide_sizing == 'count' and block.settings.hero_enabled and block.settings.carousel_style != 'classic' }}"
+    },
+    {
+      "type": "range",
+      "id": "slide_width_mobile",
+      "label": "Slide width (mobile)",
+      "info": "Slides grow smoothly from the mobile width on a phone to the desktop width on a wide screen.",
+      "min": 140,
+      "max": 400,
+      "step": 10,
+      "unit": "px",
+      "default": 220,
+      "visible_if": "{{ block.settings.layout_mobile == 'carousel' and block.settings.slide_sizing != 'count' or block.settings.layout_desktop == 'carousel' and block.settings.slide_sizing != 'count' }}"
+    },
+    {
+      "type": "range",
+      "id": "slide_width_desktop",
+      "label": "Slide width (desktop)",
+      "min": 180,
+      "max": 520,
+      "step": 10,
+      "unit": "px",
+      "default": 300,
+      "visible_if": "{{ block.settings.layout_mobile == 'carousel' and block.settings.slide_sizing != 'count' or block.settings.layout_desktop == 'carousel' and block.settings.slide_sizing != 'count' }}"
+    },
+    {
+      "type": "header",
+      "content": "Product card",
+      "info": "Every product card here shares one shape and one look."
+    },
+    {
+      "type": "select",
+      "id": "card_plate",
+      "label": "Text background",
+      "options": [
+        {
+          "value": "tint",
+          "label": "Shadow tint"
+        },
+        {
+          "value": "glass",
+          "label": "Glass"
+        },
+        {
+          "value": "solid",
+          "label": "Solid (floating)"
+        }
+      ],
+      "default": "tint"
+    },
+    {
+      "type": "checkbox",
+      "id": "card_float",
+      "label": "Floating glass",
+      "info": "Insets the glass from the card's edges with rounded corners.",
+      "default": false,
+      "visible_if": "{{ block.settings.card_plate == 'glass' }}"
+    },
+    {
+      "type": "range",
+      "id": "card_plate_radius",
+      "label": "Text background corners",
+      "info": "Corner size of a floating text background.",
+      "min": 0,
+      "max": 40,
+      "step": 2,
+      "unit": "px",
+      "default": 12,
+      "visible_if": "{{ block.settings.card_plate == 'solid' or block.settings.card_plate == 'glass' and block.settings.card_float }}"
+    },
+    {
+      "type": "select",
+      "id": "card_glass_style",
+      "label": "Glass look",
+      "info": "Frosted is a soft, milky pane. Liquid is clearer, keeps the picture's colours vivid and catches light along its edges.",
+      "options": [
+        {
+          "value": "frosted",
+          "label": "Frosted"
+        },
+        {
+          "value": "liquid",
+          "label": "Liquid"
+        }
+      ],
+      "default": "frosted",
+      "visible_if": "{{ block.settings.card_plate == 'glass' }}"
+    },
+    {
+      "type": "select",
+      "id": "card_glass_strength",
+      "label": "Glass strength",
+      "info": "A touch of glass keeps the picture almost clear behind the text. Full glass gives the whole effect.",
+      "options": [
+        {
+          "value": "full",
+          "label": "Full glass"
+        },
+        {
+          "value": "touch",
+          "label": "A touch of glass"
+        }
+      ],
+      "default": "full",
+      "visible_if": "{{ block.settings.card_plate == 'glass' }}"
+    },
+    {
+      "type": "select",
+      "id": "card_color",
+      "label": "Card colour",
+      "options": [
+        {
+          "value": "surface",
+          "label": "Surface"
+        },
+        {
+          "value": "accent",
+          "label": "Accent"
+        }
+      ],
+      "default": "surface",
+      "info": "Surface uses the colour scheme's surface colour and its normal text colours. Accent uses the scheme's neutral accent and its contrast colour for the text. Applies to the shade, glass or solid background behind the text."
+    },
+    {
+      "type": "select",
+      "id": "card_ratio_mobile",
+      "label": "Card shape (mobile)",
+      "options": [
+        {
+          "value": "1/1",
+          "label": "1:1"
+        },
+        {
+          "value": "4/5",
+          "label": "4:5"
+        },
+        {
+          "value": "3/4",
+          "label": "3:4"
+        },
+        {
+          "value": "2/3",
+          "label": "2:3"
+        },
+        {
+          "value": "4/3",
+          "label": "4:3"
+        },
+        {
+          "value": "3/2",
+          "label": "3:2"
+        },
+        {
+          "value": "16/9",
+          "label": "16:9"
+        }
+      ],
+      "default": "4/5"
+    },
+    {
+      "type": "select",
+      "id": "card_ratio_desktop",
+      "label": "Card shape (desktop)",
+      "options": [
+        {
+          "value": "1/1",
+          "label": "1:1"
+        },
+        {
+          "value": "4/5",
+          "label": "4:5"
+        },
+        {
+          "value": "3/4",
+          "label": "3:4"
+        },
+        {
+          "value": "2/3",
+          "label": "2:3"
+        },
+        {
+          "value": "4/3",
+          "label": "4:3"
+        },
+        {
+          "value": "3/2",
+          "label": "3:2"
+        },
+        {
+          "value": "16/9",
+          "label": "16:9"
+        }
+      ],
+      "default": "4/5"
+    },
+    {
+      "type": "checkbox",
+      "id": "card_price",
+      "label": "Show price",
+      "default": true
+    },
+    {
+      "type": "select",
+      "id": "card_price_size",
+      "label": "Price size",
+      "options": [
+        {
+          "value": "sm",
+          "label": "Small"
+        },
+        {
+          "value": "md",
+          "label": "Medium"
+        },
+        {
+          "value": "lg",
+          "label": "Large"
+        }
+      ],
+      "default": "sm",
+      "visible_if": "{{ block.settings.card_price }}"
+    },
+    {
+      "type": "select",
+      "id": "card_price_weight",
+      "label": "Price weight",
+      "options": [
+        {
+          "value": "400",
+          "label": "Regular"
+        },
+        {
+          "value": "500",
+          "label": "Medium"
+        },
+        {
+          "value": "600",
+          "label": "Semibold"
+        },
+        {
+          "value": "700",
+          "label": "Bold"
+        }
+      ],
+      "default": "400",
+      "visible_if": "{{ block.settings.card_price }}"
+    },
+    {
+      "type": "checkbox",
+      "id": "card_compare",
+      "label": "Show compare-at price",
+      "default": true,
+      "visible_if": "{{ block.settings.card_price }}"
+    },
+    {
+      "type": "select",
+      "id": "card_cart",
+      "label": "Add to cart button",
+      "options": [
+        {
+          "value": "slide",
+          "label": "Slides in on hover"
+        },
+        {
+          "value": "fixed",
+          "label": "Always visible"
+        }
+      ],
+      "default": "slide"
+    },
+    {
+      "type": "select",
+      "id": "card_cart_icon",
+      "label": "Button icon",
+      "options": [
+        {
+          "value": "bag",
+          "label": "Bag"
+        },
+        {
+          "value": "cart",
+          "label": "Cart"
+        },
+        {
+          "value": "plus",
+          "label": "Plus"
+        },
+        {
+          "value": "custom",
+          "label": "My own icon"
+        }
+      ],
+      "default": "bag"
+    },
+    {
+      "type": "image_picker",
+      "id": "card_cart_icon_image",
+      "label": "Custom icon",
+      "info": "Drawn in the button's text colour — a transparent PNG or SVG works best.",
+      "visible_if": "{{ block.settings.card_cart_icon == 'custom' }}"
+    }
+  ],
+  "presets": [
+    {
+      "name": "Collection"
+    }
+  ]
+}
+{% endschema %}

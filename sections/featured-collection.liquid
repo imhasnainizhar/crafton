@@ -1,0 +1,889 @@
+{%- comment -%}
+  FEATURED COLLECTION (`cfx-`) — shell only.
+  One collection featured at a time. The shell owns the colour scheme, the
+  vertical rhythm, the Design System panel and the one horizontal rail; the
+  Collection block inside owns the hero, the layout and the products, because
+  the block that composes a collection is the block that dictates its stage.
+  Composition is pure theme-block order: Rich Content above a Collection block
+  renders above it, dragged below it renders below — unless that Collection
+  block has "Content over hero" on, in which case the controller moves the Rich
+  Content placed right before it into its hero.
+  Depends on: blocks/_cfx_collection.liquid, blocks/rich_content.liquid,
+  snippets/section-design-mode.liquid, assets/collection-featured.js
+  (<collection-featured>), swiper-bundle, loader-fetch.js + loader-state.js.
+{%- endcomment -%}
+
+{%- liquid
+  assign s = section.settings
+-%}
+
+
+{%- comment -%}
+  `defer` preserves order, so Swiper and the shared loader exist before the
+  controller that uses them. Swiper is loaded unconditionally: layout is a
+  block setting now, and a shell never reads its blocks' settings.
+{%- endcomment -%}
+<script src="{{ 'loader-fetch.js' | asset_url }}" defer></script>
+<script src="{{ 'loader-state.js' | asset_url }}" defer></script>
+<script src="{{ 'collection-featured.js' | asset_url }}" defer></script>
+
+{% style %}
+  /* One accent per section: resolved here, on the root, so open tabs, accent
+     card plates and every other Accent consumer inside follow it. Doubled
+     class so it outranks the colour-scheme class on the same element. */
+  .cfx.cfx--{{ section.id }} {
+    {% render 'accent-resolver', source: section.settings %}
+  }
+
+  .cfx--{{ section.id }} {
+    {% render 'section-design-mode', section_settings: section.settings %}
+    display: block;
+    position: relative;
+    background-color: var(--color-base);
+    color: var(--color-text);
+    padding-block: var(--ds-section-padding-mobile);
+    /* The shell clips sideways so a bleeding carousel disappears at the screen
+       edge, while hover lift and shadows still escape vertically. */
+    overflow-x: clip;
+    overflow-y: visible;
+  }
+
+  .cfx--{{ section.id }} .cfx__inner {
+    box-sizing: border-box;
+    width: 100%;
+    max-width: var(--ds-section-width-mobile);
+    margin-inline: auto;
+    /* The one rail: every block inside adds no horizontal inset of its own. */
+    padding-inline: var(--ds-layout-gutter-mobile);
+    display: flex;
+    flex-direction: column;
+    gap: var(--ds-layout-gap-mobile);
+  }
+
+  .cfx--{{ section.id }} .cfx__inner > * {
+    width: 100%;
+  }
+
+  /* Rich Content bound for a hero ("Content over hero") is not painted above
+     its Collection block first, in the moment before the controller runs. */
+  .cfx--{{ section.id }}:not(.is-ready) .cfx__inner > :not([data-cfx-stage]):has(~ [data-cfx-hero-content]) {
+    display: none;
+  }
+
+  @media (min-width: 768px) {
+    .cfx--{{ section.id }} {
+      padding-block: var(--ds-section-padding-desktop);
+    }
+
+    .cfx--{{ section.id }} .cfx__inner {
+      max-width: var(--ds-section-width-desktop);
+      padding-inline: var(--ds-layout-gutter-desktop);
+      gap: var(--ds-layout-gap-desktop);
+    }
+  }
+{% endstyle %}
+
+<collection-featured
+  class="cfx cfx--{{ section.id }} color-{{ s.color_scheme }}"
+  data-cfx-section-id="{{ section.id }}"
+  data-cfx-base-path="{{ request.path }}"
+  data-cfx-carousel-load="{{ s.carousel_load }}"
+  data-cfx-preload-threshold="{{ s.preload_threshold }}"
+>
+  <div class="cfx__inner">
+    {% content_for 'blocks' %}
+  </div>
+</collection-featured>
+
+{% schema %}
+{
+  "name": "Featured Collection",
+  "tag": "section",
+  "class": "shopify-section--featured-collection",
+  "disabled_on": {
+    "groups": [
+      "header",
+      "footer"
+    ]
+  },
+  "settings": [
+    {
+      "type": "header",
+      "content": "Colors"
+    },
+    {
+      "type": "color_scheme",
+      "id": "color_scheme",
+      "label": "Color Scheme",
+      "default": "scheme_1"
+    },
+    {
+      "type": "select",
+      "id": "accent_selected",
+      "label": "Accent",
+      "info": "One accent for the whole section: open tabs, accent card backgrounds and anything else set to Accent use it.",
+      "options": [
+        {
+          "value": "neutral",
+          "label": "Neutral"
+        },
+        {
+          "value": "soft",
+          "label": "Soft"
+        },
+        {
+          "value": "strong",
+          "label": "Strong"
+        }
+      ],
+      "default": "neutral"
+    },
+    {
+      "type": "header",
+      "content": "View More"
+    },
+    {
+      "type": "select",
+      "id": "more_mode",
+      "label": "The button",
+      "options": [
+        {
+          "value": "load",
+          "label": "Loads more products here"
+        },
+        {
+          "value": "redirect",
+          "label": "Goes to the collection"
+        },
+        {
+          "value": "none",
+          "label": "Is hidden"
+        }
+      ],
+      "default": "load"
+    },
+    {
+      "type": "text",
+      "id": "more_label",
+      "label": "Button label",
+      "default": "View more",
+      "visible_if": "{{ section.settings.more_mode != 'none' }}"
+    },
+    {
+      "type": "select",
+      "id": "carousel_load",
+      "label": "In a carousel, more products",
+      "info": "A grid always uses the button.",
+      "options": [
+        {
+          "value": "auto",
+          "label": "Load as the visitor swipes"
+        },
+        {
+          "value": "button",
+          "label": "Load when the visitor taps the last tile"
+        }
+      ],
+      "default": "auto",
+      "visible_if": "{{ section.settings.more_mode == 'load' }}"
+    },
+    {
+      "type": "range",
+      "id": "preload_threshold",
+      "label": "Start loading this many cards early",
+      "min": 1,
+      "max": 6,
+      "step": 1,
+      "default": 3,
+      "visible_if": "{{ section.settings.more_mode == 'load' and section.settings.carousel_load == 'auto' }}"
+    },
+    {
+      "type": "select",
+      "id": "more_variant",
+      "label": "Button look",
+      "options": [
+        {
+          "value": "solid",
+          "label": "Button"
+        },
+        {
+          "value": "text",
+          "label": "Plain text"
+        }
+      ],
+      "default": "solid",
+      "visible_if": "{{ section.settings.more_mode != 'none' }}"
+    },
+    {
+      "type": "checkbox",
+      "id": "more_underline",
+      "label": "Underline the text",
+      "default": true,
+      "visible_if": "{{ section.settings.more_mode != 'none' and section.settings.more_variant == 'text' }}"
+    },
+    {
+      "type": "text",
+      "id": "retry_label",
+      "label": "Retry label",
+      "default": "Retry",
+      "visible_if": "{{ section.settings.more_mode == 'load' }}"
+    },
+    {
+      "type": "select",
+      "id": "skeleton_reveal",
+      "label": "Loaded products appear with",
+      "info": "While products load, placeholder cards hold their place. They and the products that replace them animate in as they come into view.",
+      "options": [
+        {
+          "value": "fade",
+          "label": "Cross-fade"
+        },
+        {
+          "value": "rise",
+          "label": "Fade up"
+        }
+      ],
+      "default": "fade",
+      "visible_if": "{{ section.settings.more_mode != 'redirect' }}"
+    },
+    {
+      "type": "text",
+      "id": "collection_label",
+      "label": "View collection button label",
+      "info": "Shown when a Collection block limits its products and has \"Show a View collection button at the limit\" on.",
+      "default": "View collection",
+      "visible_if": "{{ section.settings.more_mode != 'redirect' }}"
+    },
+    {
+      "type": "header",
+      "content": "Animations"
+    },
+    {
+      "type": "checkbox",
+      "id": "animation_enabled",
+      "label": "Animate on scroll",
+      "default": true
+    },
+    {
+      "type": "select",
+      "id": "animation_effect",
+      "label": "Effect",
+      "options": [
+        {
+          "value": "fade",
+          "label": "Fade"
+        },
+        {
+          "value": "fade-up",
+          "label": "Fade up"
+        },
+        {
+          "value": "fade-down",
+          "label": "Fade down"
+        },
+        {
+          "value": "slide",
+          "label": "Slide"
+        },
+        {
+          "value": "scale",
+          "label": "Scale"
+        }
+      ],
+      "default": "fade-up",
+      "visible_if": "{{ section.settings.animation_enabled }}"
+    },
+    {
+      "type": "range",
+      "id": "animation_duration",
+      "label": "Duration",
+      "min": 0.2,
+      "max": 1.5,
+      "step": 0.1,
+      "unit": "s",
+      "default": 0.6,
+      "visible_if": "{{ section.settings.animation_enabled }}"
+    },
+    {
+      "type": "range",
+      "id": "animation_delay",
+      "label": "Delay",
+      "min": 0,
+      "max": 2,
+      "step": 0.1,
+      "unit": "s",
+      "default": 0,
+      "visible_if": "{{ section.settings.animation_enabled }}"
+    },
+    {
+      "type": "range",
+      "id": "animation_stagger",
+      "label": "Stagger",
+      "min": 0,
+      "max": 300,
+      "step": 10,
+      "unit": "ms",
+      "default": 120,
+      "visible_if": "{{ section.settings.animation_enabled }}"
+    },
+    {
+      "type": "range",
+      "id": "animation_distance",
+      "label": "Distance",
+      "min": 0,
+      "max": 100,
+      "step": 4,
+      "unit": "px",
+      "default": 24,
+      "visible_if": "{{ section.settings.animation_enabled }}"
+    },
+    {
+      "type": "select",
+      "id": "animation_ease",
+      "label": "Easing",
+      "options": [
+        {
+          "value": "out",
+          "label": "Out"
+        },
+        {
+          "value": "out-strong",
+          "label": "Out (strong)"
+        },
+        {
+          "value": "back",
+          "label": "Back"
+        },
+        {
+          "value": "in-out",
+          "label": "In out"
+        },
+        {
+          "value": "linear",
+          "label": "Linear"
+        }
+      ],
+      "default": "out",
+      "visible_if": "{{ section.settings.animation_enabled }}"
+    },
+    {
+      "type": "checkbox",
+      "id": "animation_once",
+      "label": "Animate only once",
+      "default": true,
+      "visible_if": "{{ section.settings.animation_enabled }}"
+    },
+    {
+      "type": "header",
+      "content": "Design Mode"
+    },
+    {
+      "type": "select",
+      "id": "section_design_mode",
+      "label": "Section Design Mode",
+      "info": "Auto: inherit all theme settings. Blend: use this section's values with the theme's responsive Design Mode. Custom: use this section's Design Mode and Design System values.",
+      "options": [
+        {
+          "value": "auto",
+          "label": "Auto"
+        },
+        {
+          "value": "blend",
+          "label": "Blend"
+        },
+        {
+          "value": "custom",
+          "label": "Custom"
+        }
+      ],
+      "default": "auto"
+    },
+    {
+      "type": "select",
+      "id": "design_mode_desktop",
+      "label": "Desktop Design Mode",
+      "options": [
+        {
+          "value": "modern",
+          "label": "Modern"
+        },
+        {
+          "value": "minimal",
+          "label": "Minimal"
+        }
+      ],
+      "default": "modern",
+      "visible_if": "{{ section.settings.section_design_mode == 'custom' }}"
+    },
+    {
+      "type": "select",
+      "id": "design_mode_mobile",
+      "label": "Mobile Design Mode",
+      "options": [
+        {
+          "value": "modern",
+          "label": "Modern"
+        },
+        {
+          "value": "minimal",
+          "label": "Minimal"
+        }
+      ],
+      "default": "modern",
+      "visible_if": "{{ section.settings.section_design_mode == 'custom' }}"
+    },
+    {
+      "type": "header",
+      "content": "Spacing",
+      "visible_if": "{{ section.settings.section_design_mode == 'custom' or section.settings.section_design_mode == 'blend' }}"
+    },
+    {
+      "type": "select",
+      "id": "design_section_padding_desktop",
+      "label": "Section padding (desktop)",
+      "options": [
+        {
+          "value": "none",
+          "label": "None"
+        },
+        {
+          "value": "xs",
+          "label": "Extra small"
+        },
+        {
+          "value": "sm",
+          "label": "Small"
+        },
+        {
+          "value": "md",
+          "label": "Medium"
+        },
+        {
+          "value": "lg",
+          "label": "Large"
+        },
+        {
+          "value": "xl",
+          "label": "Extra large"
+        },
+        {
+          "value": "2xl",
+          "label": "Maximum"
+        }
+      ],
+      "default": "xl",
+      "visible_if": "{{ section.settings.section_design_mode == 'custom' or section.settings.section_design_mode == 'blend' }}"
+    },
+    {
+      "type": "select",
+      "id": "design_section_padding_mobile",
+      "label": "Section padding (mobile)",
+      "options": [
+        {
+          "value": "none",
+          "label": "None"
+        },
+        {
+          "value": "xs",
+          "label": "Extra small"
+        },
+        {
+          "value": "sm",
+          "label": "Small"
+        },
+        {
+          "value": "md",
+          "label": "Medium"
+        },
+        {
+          "value": "lg",
+          "label": "Large"
+        },
+        {
+          "value": "xl",
+          "label": "Extra large"
+        },
+        {
+          "value": "2xl",
+          "label": "Maximum"
+        }
+      ],
+      "default": "lg",
+      "visible_if": "{{ section.settings.section_design_mode == 'custom' or section.settings.section_design_mode == 'blend' }}"
+    },
+    {
+      "type": "select",
+      "id": "design_layout_gap_desktop",
+      "label": "Layout Gap (Desktop)",
+      "options": [
+        {
+          "value": "none",
+          "label": "None"
+        },
+        {
+          "value": "xs",
+          "label": "Extra small"
+        },
+        {
+          "value": "sm",
+          "label": "Small"
+        },
+        {
+          "value": "md",
+          "label": "Medium"
+        },
+        {
+          "value": "lg",
+          "label": "Large"
+        },
+        {
+          "value": "xl",
+          "label": "Extra large"
+        }
+      ],
+      "default": "xl",
+      "visible_if": "{{ section.settings.section_design_mode == 'custom' or section.settings.section_design_mode == 'blend' }}"
+    },
+    {
+      "type": "select",
+      "id": "design_layout_gap_mobile",
+      "label": "Layout Gap (Mobile)",
+      "options": [
+        {
+          "value": "none",
+          "label": "None"
+        },
+        {
+          "value": "xs",
+          "label": "Extra small"
+        },
+        {
+          "value": "sm",
+          "label": "Small"
+        },
+        {
+          "value": "md",
+          "label": "Medium"
+        },
+        {
+          "value": "lg",
+          "label": "Large"
+        },
+        {
+          "value": "xl",
+          "label": "Extra large"
+        }
+      ],
+      "default": "md",
+      "visible_if": "{{ section.settings.section_design_mode == 'custom' or section.settings.section_design_mode == 'blend' }}"
+    },
+    {
+      "type": "header",
+      "content": "Layout",
+      "visible_if": "{{ section.settings.section_design_mode == 'custom' or section.settings.section_design_mode == 'blend' }}"
+    },
+    {
+      "type": "checkbox",
+      "id": "design_enable_minimal_gutter",
+      "label": "Enable gutter in Minimal mode",
+      "default": false,
+      "visible_if": "{{ section.settings.section_design_mode == 'custom' or section.settings.section_design_mode == 'blend' }}"
+    },
+    {
+      "type": "select",
+      "id": "design_gutter_desktop",
+      "label": "Gutter (desktop)",
+      "options": [
+        {
+          "value": "none",
+          "label": "None"
+        },
+        {
+          "value": "xs",
+          "label": "Extra small"
+        },
+        {
+          "value": "sm",
+          "label": "Small"
+        },
+        {
+          "value": "md",
+          "label": "Medium"
+        },
+        {
+          "value": "lg",
+          "label": "Large"
+        },
+        {
+          "value": "xl",
+          "label": "Extra large"
+        }
+      ],
+      "default": "lg",
+      "visible_if": "{{ section.settings.section_design_mode == 'custom' or section.settings.section_design_mode == 'blend' }}"
+    },
+    {
+      "type": "select",
+      "id": "design_gutter_mobile",
+      "label": "Gutter (mobile)",
+      "options": [
+        {
+          "value": "none",
+          "label": "None"
+        },
+        {
+          "value": "sm",
+          "label": "Small"
+        },
+        {
+          "value": "md",
+          "label": "Medium"
+        },
+        {
+          "value": "lg",
+          "label": "Large"
+        }
+      ],
+      "default": "md",
+      "visible_if": "{{ section.settings.section_design_mode == 'custom' or section.settings.section_design_mode == 'blend' }}"
+    },
+    {
+      "type": "range",
+      "id": "design_layout_radius_desktop",
+      "label": "Layout radius (desktop)",
+      "info": "Blend: this section's radius always applies, even when the theme is Minimal. Custom: Minimal Design Mode removes it.",
+      "min": 0,
+      "max": 80,
+      "step": 2,
+      "unit": "px",
+      "default": 24,
+      "visible_if": "{{ section.settings.section_design_mode == 'custom' or section.settings.section_design_mode == 'blend' }}"
+    },
+    {
+      "type": "range",
+      "id": "design_layout_radius_mobile",
+      "label": "Layout radius (mobile)",
+      "info": "Blend: this section's radius always applies, even when the theme is Minimal. Custom: Minimal Design Mode removes it.",
+      "min": 0,
+      "max": 60,
+      "step": 2,
+      "unit": "px",
+      "default": 16,
+      "visible_if": "{{ section.settings.section_design_mode == 'custom' or section.settings.section_design_mode == 'blend' }}"
+    },
+    {
+      "type": "header",
+      "content": "Section Width",
+      "info": "Independent of Design Mode — the width cap applies in both Modern and Minimal, in Blend as well as Custom, and only when enabled below."
+    },
+    {
+      "type": "checkbox",
+      "id": "design_enable_section_width",
+      "label": "Enable Section Width",
+      "default": false
+    },
+    {
+      "type": "select",
+      "id": "design_section_width_desktop",
+      "label": "Section Width (Desktop)",
+      "options": [
+        {
+          "value": "none",
+          "label": "None"
+        },
+        {
+          "value": "wide",
+          "label": "Wide"
+        },
+        {
+          "value": "max",
+          "label": "Maximum"
+        },
+        {
+          "value": "tv",
+          "label": "TV"
+        }
+      ],
+      "default": "tv",
+      "visible_if": "{{ section.settings.design_enable_section_width }}"
+    },
+    {
+      "type": "select",
+      "id": "design_section_width_mobile",
+      "label": "Section Width (Mobile)",
+      "options": [
+        {
+          "value": "none",
+          "label": "None"
+        },
+        {
+          "value": "wide",
+          "label": "Wide"
+        },
+        {
+          "value": "max",
+          "label": "Maximum"
+        }
+      ],
+      "default": "none",
+      "visible_if": "{{ section.settings.design_enable_section_width }}"
+    },
+    {
+      "type": "header",
+      "content": "Items Styling",
+      "visible_if": "{{ section.settings.section_design_mode == 'custom' or section.settings.section_design_mode == 'blend' }}"
+    },
+    {
+      "type": "checkbox",
+      "id": "design_enable_minimal_items_gap",
+      "label": "Enable gap in Minimal mode",
+      "default": false,
+      "visible_if": "{{ section.settings.section_design_mode == 'custom' or section.settings.section_design_mode == 'blend' }}"
+    },
+    {
+      "type": "range",
+      "id": "design_items_gap_desktop",
+      "label": "Items Gap (Desktop)",
+      "min": 0,
+      "max": 60,
+      "step": 2,
+      "unit": "px",
+      "default": 24,
+      "visible_if": "{{ section.settings.section_design_mode == 'custom' or section.settings.section_design_mode == 'blend' }}"
+    },
+    {
+      "type": "range",
+      "id": "design_items_gap_mobile",
+      "label": "Items Gap (Mobile)",
+      "min": 0,
+      "max": 40,
+      "step": 2,
+      "unit": "px",
+      "default": 16,
+      "visible_if": "{{ section.settings.section_design_mode == 'custom' or section.settings.section_design_mode == 'blend' }}"
+    },
+    {
+      "type": "range",
+      "id": "design_item_radius_desktop",
+      "label": "Item radius (desktop)",
+      "info": "Blend: this section's radius always applies, even when the theme is Minimal. Custom: Minimal Design Mode removes it.",
+      "min": 0,
+      "max": 50,
+      "step": 2,
+      "unit": "px",
+      "default": 12,
+      "visible_if": "{{ section.settings.section_design_mode == 'custom' or section.settings.section_design_mode == 'blend' }}"
+    },
+    {
+      "type": "range",
+      "id": "design_item_radius_mobile",
+      "label": "Item radius (mobile)",
+      "info": "Blend: this section's radius always applies, even when the theme is Minimal. Custom: Minimal Design Mode removes it.",
+      "min": 0,
+      "max": 50,
+      "step": 2,
+      "unit": "px",
+      "default": 12,
+      "visible_if": "{{ section.settings.section_design_mode == 'custom' or section.settings.section_design_mode == 'blend' }}"
+    },
+    {
+      "type": "select",
+      "id": "design_item_shadow",
+      "label": "Item shadow",
+      "options": [
+        {
+          "value": "none",
+          "label": "None"
+        },
+        {
+          "value": "sm",
+          "label": "Small"
+        },
+        {
+          "value": "md",
+          "label": "Medium"
+        },
+        {
+          "value": "lg",
+          "label": "Large"
+        }
+      ],
+      "default": "md",
+      "visible_if": "{{ section.settings.section_design_mode == 'custom' or section.settings.section_design_mode == 'blend' }}"
+    },
+    {
+      "type": "range",
+      "id": "design_item_border_width",
+      "label": "Item border width",
+      "min": 0,
+      "max": 10,
+      "step": 1,
+      "unit": "px",
+      "default": 1,
+      "visible_if": "{{ section.settings.section_design_mode == 'custom' or section.settings.section_design_mode == 'blend' }}"
+    },
+    {
+      "type": "range",
+      "id": "design_layout_border_width",
+      "label": "Layout border width",
+      "min": 0,
+      "max": 10,
+      "step": 1,
+      "unit": "px",
+      "default": 1,
+      "visible_if": "{{ section.settings.section_design_mode == 'custom' or section.settings.section_design_mode == 'blend' }}"
+    }
+  ],
+  "blocks": [
+    {
+      "type": "rich_content"
+    },
+    {
+      "type": "_cfx_collection"
+    }
+  ],
+  "presets": [
+    {
+      "name": "Featured Collection",
+      "category": "Products",
+      "blocks": {
+        "intro": {
+          "type": "rich_content",
+          "settings": {
+            "align_x_mobile": "center",
+            "align_x_desktop": "center",
+            "gap": "sm"
+          },
+          "blocks": {
+            "subtitle": {
+              "type": "subtitle",
+              "settings": {
+                "text": "featured"
+              }
+            },
+            "heading": {
+              "type": "heading",
+              "settings": {
+                "heading_text": "Shop the collection"
+              }
+            }
+          },
+          "block_order": [
+            "subtitle",
+            "heading"
+          ]
+        },
+        "collection": {
+          "type": "_cfx_collection",
+          "blocks": {},
+          "block_order": []
+        }
+      },
+      "block_order": [
+        "intro",
+        "collection"
+      ]
+    }
+  ]
+}
+{% endschema %}

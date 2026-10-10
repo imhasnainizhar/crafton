@@ -1,0 +1,187 @@
+{%- comment -%}
+  Article Title — the title of the closest article (`closest.article`): the
+  Article Card's picked article, a Blog Post in the blog listing, or the page's
+  own article on the article template. Optionally links to the article.
+  Heading-role type through snippets/typography-resolver.liquid, colour through
+  snippets/color-role-resolver.liquid, alignment from the inherited --text-align.
+{%- endcomment -%}
+
+{% stylesheet %}
+  .art-title {
+    margin: 0;
+    text-align: var(--text-align, left);
+    overflow-wrap: anywhere;
+  }
+
+  .art-title--clamp {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: var(--art-title-lines);
+    line-clamp: var(--art-title-lines);
+    overflow: hidden;
+  }
+
+  .art-title a {
+    color: inherit;
+    text-decoration: none;
+  }
+
+  .art-title a:hover,
+  .art-title a:focus-visible {
+    text-decoration: underline;
+    text-underline-offset: 0.15em;
+  }
+{% endstylesheet %}
+
+{%- liquid
+  assign art = closest.article
+  assign tag = block.settings.tag | default: 'h3'
+  assign title = art.title
+  if title == blank
+    assign title = 'theme.components.article_card.placeholder_title' | t
+  endif
+  assign linked = false
+  if block.settings.link_title and art.url != blank
+    assign linked = true
+  endif
+-%}
+
+{% style %}
+  .art-title--{{ block.id }} {
+    {% render 'typography-resolver', role: 'heading', source: block.settings %}
+    {% render 'color-role-resolver', mode: 'color', role: 'heading', source: block.settings %}
+    {% if block.settings.max_lines > 0 %}--art-title-lines: {{ block.settings.max_lines }};{% endif %}
+  }
+{% endstyle %}
+
+<{{ tag }} class="art-title art-title--{{ block.id }}{% if block.settings.max_lines > 0 %} art-title--clamp{% endif %}" {{ block.shopify_attributes }}>
+  {%- if linked -%}
+    <a href="{{ art.url }}">{{ title | escape }}</a>
+  {%- else -%}
+    {{ title | escape }}
+  {%- endif -%}
+</{{ tag }}>
+
+{% schema %}
+{
+  "name": "Article Title",
+  "tag": null,
+  "settings": [
+    {
+      "type": "header",
+      "content": "Article Title",
+      "info": "Shows the title of the article this block sits in."
+    },
+    {
+      "type": "select",
+      "id": "tag",
+      "label": "Page structure tag",
+      "info": "Helps search engines read the page. It does not change how the text looks.",
+      "options": [
+        { "value": "h1", "label": "H1" },
+        { "value": "h2", "label": "H2" },
+        { "value": "h3", "label": "H3" },
+        { "value": "h4", "label": "H4" },
+        { "value": "p", "label": "Paragraph" }
+      ],
+      "default": "h3"
+    },
+    {
+      "type": "checkbox",
+      "id": "link_title",
+      "label": "Link to the article",
+      "info": "Leave off inside a card — the whole card already opens the article.",
+      "default": false
+    },
+    {
+      "type": "range",
+      "id": "max_lines",
+      "label": "Maximum lines",
+      "info": "Longer titles end with an ellipsis. 0 shows the whole title.",
+      "min": 0,
+      "max": 6,
+      "step": 1,
+      "default": 0
+    },
+    {
+      "type": "header",
+      "content": "Typography"
+    },
+    {
+      "type": "select",
+      "id": "font_size",
+      "label": "Size",
+      "info": "Approximate sizes are shown at Size Factor 1.",
+      "options": [
+        { "value": "xxs", "label": "XXS (~16px)" },
+        { "value": "xs", "label": "XS (~18px)" },
+        { "value": "sm", "label": "SM (~22px)" },
+        { "value": "md", "label": "MD (~28px)" },
+        { "value": "lg", "label": "LG (~36px)" },
+        { "value": "xl", "label": "XL (~48px)" },
+        { "value": "xxl", "label": "XXL (~64px)" }
+      ],
+      "default": "sm"
+    },
+    {
+      "type": "select",
+      "id": "font_weight",
+      "label": "Font Weight",
+      "options": [
+        { "value": "normal", "label": "Normal" },
+        { "value": "medium", "label": "Medium" },
+        { "value": "semibold", "label": "Semi-bold" },
+        { "value": "bold", "label": "Bold" }
+      ],
+      "default": "semibold"
+    },
+    {
+      "type": "checkbox",
+      "id": "override_line_height",
+      "label": "Override Theme Line Height",
+      "default": false
+    },
+    {
+      "type": "range",
+      "id": "line_height",
+      "label": "Line Height",
+      "min": 0.8,
+      "max": 2.4,
+      "step": 0.1,
+      "default": 1.2,
+      "visible_if": "{{ block.settings.override_line_height }}"
+    },
+    {
+      "type": "select",
+      "id": "text_casing",
+      "label": "Text Casing",
+      "info": "On None, the text renders exactly as typed.",
+      "options": [
+        { "value": "theme", "label": "Theme" },
+        { "value": "none", "label": "None" }
+      ],
+      "default": "theme"
+    },
+    {
+      "type": "select",
+      "id": "text_color",
+      "label": "Color",
+      "info": "Automatic follows this block's own role, so a card set to Accent recolors it.",
+      "options": [
+        { "value": "auto", "label": "Automatic" },
+        { "value": "heading", "label": "Heading" },
+        { "value": "text", "label": "Text" },
+        { "value": "soft", "label": "Soft Text" },
+        { "value": "accent", "label": "Accent" },
+        { "value": "parent", "label": "Inherit From Parent" }
+      ],
+      "default": "auto"
+    }
+  ],
+  "presets": [
+    {
+      "name": "Article Title"
+    }
+  ]
+}
+{% endschema %}
