@@ -1,0 +1,1245 @@
+{%- comment -%}
+  Announcement Bar — mobile and desktop select Standard or Scroll separately.
+  Scroll reuses assets/marquee.js; countdown behavior is provided by the inline
+  global-countdown custom element below.
+{%- endcomment -%}
+
+{%- liquid
+  assign announcement_mode_mobile = section.settings.mode_mobile | default: 'standard'
+  assign announcement_mode_desktop = section.settings.mode_desktop | default: 'standard'
+  assign announcement_has_scroll = false
+  if announcement_mode_mobile == 'scroll' or announcement_mode_desktop == 'scroll'
+    assign announcement_has_scroll = true
+  endif
+  assign blocks_justify = 'center'
+  if section.settings.block_layout_mode == 'spacing'
+    if section.settings.blocks_spacing == 'between'
+      assign blocks_justify = 'space-between'
+    elsif section.settings.blocks_spacing == 'around'
+      assign blocks_justify = 'space-around'
+    endif
+  else
+    assign blocks_justify = section.settings.block_alignment | default: 'center'
+  endif
+
+  assign alignment_mobile = section.settings.alignment_mobile | default: 'center'
+  assign alignment_desktop = section.settings.alignment_desktop | default: 'center'
+  assign line_height = section.settings.line_height | default: 1.5
+
+  # Map text_alignment values to justify-content for scroll mode
+  assign justify_from_alignment_mobile = 'center'
+  if alignment_mobile == 'left'
+    assign justify_from_alignment_mobile = 'flex-start'
+  elsif alignment_mobile == 'right'
+    assign justify_from_alignment_mobile = 'flex-end'
+  endif
+
+  assign justify_from_alignment_desktop = 'center'
+  if alignment_desktop == 'left'
+    assign justify_from_alignment_desktop = 'flex-start'
+  elsif alignment_desktop == 'right'
+    assign justify_from_alignment_desktop = 'flex-end'
+  endif
+
+  assign enable_fade_mobile = false
+  if section.settings.enable_fades and announcement_mode_mobile == 'scroll' and alignment_mobile == 'center'
+    assign enable_fade_mobile = true
+  endif
+
+  assign enable_fade_desktop = false
+  if section.settings.enable_fades and announcement_mode_desktop == 'scroll' and alignment_desktop == 'center'
+    assign enable_fade_desktop = true
+  endif
+
+  # Map flex alignment to text-align values for standard mode
+  assign text_align_from_justify = 'left'
+  if section.settings.block_layout_mode == 'alignment'
+    if blocks_justify == 'center'
+      assign text_align_from_justify = 'center'
+    elsif blocks_justify == 'flex-end'
+      assign text_align_from_justify = 'right'
+    endif
+  endif
+-%}
+
+{%- if announcement_has_scroll -%}
+  <script src="{{ 'marquee.js' | asset_url }}" defer></script>
+{%- endif -%}
+
+{%- style -%}
+  /* --- Mobile First Section Styles --- */
+  .announcement-bar-{{ section.id }} {
+    {% render 'bar-cap-vars', section_settings: section.settings %}
+    background-color: var(--color-base);
+    padding-block: calc({{ section.settings.padding_vertical }}rem);
+    padding-inline: calc({{ section.settings.padding_horizontal }}rem);
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    z-index: 10;
+    position: relative;
+    overflow: hidden;
+    border-end-start-radius: {{ section.settings.bottom_border_radius }}rem;
+    border-end-end-radius: {{ section.settings.bottom_border_radius }}rem;
+    {% if section.settings.fixed_position %}
+      position: fixed;
+      inset-block-start: 0;
+      inset-inline: 0;
+      z-index: 30;
+    {% endif %}
+  }
+
+  .announcement-content-{{ section.id }} {
+    display: flex;
+    flex-wrap: nowrap; /* Forces items to stay on the same line */
+    flex-direction: {% if section.settings.stack_mobile %}column{% else %}row{% endif %};
+    align-items: {% if section.settings.stack_mobile %}stretch{% else %}center{% endif %};
+    justify-content: {% if announcement_mode_mobile == 'scroll' %}{{ justify_from_alignment_mobile }}{% else %}{{ blocks_justify }}{% endif %};
+    width: 100%;
+    margin-inline: auto;
+    gap: {{ section.settings.blocks_gap }}rem;
+    {% if announcement_mode_mobile == 'standard' %}
+      text-align: {{ text_align_from_justify }};
+    {% endif %}
+  }
+
+  .announcement-bar-{{ section.id }}[data-active-mode='scroll'] .announcement-content-{{ section.id }} {
+    display: block;
+    overflow: hidden;
+    position: relative;
+  }
+
+  .announcement-bar-{{ section.id }}[data-active-mode='scroll'] .announcement-content-{{ section.id }}::before,
+  .announcement-bar-{{ section.id }}[data-active-mode='scroll'] .announcement-content-{{ section.id }}::after {
+    content: '';
+    position: absolute;
+    inset-block: 0;
+    width: 12%;
+    z-index: 2;
+    pointer-events: none;
+    display: none;
+  }
+
+  {% if enable_fade_mobile %}
+    .announcement-bar-{{ section.id }}[data-active-mode='scroll'] .announcement-content-{{ section.id }}::before,
+    .announcement-bar-{{ section.id }}[data-active-mode='scroll'] .announcement-content-{{ section.id }}::after {
+      display: block;
+      width: {{ section.settings.fade_width }}%;
+    }
+
+    .announcement-bar-{{ section.id }}[data-active-mode='scroll'] .announcement-content-{{ section.id }}::before {
+      inset-inline-start: 0;
+      background: linear-gradient(to right, var(--color-base), transparent);
+    }
+
+    .announcement-bar-{{ section.id }}[data-active-mode='scroll'] .announcement-content-{{ section.id }}::after {
+      inset-inline-end: 0;
+      background: linear-gradient(to left, var(--color-base), transparent);
+    }
+  {% endif %}
+
+  .announcement-bar-{{ section.id }} .scrolling-track {
+    display: contents;
+  }
+
+  .announcement-bar-{{ section.id }} .scrolling-content {
+    display: contents;
+  }
+
+  .announcement-bar-{{ section.id }}[data-active-mode='scroll'] .scrolling-track {
+    display: flex;
+    {% if announcement_mode_mobile == 'scroll' %}
+      justify-content: {{ justify_from_alignment_mobile }}
+    {% else %}
+      justify-content: center
+    {% endif %};
+    width: 100%;
+    white-space: nowrap;
+  }
+
+  .announcement-bar-{{ section.id }}[data-active-mode='scroll'] .scrolling-content {
+    display: flex;
+    flex-shrink: 0;
+    align-items: center;
+    gap: {{ section.settings.blocks_gap }}rem;
+    padding-inline-end: 0;
+  }
+
+  .announcement-bar-{{ section.id }}.scrolling-text--ready .scrolling-content {
+    padding-inline-end: {{ section.settings.blocks_gap }}rem;
+  }
+
+  .announcement-bar-{{ section.id }}.scrolling-text--ready .scrolling-track {
+    {% if announcement_mode_mobile == 'scroll' %}
+      justify-content: {{ justify_from_alignment_mobile }}
+    {% else %}
+      justify-content: center
+    {% endif %};
+    width: max-content;
+    animation: announcementBarMarquee{{ section.id }} {{ section.settings.scroll_speed }}s linear infinite;
+  }
+
+  {% if section.settings.pause_scroll_on_hover %}
+    .announcement-bar-{{ section.id }}[data-active-mode='scroll']:hover .scrolling-track {
+      animation-play-state: paused;
+    }
+  {% endif %}
+
+  @keyframes announcementBarMarquee{{ section.id }} {
+    0% { transform: translateX(0); }
+    100% { transform: translateX(calc(-1 * var(--marquee-shift))); }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .announcement-bar-{{ section.id }}.scrolling-text--ready .scrolling-track {
+      animation: none;
+    }
+  }
+
+  @media screen and (min-width: 768px) {
+    .announcement-content-{{ section.id }} {
+      flex-direction: {% if section.settings.stack_desktop %}column{% else %}row{% endif %};
+      align-items: {% if section.settings.stack_desktop %}stretch{% else %}center{% endif %};
+      justify-content: {% if announcement_mode_desktop == 'scroll' %}{{ justify_from_alignment_desktop }}{% else %}{{ blocks_justify }}{% endif %};
+      {% if announcement_mode_desktop == 'standard' %}
+        text-align: {{ text_align_from_justify }};
+      {% endif %}
+    }
+
+    {% if announcement_mode_desktop == 'scroll' %}
+      .announcement-bar-{{ section.id }}[data-active-mode='scroll'] .scrolling-track {
+        justify-content: {{ justify_from_alignment_desktop }};
+      }
+    {% else %}
+      .announcement-bar-{{ section.id }}[data-active-mode='scroll'] .scrolling-track {
+        justify-content: center;
+      }
+    {% endif %}
+
+    .announcement-bar-{{ section.id }}.scrolling-text--ready .scrolling-track {
+      {% if announcement_mode_desktop == 'scroll' %}
+        justify-content: {{ justify_from_alignment_desktop }}
+      {% else %}
+        justify-content: center
+      {% endif %};
+    }
+
+    .announcement-bar-{{ section.id }}[data-active-mode='scroll'] .announcement-content-{{ section.id }}::before,
+    .announcement-bar-{{ section.id }}[data-active-mode='scroll'] .announcement-content-{{ section.id }}::after {
+      display: none;
+    }
+
+    {% if enable_fade_desktop %}
+      .announcement-bar-{{ section.id }}[data-active-mode='scroll'] .announcement-content-{{ section.id }}::before,
+      .announcement-bar-{{ section.id }}[data-active-mode='scroll'] .announcement-content-{{ section.id }}::after {
+        display: block;
+        width: {{ section.settings.fade_width }}%;
+      }
+
+      .announcement-bar-{{ section.id }}[data-active-mode='scroll'] .announcement-content-{{ section.id }}::before {
+        inset-inline-start: 0;
+        background: linear-gradient(to right, var(--color-base), transparent);
+      }
+
+      .announcement-bar-{{ section.id }}[data-active-mode='scroll'] .announcement-content-{{ section.id }}::after {
+        inset-inline-end: 0;
+        background: linear-gradient(to left, var(--color-base), transparent);
+      }
+    {% endif %}
+  }
+
+  global-countdown:not(:defined) {
+    opacity: 0;
+  }
+{%- endstyle -%}
+
+<div
+  class="announcement-bar-{{ section.id }} color-{{ section.settings.color_scheme }}{% if announcement_mode_mobile == 'scroll' %} marquee-section{% endif %}"
+  data-mode-mobile="{{ announcement_mode_mobile }}"
+  data-mode-desktop="{{ announcement_mode_desktop }}"
+  data-active-mode="{{ announcement_mode_mobile }}"
+>
+  <div class="announcement-content-{{ section.id }} marquee-viewport">
+    <div class="scrolling-track">
+      <div class="scrolling-content">
+        {%- for block in section.blocks -%}
+          {%- case block.type -%}
+            {%- when 'announcement' -%}
+              {%- style -%}
+                .announcement-text-{{ block.id }} {
+                  position: relative;
+                  flex: 1 1 auto;
+                  min-width: 0;
+                  color: var(--color-text);
+                  font-size: var(--fs-body-sm);
+                  font-weight: {{ block.settings.text_weight }};
+                  font-family: var(--font-body-family);
+                  line-height: {{ line_height }};
+                }
+
+                .announcement-text-{{ block.id }} p {
+                  margin: 0;
+                }
+
+                {% if block.settings.text_underline %}
+                  .announcement-text-{{ block.id }}::after {
+                    content: "";
+                    position: absolute;
+                    left: 0;
+                    right: 0;
+                    bottom: -{{ block.settings.underline_spacing }}em;
+                    height: 2px;
+                    pointer-events: none;
+
+                    {% case block.settings.underline_style %}
+                      {% when 'solid' %}
+                        background: currentColor;
+
+                      {% when 'dotted' %}
+                        background: repeating-linear-gradient(
+                          to right,
+                          currentColor 0,
+                          currentColor 2px,
+                          transparent 2px,
+                          transparent 5px
+                        );
+
+                      {% when 'dashed' %}
+                        background: repeating-linear-gradient(
+                          to right,
+                          currentColor 0,
+                          currentColor 5px,
+                          transparent 5px,
+                          transparent 8px
+                        );
+
+                      {% when 'wavy' %}
+                        background: none;
+                        height: 4px;
+                        bottom: -{{ block.settings.underline_spacing }}em;
+                        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='4' viewBox='0 0 12 4'%3E%3Cpath d='M0 2 Q3 0 6 2 T12 2' fill='none' stroke='currentColor' stroke-width='1.5'/%3E%3C/svg%3E");
+                        background-repeat: repeat-x;
+                    {% endcase %}
+                  }
+
+                  {% if block.settings.hide_underline_on_mobile %}
+                    @media screen and (max-width: 767px) {
+                      .announcement-text-{{ block.id }}::after {
+                        content: none !important;
+                        display: none !important;
+                      }
+                    }
+                  {% endif %}
+                {% endif %}
+
+                @media screen and (min-width: 768px) {
+                  .announcement-text-{{ block.id }} {
+                    flex: 0 1 auto;
+                  }
+                }
+              {%- endstyle -%}
+
+              {%- if block.settings.text != blank -%}
+                <div class="announcement-text-{{ block.id }}" {{ block.shopify_attributes }}>
+                  {{ block.settings.text }}
+                </div>
+              {%- endif -%}
+
+            {%- when 'countdown' -%}
+              {%- liquid
+
+              -%}
+              {%- style -%}
+                /* Countdown Mobile First */
+                .countdown-wrapper-{{ block.id }} {
+                  flex: 0 0 auto; /* Prevents countdown from shrinking so text takes the cut */
+                  display: inline-flex;
+                  align-items: center;
+                  gap: calc({{ block.settings.countdown_gap }}rem);
+                  {% if block.settings.countdown_color_style == 'accent' %}
+                    {% render 'accent-resolver', source: block.settings %}
+                  {% endif %}
+                  {% if section.settings.stack_mobile %}
+                    justify-content: {{ blocks_justify }}
+                  {% endif %};
+                }
+
+                .time-block-{{ block.id }} {
+                  display: flex;
+                  flex-direction: {% if block.settings.countdown_style == 'separated' %}column{% else %}row{% endif %};
+                  align-items: center;
+                  justify-content: center;
+                  {% if block.settings.countdown_style == 'separated' and block.settings.countdown_color_style == 'accent' %}
+                    background-color: var(--color-accent-contrast);
+                    border-radius: {{ block.settings.countdown_radius_mobile }}rem;
+                    min-width: 2.375rem;
+                    padding: max(0.2rem, calc({{ block.settings.countdown_padding_mobile }}rem));
+                  {% else %}
+                    gap: 0.125rem;
+                  {% endif %}
+                }
+
+                .time-number-{{ block.id }} {
+                  color: {% if block.settings.countdown_color_style == 'accent' %}var(--color-accent){% else %}var(--color-text){% endif %};
+                  font-size: calc(var(--fs-h5) * {{ block.settings.font_size_scale }} * 0.75);
+                  font-weight: {{ block.settings.number_weight }};
+                  font-family: var(--font-heading-family);
+                  line-height: 1;
+                  font-variant-numeric: tabular-nums;
+                }
+
+                @media screen and (min-width: 768px) {
+                  .time-number-{{ block.id }} {
+                    font-size: calc(var(--fs-h5) * {{ block.settings.font_size_scale_desktop }} * 0.75);
+                  }
+
+                  .time-block-{{ block.id }} {
+                    {% if block.settings.countdown_style == 'separated' and block.settings.show_block_background %}
+                      border-radius: {{ block.settings.countdown_radius_desktop }}rem;
+                      padding: max(0.2rem, calc({{ block.settings.countdown_padding_desktop }}rem));
+                    {% endif %}
+                  }
+
+                  .countdown-wrapper-{{ block.id }} {
+                    justify-content: {% if section.settings.stack_desktop %}{{ blocks_justify }}{% else %}center{% endif %};
+                  }
+                }
+
+                .time-label-{{ block.id }} {
+                  color: var(--color-accent);
+                  font-size: var(--fs-caption);
+                  font-weight: {{ block.settings.number_weight }};
+                  font-family: var(--font-body-family);
+                  text-transform: uppercase;
+                  letter-spacing: 0.5px;
+                  margin-top: {% if block.settings.countdown_style == 'separated' %}0.0625rem{% else %}0{% endif %};
+                  opacity: 0.9;
+                }
+              {%- endstyle -%}
+
+              {%- if block.settings.end_date != blank -%}
+                <global-countdown
+                  data-end-date="{{ block.settings.end_date }}"
+                  data-hide-zero-days="{{ block.settings.hide_zero_days }}"
+                  data-hide-zero-hours="{{ block.settings.hide_zero_hours }}"
+                  class="countdown-wrapper-{{ block.id }}"
+                  {{ block.shopify_attributes }}
+                >
+                  <div class="time-block-{{ block.id }}" data-countdown-unit="days">
+                    <span class="time-number-{{ block.id }}" data-days>00</span>
+                    <span class="time-label-{{ block.id }}">{{ 'theme.sections.announcement_bar.days' | t }}</span>
+                  </div>
+                  {% if block.settings.countdown_style == 'mixed' -%}
+                    <span class="time-number-{{ block.id }}" data-countdown-days-separator> : </span>
+                  {%- endif %}
+
+                  <div class="time-block-{{ block.id }}" data-countdown-unit="hours">
+                    <span class="time-number-{{ block.id }}" data-hours>00</span>
+                    <span class="time-label-{{ block.id }}">{{ 'theme.sections.announcement_bar.hours' | t }}</span>
+                  </div>
+                  {% if block.settings.countdown_style == 'mixed' -%}
+                    <span class="time-number-{{ block.id }}" data-countdown-hours-separator> : </span>
+                  {%- endif %}
+
+                  <div class="time-block-{{ block.id }}">
+                    <span class="time-number-{{ block.id }}" data-minutes>00</span>
+                    <span class="time-label-{{ block.id }}">{{ 'theme.sections.announcement_bar.minutes' | t }}</span>
+                  </div>
+                  {% if block.settings.countdown_style == 'mixed' -%}
+                    <span class="time-number-{{ block.id }}"> : </span>
+                  {%- endif %}
+
+                  <div class="time-block-{{ block.id }}">
+                    <span class="time-number-{{ block.id }}" data-seconds>00</span>
+                    <span class="time-label-{{ block.id }}">{{ 'theme.sections.announcement_bar.seconds' | t }}</span>
+                  </div>
+                </global-countdown>
+              {%- endif -%}
+          {%- endcase -%}
+        {%- endfor -%}
+      </div>
+    </div>
+  </div>
+</div>
+
+{% if announcement_has_scroll %}
+  <script>
+    (function () {
+      var root = document.querySelector('.announcement-bar-{{ section.id }}');
+      if (!root) return;
+      var desktop = window.matchMedia('(min-width: 768px)');
+      var abortController = new AbortController();
+
+      window.AnnouncementBarModeControllers = window.AnnouncementBarModeControllers || {};
+      if (window.AnnouncementBarModeControllers[{{ section.id | json }}]) {
+        window.AnnouncementBarModeControllers[{{ section.id | json }}]();
+      }
+
+      function clearMarquee() {
+        if (root.__marqueeResizeObserver) {
+          root.__marqueeResizeObserver.disconnect();
+          delete root.__marqueeResizeObserver;
+        }
+        root.querySelectorAll('.scrolling-content--clone').forEach(function (clone) { clone.remove(); });
+        root.classList.remove('scrolling-text--ready');
+        var track = root.querySelector('.scrolling-track');
+        if (track) {
+          track.style.removeProperty('transform');
+          track.style.removeProperty('--marquee-shift');
+        }
+      }
+
+      function updateMode() {
+        var mode = desktop.matches ? root.dataset.modeDesktop : root.dataset.modeMobile;
+        root.dataset.activeMode = mode;
+        root.classList.toggle('marquee-section', mode === 'scroll');
+        clearMarquee();
+        if (mode === 'scroll') requestAnimationFrame(function () { window.dispatchEvent(new Event('resize')); });
+      }
+
+      desktop.addEventListener('change', updateMode);
+      function cleanup() {
+        abortController.abort();
+        desktop.removeEventListener('change', updateMode);
+        clearMarquee();
+        delete window.AnnouncementBarModeControllers[{{ section.id | json }}];
+      }
+      window.AnnouncementBarModeControllers[{{ section.id | json }}] = cleanup;
+      document.addEventListener('shopify:section:unload', function (event) {
+        if (!event.target.matches('.announcement-bar-{{ section.id }}') && !event.target.querySelector('.announcement-bar-{{ section.id }}')) return;
+        cleanup();
+      }, { signal: abortController.signal });
+      updateMode();
+    })();
+  </script>
+{% endif %}
+
+<script>
+  if (!customElements.get('global-countdown')) {
+    customElements.define(
+      'global-countdown',
+      class extends HTMLElement {
+        constructor() {
+          super();
+          this.targetDate =
+            this.dataset.endDate === '24h'
+              ? Date.now() + 24 * 60 * 60 * 1000
+              : new Date(this.dataset.endDate).getTime();
+          this.elements = {
+            days: this.querySelector('[data-days]'),
+            daysBlock: this.querySelector('[data-countdown-unit="days"]'),
+            daysSeparator: this.querySelector('[data-countdown-days-separator]'),
+            hoursBlock: this.querySelector('[data-countdown-unit="hours"]'),
+            hoursSeparator: this.querySelector('[data-countdown-hours-separator]'),
+            hours: this.querySelector('[data-hours]'),
+            minutes: this.querySelector('[data-minutes]'),
+            seconds: this.querySelector('[data-seconds]'),
+          };
+        }
+
+        connectedCallback() {
+          if (!this.targetDate || isNaN(this.targetDate)) {
+            console.error('Countdown: Invalid ISO format (YYYY-MM-DDTHH:MM:SS)');
+            return (this.style.display = 'none');
+          }
+          this.updateTimer();
+          this.interval = setInterval(this.updateTimer.bind(this), 1000);
+        }
+
+        disconnectedCallback() {
+          clearInterval(this.interval);
+        }
+
+        updateTimer() {
+          const distance = this.targetDate - new Date().getTime();
+
+          if (distance < 0) {
+            clearInterval(this.interval);
+            return (this.style.display = 'none');
+          }
+
+          const t = {
+            days: Math.floor(distance / 86400000),
+            hours: Math.floor((distance % 86400000) / 3600000),
+            minutes: Math.floor((distance % 3600000) / 60000),
+            seconds: Math.floor((distance % 60000) / 1000),
+          };
+
+          // Remove only the leading zero-days unit. Lower units stay visible,
+          // so 23:00:30 remains hours, minutes, and seconds rather than
+          // incorrectly dropping the zero-minute unit.
+          if (t.days === 0 && this.dataset.hideZeroDays === 'true') {
+            if (this.elements.daysBlock) this.elements.daysBlock.remove();
+            if (this.elements.daysSeparator) this.elements.daysSeparator.remove();
+            this.elements.daysBlock = null;
+            this.elements.daysSeparator = null;
+          }
+
+          if (t.hours === 0 && this.dataset.hideZeroHours === 'true') {
+            if (this.elements.hoursBlock) this.elements.hoursBlock.remove();
+            if (this.elements.hoursSeparator) this.elements.hoursSeparator.remove();
+            this.elements.hoursBlock = null;
+            this.elements.hoursSeparator = null;
+          }
+
+          Object.keys(t).forEach((unit) => {
+            if (this.elements[unit]) this.elements[unit].innerText = String(t[unit]).padStart(2, '0');
+          });
+        }
+      }
+    );
+  }
+</script>
+
+{% schema %}
+{
+  "name": "Announcement",
+  "disabled_on": {
+    "templates": ["page", "blog"]
+  },
+  "max_blocks": 2,
+  "settings": [
+    {
+      "type": "header",
+      "content": "Bar Structural Settings",
+      "info": "A slim top bar for announcements with optional countdown timer and marquee scrolling."
+    },
+    {
+      "type": "color_scheme",
+      "id": "color_scheme",
+      "label": "Color Scheme",
+      "default": "scheme_2"
+    },
+    {
+      "type": "header",
+      "content": "Layout"
+    },
+    {
+      "type": "checkbox",
+      "id": "fixed_position",
+      "label": "Fix to top",
+      "info": "Keeps the announcement bar visible at the top of the page while scrolling.",
+      "default": false
+    },
+    {
+      "type": "range",
+      "id": "bottom_border_radius",
+      "label": "Bottom border radius",
+      "min": 0,
+      "max": 4,
+      "step": 0.1,
+      "unit": "rem",
+      "default": 0
+    },
+    {
+      "type": "range",
+      "id": "padding_vertical",
+      "label": "Vertical padding",
+      "min": 0,
+      "max": 2,
+      "step": 0.1,
+      "unit": "rem",
+      "default": 0.5
+    },
+    {
+      "type": "range",
+      "id": "padding_horizontal",
+      "label": "Horizontal padding",
+      "min": 0,
+      "max": 5,
+      "step": 0.5,
+      "unit": "rem",
+      "default": 2.5
+    },
+    {
+      "type": "select",
+      "id": "mode_mobile",
+      "label": "Mode (Mobile)",
+      "info": "Standard uses the block layout controls. Scroll queues all blocks in one continuous marquee when they overflow.",
+      "options": [
+        {
+          "value": "standard",
+          "label": "Standard"
+        },
+        {
+          "value": "scroll",
+          "label": "Scroll"
+        }
+      ],
+      "default": "standard"
+    },
+    {
+      "type": "select",
+      "id": "mode_desktop",
+      "label": "Mode (Desktop)",
+      "info": "Standard uses the block layout controls. Scroll queues all blocks in one continuous marquee when they overflow.",
+      "options": [
+        {
+          "value": "standard",
+          "label": "Standard"
+        },
+        {
+          "value": "scroll",
+          "label": "Scroll"
+        }
+      ],
+      "default": "standard"
+    },
+    {
+      "type": "range",
+      "id": "scroll_speed",
+      "label": "Scroll Speed",
+      "info": "Controls how long one marquee loop takes. Lower values scroll faster.",
+      "min": 5,
+      "max": 60,
+      "step": 1,
+      "unit": "s",
+      "default": 20,
+      "visible_if": "{{ section.settings.mode_mobile == 'scroll' or section.settings.mode_desktop == 'scroll' }}"
+    },
+    {
+      "type": "checkbox",
+      "id": "pause_scroll_on_hover",
+      "label": "Pause scroll on hover",
+      "default": true,
+      "visible_if": "{{ section.settings.mode_mobile == 'scroll' or section.settings.mode_desktop == 'scroll' }}"
+    },
+    {
+      "type": "header",
+      "content": "Edge Fades",
+      "info": "Fades the bar background at the inner edges while scrolling. Left or Right alignment disables the fade for that breakpoint."
+    },
+    {
+      "type": "checkbox",
+      "id": "enable_fades",
+      "label": "Enable Edge Fades",
+      "info": "Softens text entering and leaving the bar. Fades are shown only in Center-aligned scroll mode on each breakpoint.",
+      "default": true,
+      "visible_if": "{{ section.settings.mode_mobile == 'scroll' or section.settings.mode_desktop == 'scroll' }}"
+    },
+    {
+      "type": "range",
+      "id": "fade_width",
+      "label": "Fade Width",
+      "info": "Controls how far each edge fade extends. Left or Right alignment still disables it automatically.",
+      "min": 5,
+      "max": 30,
+      "step": 1,
+      "default": 15,
+      "unit": "%",
+      "visible_if": "{{ section.settings.enable_fades and section.settings.mode_mobile == 'scroll' or section.settings.enable_fades and section.settings.mode_desktop == 'scroll' }}"
+    },
+    {
+      "type": "checkbox",
+      "id": "stack_mobile",
+      "label": "Stack blocks on mobile",
+      "info": "Displays the announcement text and countdown one above the other below 768px.",
+      "default": false,
+      "visible_if": "{{ section.settings.mode_mobile == 'standard' }}"
+    },
+    {
+      "type": "checkbox",
+      "id": "stack_desktop",
+      "label": "Stack blocks on desktop",
+      "info": "Displays the announcement text and countdown one above the other at 768px and above.",
+      "default": false,
+      "visible_if": "{{ section.settings.mode_desktop == 'standard' }}"
+    },
+    {
+      "type": "text_alignment",
+      "id": "alignment_mobile",
+      "label": "Alignment (Mobile)",
+      "default": "center",
+      "visible_if": "{{ section.settings.mode_mobile == 'scroll' }}",
+      "info": "Aligns content on the x-axis in scroll mode. Left or Right alignment disables the edge fade on mobile."
+    },
+    {
+      "type": "text_alignment",
+      "id": "alignment_desktop",
+      "label": "Alignment (Desktop)",
+      "default": "center",
+      "visible_if": "{{ section.settings.mode_desktop == 'scroll' }}",
+      "info": "Aligns content on the x-axis in scroll mode. Left or Right alignment disables the edge fade on desktop."
+    },
+    {
+      "type": "header",
+      "content": "Content"
+    },
+    {
+      "type": "select",
+      "id": "block_layout_mode",
+      "label": "Blocks Layout",
+      "info": "Choose whether the following control sets block alignment or distributes spacing between blocks.",
+      "options": [
+        {
+          "value": "alignment",
+          "label": "Alignment"
+        },
+        {
+          "value": "spacing",
+          "label": "Spacing"
+        }
+      ],
+      "default": "alignment",
+      "visible_if": "{{ section.settings.mode_mobile == 'standard' or section.settings.mode_desktop == 'standard' }}"
+    },
+    {
+      "type": "select",
+      "id": "block_alignment",
+      "label": "Block Alignment",
+      "options": [
+        {
+          "value": "flex-start",
+          "label": "Left"
+        },
+        {
+          "value": "center",
+          "label": "Center"
+        },
+        {
+          "value": "flex-end",
+          "label": "Right"
+        }
+      ],
+      "default": "center",
+      "visible_if": "{{ section.settings.block_layout_mode == 'alignment' and section.settings.mode_mobile == 'standard' or section.settings.block_layout_mode == 'alignment' and section.settings.mode_desktop == 'standard' }}"
+    },
+    {
+      "type": "range",
+      "id": "blocks_gap",
+      "label": "Blocks Gap",
+      "min": 0,
+      "max": 2,
+      "step": 0.2,
+      "default": 1,
+      "unit": "rem",
+      "visible_if": "{{ section.settings.mode_mobile == 'scroll' or section.settings.mode_desktop == 'scroll' or section.settings.block_layout_mode == 'alignment' }}"
+    },
+    {
+      "type": "select",
+      "id": "blocks_spacing",
+      "label": "Blocks Spacing",
+      "info": "Between distributes space only between blocks. Around adds equal space around each block, including the outer edges.",
+      "options": [
+        {
+          "value": "around",
+          "label": "Around"
+        },
+        {
+          "value": "between",
+          "label": "Between"
+        }
+      ],
+      "default": "between",
+      "visible_if": "{{ section.settings.block_layout_mode == 'spacing' and section.settings.mode_mobile == 'standard' or section.settings.block_layout_mode == 'spacing' and section.settings.mode_desktop == 'standard' }}"
+    },
+    {
+      "type": "range",
+      "id": "line_height",
+      "label": "Line Height",
+      "min": 1,
+      "max": 3,
+      "step": 0.1,
+      "default": 1.5,
+      "visible_if": "{{ section.settings.mode_mobile == 'scroll' or section.settings.mode_desktop == 'scroll' or section.settings.block_layout_mode == 'alignment' or section.settings.block_layout_mode == 'spacing' }}"
+    }
+  ],
+  "blocks": [
+    {
+      "type": "announcement",
+      "name": "Announcement Text",
+      "limit": 2,
+      "settings": [
+        {
+          "type": "richtext",
+          "id": "text",
+          "label": "Announcement Text",
+          "default": "<p>Flash Sale ends in:</p>"
+        },
+        {
+          "type": "select",
+          "id": "text_weight",
+          "label": "Text Weight",
+          "options": [
+            {
+              "value": "400",
+              "label": "Normal"
+            },
+            {
+              "value": "600",
+              "label": "Semi-Bold"
+            },
+            {
+              "value": "700",
+              "label": "Bold"
+            }
+          ],
+          "default": "600"
+        },
+        {
+          "type": "checkbox",
+          "id": "text_underline",
+          "label": "Underline Text",
+          "default": false
+        },
+        {
+          "type": "select",
+          "id": "underline_scope",
+          "label": "Underine Scope",
+          "options": [
+            {
+              "label": "Styled",
+              "value": "styled"
+            },
+            {
+              "label": "Text",
+              "value": "text"
+            }
+          ],
+          "default": "styled",
+          "info": "Styled: Apply underline to text styled like Bold, Italic or Link. Text: Apply underline to whole text.",
+          "visible_if": "{{ block.settings.text_underline }}"
+        },
+        {
+          "type": "select",
+          "id": "text_underline_style",
+          "label": "Underline Style",
+          "options": [
+            {
+              "value": "solid",
+              "label": "Solid"
+            },
+            {
+              "value": "dotted",
+              "label": "Dotted"
+            },
+            {
+              "value": "dashed",
+              "label": "Dashed"
+            },
+            {
+              "value": "wavy",
+              "label": "Wavy"
+            }
+          ],
+          "default": "solid",
+          "visible_if": "{{ block.settings.text_underline and block.settings.underline_scope == 'text' }}"
+        },
+        {
+          "type": "select",
+          "id": "bold_underline_style",
+          "label": "Underline Style",
+          "options": [
+            {
+              "value": "solid",
+              "label": "Solid"
+            },
+            {
+              "value": "dotted",
+              "label": "Dotted"
+            },
+            {
+              "value": "dashed",
+              "label": "Dashed"
+            },
+            {
+              "value": "wavy",
+              "label": "Wavy"
+            }
+          ],
+          "default": "solid",
+          "visible_if": "{{ block.settings.text_underline and block.settings.underline_scope == 'text' }}"
+        },
+        {
+          "type": "select",
+          "id": "italic_underline_style",
+          "label": "Underline Style",
+          "options": [
+            {
+              "value": "solid",
+              "label": "Solid"
+            },
+            {
+              "value": "dotted",
+              "label": "Dotted"
+            },
+            {
+              "value": "dashed",
+              "label": "Dashed"
+            },
+            {
+              "value": "wavy",
+              "label": "Wavy"
+            }
+          ],
+          "default": "solid",
+          "visible_if": "{{ block.settings.text_underline and block.settings.underline_scope == 'text' }}"
+        },
+        {
+          "type": "select",
+          "id": "link_underline_style",
+          "label": "Underline Style",
+          "options": [
+            {
+              "value": "solid",
+              "label": "Solid"
+            },
+            {
+              "value": "dotted",
+              "label": "Dotted"
+            },
+            {
+              "value": "dashed",
+              "label": "Dashed"
+            },
+            {
+              "value": "wavy",
+              "label": "Wavy"
+            }
+          ],
+          "default": "solid",
+          "visible_if": "{{ block.settings.text_underline and block.settings.underline_scope == 'text' }}"
+        },
+        {
+          "type": "range",
+          "id": "underline_spacing",
+          "label": "Underline Spacing",
+          "min": 0.2,
+          "max": 0.6,
+          "step": 0.1,
+          "default": 0.3,
+          "unit": "em",
+          "visible_if": "{{ block.settings.text_underline }}"
+        },
+        {
+          "type": "checkbox",
+          "id": "hide_underline_on_mobile",
+          "label": "Hide Underline on Mobile",
+          "default": false,
+          "visible_if": "{{ block.settings.text_underline }}"
+        }
+      ]
+    },
+    {
+      "type": "countdown",
+      "name": "Countdown Timer",
+      "limit": 1,
+      "settings": [
+        {
+          "type": "text",
+          "id": "end_date",
+          "label": "End Date and Time",
+          "info": "Format: YYYY-MM-DDTHH:MM:SS (e.g. 2026-12-31T23:59:00), or use 24h to start a 24-hour placeholder countdown when the page loads.",
+          "default": "24h"
+        },
+        {
+          "type": "checkbox",
+          "id": "hide_zero_days",
+          "label": "Hide Days When Zero",
+          "info": "Removes the Days unit when it reaches 00. Minutes and seconds are never hidden by this option.",
+          "default": true
+        },
+        {
+          "type": "checkbox",
+          "id": "hide_zero_hours",
+          "label": "Hide Hours When Zero",
+          "info": "Removes the Hours unit when it reaches 00. Minutes and seconds remain visible.",
+          "default": false
+        },
+        {
+          "type": "select",
+          "id": "countdown_style",
+          "label": "Layout Style",
+          "options": [
+            {
+              "value": "separated",
+              "label": "Separated Blocks"
+            },
+            {
+              "value": "mixed",
+              "label": "Mixed (Inline)"
+            }
+          ],
+          "default": "separated"
+        },
+        {
+          "type": "select",
+          "id": "countdown_color_style",
+          "label": "Color Style",
+          "options": [
+            {
+              "value": "text",
+              "label": "Text Only"
+            },
+            {
+              "value": "accent",
+              "label": "Accent Block"
+            }
+          ],
+          "default": "accent",
+          "info": "Text style uses base text color only. Accent style uses background and accent colors."
+        },
+        {
+          "type": "select",
+          "id": "accent_selected",
+          "label": "Accent",
+          "options": [
+            {
+              "label": "Soft",
+              "value": "soft"
+            },
+            {
+              "label": "Neutral",
+              "value": "neutral"
+            },
+            {
+              "label": "Strong",
+              "value": "strong"
+            }
+          ],
+          "default": "neutral",
+          "info": "Choose accent for countdown block colors.",
+          "visible_if": "{{ block.settings.countdown_color_style == 'accent' }}"
+        },
+        {
+          "type": "range",
+          "id": "countdown_gap",
+          "label": "Countdown Space Between",
+          "min": 0,
+          "max": 2,
+          "step": 0.2,
+          "default": 0.2,
+          "unit": "rem"
+        },
+        {
+          "type": "header",
+          "content": "Block Styling"
+        },
+        {
+          "type": "range",
+          "id": "countdown_padding_mobile",
+          "label": "Block Padding (Mobile)",
+          "min": 0,
+          "max": 1,
+          "step": 0.1,
+          "default": 0.3,
+          "unit": "rem"
+        },
+        {
+          "type": "range",
+          "id": "countdown_padding_desktop",
+          "label": "Block Padding (Desktop)",
+          "min": 0,
+          "max": 1,
+          "step": 0.1,
+          "default": 0.4,
+          "unit": "rem"
+        },
+        {
+          "type": "range",
+          "id": "countdown_radius_mobile",
+          "label": "Block Border Radius (Mobile)",
+          "min": 0,
+          "max": 1,
+          "step": 0.1,
+          "default": 0.5,
+          "unit": "rem"
+        },
+        {
+          "type": "range",
+          "id": "countdown_radius_desktop",
+          "label": "Block Border Radius (Desktop)",
+          "min": 0,
+          "max": 1,
+          "step": 0.1,
+          "default": 0.5,
+          "unit": "rem"
+        },
+        {
+          "type": "range",
+          "id": "font_size_scale",
+          "label": "Number Size Scale (Mobile)",
+          "min": 0.5,
+          "max": 2,
+          "step": 0.1,
+          "default": 0.9
+        },
+        {
+          "type": "range",
+          "id": "font_size_scale_desktop",
+          "label": "Number Size Scale (Desktop)",
+          "min": 0.5,
+          "max": 2,
+          "step": 0.1,
+          "default": 1
+        },
+        {
+          "type": "select",
+          "id": "number_weight",
+          "label": "Number Weight",
+          "options": [
+            {
+              "value": "400",
+              "label": "Normal"
+            },
+            {
+              "value": "600",
+              "label": "Semi-Bold"
+            },
+            {
+              "value": "700",
+              "label": "Bold"
+            }
+          ],
+          "default": "700"
+        }
+      ]
+    }
+  ],
+  "presets": [
+    {
+      "name": "Announcement Bar",
+      "category": "Header & navigation",
+      "settings": {
+        "color_scheme": "scheme_2"
+      },
+      "blocks": [
+        {
+          "type": "announcement",
+          "settings": {
+            "text": "<p>Free shipping on orders over $75</p>"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Countdown Announcement Bar",
+      "category": "Header & navigation",
+      "settings": {
+        "color_scheme": "scheme_2"
+      },
+      "blocks": [
+        {
+          "type": "announcement",
+          "settings": {
+            "text": "<p>Limited-time offer: enjoy 20% off sitewide</p>"
+          }
+        },
+        {
+          "type": "countdown",
+          "settings": {
+            "end_date": "24h",
+            "countdown_padding_mobile": 0.3,
+            "countdown_padding_desktop": 0.4,
+            "countdown_radius_mobile": 0.5,
+            "countdown_radius_desktop": 0.5,
+            "font_size_scale": 0.9,
+            "font_size_scale_desktop": 0.9
+          }
+        }
+      ]
+    }
+  ]
+}
+{% endschema %}

@@ -145,6 +145,12 @@
         "close": "Close video",
         "popover_title": "YouTube video",
         "watch_on_youtube": "Watch directly on YouTube"
+      },
+      "announcement_bar": {
+        "days": "Days",
+        "hours": "Hrs",
+        "minutes": "Min",
+        "seconds": "Sec"
       }
     }
   }
