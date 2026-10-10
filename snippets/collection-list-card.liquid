@@ -1,0 +1,402 @@
+{%- comment -%}
+  Collection List Card (`clc-`) — COLLECTION SECTIONS ONLY.
+  The collection card of List Collections (its Collection Item blocks render
+  it; the Collections block loads its stylesheet and owns its look). Its shape
+  options match the Collection Product Card's exactly, so collection sections
+  can give every card one shape.
+
+  A collection image with its title and an optional one-line subtitle on a
+  plate over the image's lower edge, or under the image in flow. On hover (or
+  keyboard focus) an icon slides in at the start of the plate and pushes the
+  text along.
+
+  Look is chosen by data attributes, read from the card itself OR any ancestor —
+  the second is how a list block styles cards its item blocks render:
+  - data-clc-plate  'solid' (default) — the card colour
+                    'glass'           — frosted glass in the card colour, no border
+                    'tint'            — the card colour rising from the bottom
+                                        (plain text under the image in flow)
+  - data-clc-float  present — the plate floats: inset with its own corners
+                    (--clc-plate-radius); absent — edge to edge
+  - data-clc-layout 'flow' — the plate sits under the image
+  - data-clc-box    'media' — in flow, the card's box wraps the image only
+  - data-clc-icon   'mask' — the icon is --clc-icon drawn in the text colour;
+                    'off' — no icon
+  Set each one in one place only (card or ancestor), never both. Shape comes
+  from --clc-ratio — always a fixed ratio (1:1 / 4:5 / 3:4 / 2:3 / 4:3 / 3:2 /
+  16:9, per breakpoint); there is no natural-height mode. Title weight comes
+  from --clc-title-weight, alignment from --clc-align / --clc-justify, icon
+  size from --clc-icon-size, the card colour from --clc-plate-bg /
+  --clc-plate-fg (unset: the scheme's surface and heading colour; Accent: the
+  scheme's neutral accent and its contrast), the glass look from
+  --clc-glass-bg / -filter / -edge / -fallback (snippets/glass-resolver). Schema: none (the list block owns the look).
+
+  Accepts:
+  - collection {Collection, optional} source of the link, image and title
+  - image      {Image, optional}  overrides the collection's image
+  - title      {String, optional} overrides the collection's title
+  - subtitle   {String, optional} the line under the title, already resolved by
+               the caller (product count, description or custom text); blank
+               shows no subtitle
+  - plate      {String, optional} sets data-clc-plate on this card
+  - attributes {String, optional} extra attributes for the root, e.g.
+               block.shopify_attributes from a null-tag block
+
+  Usage:
+    {% render 'collection-list-card', collection: block.settings.collection,
+       subtitle: subtitle, attributes: block.shopify_attributes %}
+  Styles: this snippet's stylesheet tag, compiled once into the theme stylesheet.
+{%- endcomment -%}
+
+{% stylesheet %}
+/* ==========================================================================
+ * Collection List Card (`clc-`) — snippets/collection-list-card.liquid
+ * For collection sections only (List Collections loads this file). The image
+ * is always a fixed ratio, --clc-ratio, set per breakpoint by the list block.
+ *
+ * A plate with the title and an optional one-line subtitle sits OVER the
+ * image's lower edge (default) or, in flow, UNDER the image. On hover or
+ * keyboard focus an icon grows in at the start of the plate and pushes the
+ * text along — width and margin animate, so the push is real layout.
+ *
+ * Variants are data attributes on the card OR any ancestor (matched through
+ * :is()), so a list block can style the cards its item blocks render:
+ *   data-clc-plate   solid (default) | glass | tint
+ *   data-clc-float   the plate floats: inset, with its own corners
+ *   data-clc-layout  flow — the plate sits under the image
+ *   data-clc-box     media — in flow, the card's box (border, radius,
+ *                    shadow) wraps the image only, not the text
+ *   data-clc-icon    mask — the icon is --clc-icon drawn as a mask in the
+ *                    plate's text colour; off — no icon
+ * Values arrive as custom properties: --clc-align / --clc-justify (text
+ * alignment), --clc-icon-size, --clc-plate-radius (floating plate corners),
+ * --clc-title-weight, the card colour pair --clc-plate-bg / --clc-plate-fg, and
+ * the glass look --clc-glass-bg / -filter / -edge / -fallback
+ * (snippets/glass-resolver.liquid).
+ *
+ * Surfaces follow the card contract: Design System item radius, border and
+ * shadow per breakpoint. Every plate (solid, glass, tint) and, in flow, the
+ * card's own box is built from ONE colour pair, --clc-plate-bg /
+ * --clc-plate-fg. Unset, that is the scheme's Surface with its heading colour.
+ * The list block's "Card colour" Accent publishes the scheme's neutral accent
+ * and its contrast colour instead.
+ * ========================================================================== */
+
+.clc-card {
+  --clc-pad: clamp(1rem, 6%, 1.75rem);
+  --clc-float-gap: clamp(0.5rem, 3%, 0.875rem);
+  --clc-ease: cubic-bezier(0.2, 0.7, 0.2, 1);
+  --clc-item-radius: var(--ds-item-radius-mobile);
+  position: relative;
+  display: block;
+  aspect-ratio: var(--clc-ratio, 1 / 1);
+  overflow: hidden;
+  isolation: isolate;
+  border: var(--ds-item-border-width-mobile, 0) solid var(--color-border);
+  border-radius: var(--clc-item-radius);
+  box-shadow: var(--ds-item-shadow-mobile, none);
+  background-color: var(--clc-plate-bg, var(--color-surface));
+  color: var(--clc-plate-fg, var(--color-heading));
+  text-decoration: none;
+}
+
+a.clc-card {
+  cursor: pointer;
+}
+
+.clc-card:focus-visible {
+  outline: 2px solid var(--color-heading);
+  outline-offset: 3px;
+}
+
+/* ------------------------------------------------------------------ media */
+
+.clc-card__media {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+
+.clc-card__image {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.7s var(--clc-ease);
+}
+
+.clc-card__image--placeholder {
+  fill: var(--color-text);
+  opacity: 0.5;
+}
+
+.clc-card:hover .clc-card__image {
+  transform: scale(1.03);
+}
+
+/* ------------------------------------------------------------------ plate */
+
+/* Solid (default): the card colour, edge to edge unless floating. */
+.clc-card__plate {
+  position: absolute;
+  inset: auto 0 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: var(--clc-justify, flex-start);
+  padding: calc(var(--clc-pad) * 0.75) var(--clc-pad);
+  border-radius: 0;
+  background: var(--clc-plate-bg, var(--color-surface));
+  color: var(--clc-plate-fg, var(--color-heading));
+  text-align: var(--clc-align, left);
+}
+
+/* Glass: rounded top corners, no border. The look comes from the list block
+   through snippets/glass-resolver.liquid (--clc-glass-bg / -filter / -edge /
+   -fallback): Frosted or Liquid, Touch or Full. Unset, it is the reference
+   frosted pane — heavy blur, a soft brightening wash, no edge light. */
+:is([data-clc-plate='glass'] .clc-card, .clc-card[data-clc-plate='glass']) .clc-card__plate {
+  border-radius: max(12px, var(--clc-item-radius)) max(12px, var(--clc-item-radius)) 0 0;
+  background: var(--clc-glass-bg, color-mix(in srgb, var(--clc-plate-bg, var(--color-surface)) 28%, transparent));
+  box-shadow: var(--clc-glass-edge, none);
+  -webkit-backdrop-filter: var(--clc-glass-filter, blur(22px) saturate(115%) brightness(1.12));
+  backdrop-filter: var(--clc-glass-filter, blur(22px) saturate(115%) brightness(1.12));
+}
+
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  :is([data-clc-plate='glass'] .clc-card, .clc-card[data-clc-plate='glass']) .clc-card__plate {
+    background: var(--clc-glass-fallback, color-mix(in srgb, var(--clc-plate-bg, var(--color-surface)) 88%, transparent));
+  }
+}
+
+:is([data-clc-plate='tint'] .clc-card, .clc-card[data-clc-plate='tint']) .clc-card__plate {
+  padding-top: calc(var(--clc-pad) * 3);
+  color: var(--clc-plate-fg, var(--color-heading));
+  background: linear-gradient(
+    to top,
+    color-mix(in srgb, var(--clc-plate-bg, var(--color-surface)) 78%, transparent) 0%,
+    color-mix(in srgb, var(--clc-plate-bg, var(--color-surface)) 40%, transparent) 55%,
+    transparent 100%
+  );
+}
+
+/* Floating (solid or glass): inset from the card's edges with its own
+   corners — the merchant's radius, else the card radius less the inset. */
+:is([data-clc-float] .clc-card, .clc-card[data-clc-float]) .clc-card__plate {
+  inset: auto var(--clc-float-gap) var(--clc-float-gap);
+  border-radius: var(--clc-plate-radius, max(6px, calc(var(--clc-item-radius) - var(--clc-float-gap))));
+}
+
+/* ------------------------------------------------------------------- flow */
+
+/* Flow: the image keeps the ratio and the plate follows it in normal flow. */
+:is([data-clc-layout='flow'] .clc-card, .clc-card[data-clc-layout='flow']) {
+  display: flex;
+  flex-direction: column;
+  aspect-ratio: auto;
+}
+
+:is([data-clc-layout='flow'] .clc-card, .clc-card[data-clc-layout='flow']) .clc-card__media {
+  position: relative;
+  inset: auto;
+  aspect-ratio: var(--clc-ratio, 1 / 1);
+}
+
+:is([data-clc-layout='flow'] .clc-card, .clc-card[data-clc-layout='flow']) .clc-card__plate {
+  position: relative;
+  inset: auto;
+  flex: 1 1 auto;
+}
+
+/* Edge to edge under the image, a glass plate is a plain band. */
+:is([data-clc-layout='flow'] .clc-card, .clc-card[data-clc-layout='flow']):is([data-clc-plate='glass'] .clc-card, .clc-card[data-clc-plate='glass']) .clc-card__plate {
+  border-radius: 0;
+}
+
+:is([data-clc-layout='flow'] .clc-card, .clc-card[data-clc-layout='flow']):is([data-clc-float] .clc-card, .clc-card[data-clc-float]) .clc-card__plate {
+  margin-top: var(--clc-float-gap);
+  border-radius: var(--clc-plate-radius, max(6px, calc(var(--clc-item-radius) - var(--clc-float-gap))));
+}
+
+/* Under the image a tint has nothing to shade: plain text. The composers move
+   the card's box onto the picture here, so the text sits on the page and keeps
+   the scheme's heading colour whatever the card colour. */
+:is([data-clc-layout='flow'] .clc-card, .clc-card[data-clc-layout='flow']):is([data-clc-plate='tint'] .clc-card, .clc-card[data-clc-plate='tint']) .clc-card__plate {
+  padding: calc(var(--clc-pad) * 0.6) 0 0;
+  color: var(--color-heading);
+  background: none;
+}
+
+/* Box on the image only: a floating plate or plain text under it reads as a
+   separate element, so the card's surface belongs to the picture. */
+:is([data-clc-box='media'] .clc-card, .clc-card[data-clc-box='media']) {
+  overflow: visible;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  background: none;
+}
+
+:is([data-clc-box='media'] .clc-card, .clc-card[data-clc-box='media']) .clc-card__media {
+  border: var(--ds-item-border-width-mobile, 0) solid var(--color-border);
+  border-radius: var(--clc-item-radius);
+  box-shadow: var(--ds-item-shadow-mobile, none);
+  background-color: var(--color-surface);
+}
+
+/* ------------------------------------------------------- icon and text */
+
+.clc-card__arrow {
+  display: inline-flex;
+  flex: 0 0 auto;
+  width: 0;
+  margin-inline-end: 0;
+  overflow: hidden;
+  opacity: 0;
+  transition: width 0.4s var(--clc-ease), margin 0.4s var(--clc-ease), opacity 0.3s ease;
+}
+
+.clc-card__arrow svg {
+  flex: 0 0 auto;
+  width: var(--clc-icon-size, 1.25rem);
+  height: var(--clc-icon-size, 1.25rem);
+}
+
+/* A merchant icon is drawn as a mask in the plate's text colour, so any
+   upload reads as an icon and follows an accent plate. */
+:is([data-clc-icon='mask'] .clc-card, .clc-card[data-clc-icon='mask']) .clc-card__arrow::before {
+  content: '';
+  flex: 0 0 auto;
+  width: var(--clc-icon-size, 1.25rem);
+  height: var(--clc-icon-size, 1.25rem);
+  background-color: currentColor;
+  -webkit-mask: var(--clc-icon) center / contain no-repeat;
+  mask: var(--clc-icon) center / contain no-repeat;
+}
+
+:is([data-clc-icon='mask'] .clc-card, .clc-card[data-clc-icon='mask']) .clc-card__arrow svg {
+  display: none;
+}
+
+:is([data-clc-icon='off'] .clc-card, .clc-card[data-clc-icon='off']) .clc-card__arrow {
+  display: none;
+}
+
+.clc-card:is(:hover, :focus-visible) .clc-card__arrow {
+  width: var(--clc-icon-size, 1.25rem);
+  margin-inline-end: calc(var(--clc-pad) * 0.9);
+  opacity: 1;
+}
+
+.clc-card__text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  min-width: 0;
+}
+
+/* One line, cut with an ellipsis: the icon growing in on hover narrows the
+   text box, so the title truncates further instead of wrapping. */
+.clc-card__title {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-family: var(--font-heading-family, inherit);
+  font-size: var(--fs-text-md);
+  font-weight: var(--clc-title-weight, 700);
+  line-height: 1.2;
+}
+
+.clc-card__subtitle {
+  overflow: hidden;
+  font-size: var(--fs-text-sm);
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  opacity: 0.9;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .clc-card__image,
+  .clc-card__arrow {
+    transition: none;
+  }
+
+  .clc-card:hover .clc-card__image {
+    transform: none;
+  }
+}
+
+@media (min-width: 768px) {
+  .clc-card {
+    --clc-item-radius: var(--ds-item-radius-desktop);
+    border-width: var(--ds-item-border-width-desktop, 0);
+    box-shadow: var(--ds-item-shadow-desktop, none);
+  }
+
+  :is([data-clc-box='media'] .clc-card, .clc-card[data-clc-box='media']) {
+    border-width: 0;
+    box-shadow: none;
+  }
+
+  :is([data-clc-box='media'] .clc-card, .clc-card[data-clc-box='media']) .clc-card__media {
+    border-width: var(--ds-item-border-width-desktop, 0);
+    box-shadow: var(--ds-item-shadow-desktop, none);
+  }
+
+  .clc-card__title {
+    font-size: var(--fs-text-lg, var(--fs-text-md));
+  }
+}
+{% endstylesheet %}
+
+{%- liquid
+  assign clc_image = image | default: collection.image | default: collection.featured_image
+  assign clc_title = title | default: collection.title
+  if clc_title == blank
+    assign clc_title = 'onboarding.collection_title' | t
+  endif
+  assign clc_url = collection.url
+
+  assign clc_tag = 'div'
+  if clc_url != blank
+    assign clc_tag = 'a'
+  endif
+-%}
+
+<{{ clc_tag }}
+  class="clc-card"
+  {% if clc_url != blank %}href="{{ clc_url }}"{% endif %}
+  {% if plate != blank %}data-clc-plate="{{ plate }}"{% endif %}
+  {{ attributes }}
+>
+  <span class="clc-card__media">
+    {%- if clc_image != blank -%}
+      {{
+        clc_image
+        | image_url: width: 1400
+        | image_tag:
+          class: 'clc-card__image',
+          loading: 'lazy',
+          widths: '360,540,720,900,1200,1400',
+          sizes: '(min-width: 990px) 33vw, (min-width: 768px) 50vw, 90vw',
+          alt: clc_image.alt
+      }}
+    {%- else -%}
+      {{ 'collection-1' | placeholder_svg_tag: 'clc-card__image clc-card__image--placeholder' }}
+    {%- endif -%}
+  </span>
+
+  <span class="clc-card__plate">
+    <span class="clc-card__arrow" aria-hidden="true">
+      {{- 'icon-arrow-diagonal.svg' | inline_asset_content -}}
+    </span>
+    <span class="clc-card__text">
+      {%- comment -%} escape_once: the sample title from `t` is already escaped. {%- endcomment -%}
+      <span class="clc-card__title">{{ clc_title | escape_once }}</span>
+      {%- if subtitle != blank -%}
+        <span class="clc-card__subtitle">{{ subtitle | escape }}</span>
+      {%- endif -%}
+    </span>
+  </span>
+</{{ clc_tag }}>

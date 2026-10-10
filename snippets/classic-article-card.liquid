@@ -1,0 +1,201 @@
+{% doc %}
+  Classic Article Card (`cls-`) — the article card of Featured Articles, the
+  blog page and, through snippets/classic-blog-card.liquid, Featured Blogs:
+  picture, optional date, title and optional excerpt, with the whole card one
+  link (the title link is stretched over it). The picture shape is
+  --cls-ratio, published by the section; corners are the Design System item
+  radius. On hover the picture lifts (--card-hover-lift), its image zooms
+  and the title underline draws in. A blank article renders a sample card for
+  the theme editor. The optional overrides let another card (a blog) reuse
+  this one.
+
+  @param {article} [article] - the article to show; blank renders a sample card
+  @param {boolean} [show_date] - true shows the publish date
+  @param {boolean} [show_excerpt] - true shows the excerpt (or the start of the content)
+  @param {string} [url] - link override; with `title`, replaces the article's link
+  @param {string} [title] - title override (plain text, escaped here)
+  @param {image} [image] - picture override
+  @param {string} [meta] - text shown in the date line instead of the date
+  @param {string} [excerpt] - excerpt override (plain text)
+
+  @example
+  {% render 'classic-article-card', article: article, show_date: true, show_excerpt: true %}
+  {% render 'classic-article-card', url: blog.url, title: blog.title, image: cover, meta: count_label %}
+{% enddoc %}
+{%- liquid
+  assign cac_image = image | default: article.image
+  assign cac_url = url | default: article.url
+  assign cac_title = title | default: article.title
+  if cac_title == blank
+    assign cac_title = 'theme.sections.classic.sample_article_title' | t
+  endif
+
+  assign cac_excerpt = excerpt
+  if cac_excerpt == blank and show_excerpt
+    if article != blank
+      assign cac_excerpt = article.excerpt | default: article.content | strip_html | truncatewords: 24
+    else
+      assign cac_excerpt = 'theme.sections.classic.sample_article_excerpt' | t
+    endif
+  endif
+-%}
+<article class="cls-article">
+  <div class="cls-article__media">
+    {%- if cac_image != blank -%}
+      {{
+        cac_image
+        | image_url: width: 1200
+        | image_tag:
+          loading: 'lazy',
+          widths: '360, 540, 720, 900, 1200',
+          sizes: '(min-width: 768px) 33vw, 85vw',
+          class: 'cls-article__image',
+          alt: cac_image.alt
+      }}
+    {%- else -%}
+      {{ 'image' | placeholder_svg_tag: 'cls-article__image cls-article__image--placeholder' }}
+    {%- endif -%}
+  </div>
+
+  <div class="cls-article__body">
+    {%- if meta != blank -%}
+      <p class="cls-article__date">{{ meta | escape }}</p>
+    {%- elsif show_date -%}
+      <p class="cls-article__date">
+        {%- if article != blank -%}
+          {{ article.published_at | time_tag: format: 'date' }}
+        {%- else -%}
+          {{ 'now' | time_tag: format: 'date' }}
+        {%- endif -%}
+      </p>
+    {%- endif -%}
+
+    <h3 class="cls-article__title">
+      {%- if cac_url != blank -%}
+        <a class="cls-article__link" href="{{ cac_url }}">{{ cac_title | escape }}</a>
+      {%- else -%}
+        {{ cac_title | escape }}
+      {%- endif -%}
+    </h3>
+
+    {%- if cac_excerpt != blank -%}
+      <p class="cls-article__excerpt">{{ cac_excerpt | escape_once }}</p>
+    {%- endif -%}
+  </div>
+</article>
+
+{% stylesheet %}
+  .cls-article {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 0.875rem;
+    height: 100%;
+    min-width: 0;
+  }
+
+  .cls-article__media {
+    display: block;
+    overflow: hidden;
+    aspect-ratio: var(--cls-ratio, 4 / 3);
+    background-color: var(--color-surface);
+    border-radius: var(--ds-item-radius-mobile);
+    transition: transform 0.45s cubic-bezier(0.2, 0.7, 0.2, 1), box-shadow 0.45s cubic-bezier(0.2, 0.7, 0.2, 1);
+  }
+
+  .cls-article__image {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.6s ease;
+  }
+
+  .cls-article__image--placeholder {
+    fill: color-mix(in srgb, var(--color-text) 20%, transparent);
+  }
+
+  .cls-article__body {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    min-width: 0;
+  }
+
+  .cls-article__date {
+    margin: 0;
+    font-family: var(--font-body-family);
+    font-size: var(--fs-text-xs);
+    color: var(--color-soft-text);
+  }
+
+  .cls-article__title {
+    margin: 0;
+    font-family: var(--font-heading-family);
+    font-style: var(--font-heading-style);
+    font-weight: var(--font-heading-weight);
+    font-size: var(--fs-heading-xxs);
+    line-height: var(--lh-heading);
+    letter-spacing: var(--ls-heading);
+    text-transform: var(--heading-text-transform);
+    color: var(--color-heading);
+  }
+
+  .cls-article__link {
+    color: inherit;
+    text-decoration: none;
+    background-image: linear-gradient(currentColor, currentColor);
+    background-position: 0 100%;
+    background-repeat: no-repeat;
+    background-size: 0% 1px;
+    transition: background-size 0.35s ease;
+  }
+
+  .cls-article__link::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+  }
+
+  .cls-article__link:focus-visible {
+    outline: none;
+  }
+
+  .cls-article:has(.cls-article__link:focus-visible) {
+    outline: 2px solid var(--color-heading);
+    outline-offset: 4px;
+  }
+
+  .cls-article__excerpt {
+    display: -webkit-box;
+    margin: 0;
+    overflow: hidden;
+    font-family: var(--font-body-family);
+    font-size: var(--fs-text-sm);
+    color: var(--color-text);
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 3;
+  }
+
+  .cls-article:is(:hover, :focus-within) .cls-article__link {
+    background-size: 100% 1px;
+  }
+
+  @media (hover: hover) and (prefers-reduced-motion: no-preference) {
+    html:not(.motion-disabled) .cls-article:is(:hover, :focus-within) .cls-article__media {
+      transform: var(--card-hover-lift);
+      box-shadow: 0 1rem 2rem -1rem color-mix(in srgb, var(--color-shadow) 45%, transparent);
+    }
+
+    html:not(.motion-disabled) .cls-article:is(:hover, :focus-within) .cls-article__image {
+      transform: scale(1.04);
+    }
+  }
+
+  @media (min-width: 768px) {
+    .cls-article__media {
+      border-radius: var(--ds-item-radius-desktop);
+    }
+  }
+{% endstylesheet %}

@@ -1,0 +1,95 @@
+{%- comment -%}
+  Glass Resolver — turns a glass look and strength into custom properties
+  for a glass background. Bare declarations (no selector, no braces), like
+  accent-resolver: render it inside the rule of the element that publishes
+  them; the glass element reads them.
+
+    frosted  soft, milky pane: heavy blur, a brightening wash in the tint, no
+             edge (the theme's reference glass; the default)
+    liquid   clear pane: lighter blur, the photo's colours boosted, light
+             catching along the edges and a soft sheen inside
+    full     the whole effect (default)        touch  a hint of glass
+
+  Accepts:
+  - style    {String, optional} 'frosted' | 'liquid'
+  - strength {String, optional} 'full' | 'touch'
+  - color    {String, optional} CSS colour the pane is tinted with; a token,
+             never a raw value. Default var(--color-surface).
+  - weight   {String, optional} 'light' (default) | 'heavy' — heavy thickens
+             the tint so a strong colour (an accent) keeps its text readable.
+  - prefix   {String, optional} property family, no leading `--`. Default
+             'glass'.
+
+  Emits:
+    --<prefix>-bg        the tinted, see-through background
+    --<prefix>-filter    the backdrop-filter value
+    --<prefix>-edge      a box-shadow (edge light and sheen), or none
+    --<prefix>-fallback  background for browsers without backdrop-filter
+
+  Edge light is the tint lifted to near white (relative colour syntax), so it
+  follows the scheme; a browser without it simply draws no edge.
+
+  Usage:
+    .thing--{{ block.id }} {
+      {% render 'glass-resolver', style: s.glass_style, strength: s.glass_strength, prefix: 'thing-glass' %}
+    }
+    .thing__pane {
+      background: var(--thing-glass-bg);
+      box-shadow: var(--thing-glass-edge);
+      -webkit-backdrop-filter: var(--thing-glass-filter);
+      backdrop-filter: var(--thing-glass-filter);
+    }
+{%- endcomment -%}
+
+{%- liquid
+  assign gr_prefix = prefix | default: 'glass'
+  assign gr_color = color | default: 'var(--color-surface)'
+  assign gr_heavy = false
+  if weight == 'heavy'
+    assign gr_heavy = true
+  endif
+
+  assign gr_key = style | default: 'frosted'
+  if gr_key != 'liquid'
+    assign gr_key = 'frosted'
+  endif
+  if strength == 'touch'
+    assign gr_key = gr_key | append: '-touch'
+  else
+    assign gr_key = gr_key | append: '-full'
+  endif
+
+  assign gr_hl = 'oklch(from ' | append: gr_color | append: ' 0.98 calc(c * 0.4) h / '
+  assign gr_drop = 'color-mix(in srgb, var(--color-shadow) 40%, transparent)'
+
+  case gr_key
+    when 'liquid-full'
+      assign gr_filter = 'blur(12px) saturate(180%) brightness(1.08)'
+      assign gr_mix = 12
+      assign gr_mix_heavy = 55
+      assign gr_edge = 'inset 0 1px 0 0 ' | append: gr_hl | append: '0.75), inset 0 -1px 0 0 ' | append: gr_hl | append: '0.2), inset 0 0 0 1px ' | append: gr_hl | append: '0.22), inset 0 14px 24px -18px ' | append: gr_hl | append: '0.45), 0 10px 30px -14px ' | append: gr_drop
+    when 'liquid-touch'
+      assign gr_filter = 'blur(6px) saturate(150%) brightness(1.04)'
+      assign gr_mix = 6
+      assign gr_mix_heavy = 40
+      assign gr_edge = 'inset 0 1px 0 0 ' | append: gr_hl | append: '0.5), inset 0 0 0 1px ' | append: gr_hl | append: '0.12)'
+    when 'frosted-touch'
+      assign gr_filter = 'blur(10px) saturate(105%) brightness(1.06)'
+      assign gr_mix = 14
+      assign gr_mix_heavy = 50
+      assign gr_edge = 'none'
+    else
+      assign gr_filter = 'blur(22px) saturate(115%) brightness(1.12)'
+      assign gr_mix = 28
+      assign gr_mix_heavy = 72
+      assign gr_edge = 'none'
+  endcase
+
+  if gr_heavy
+    assign gr_mix = gr_mix_heavy
+  endif
+-%}
+--{{ gr_prefix }}-bg: color-mix(in srgb, {{ gr_color }} {{ gr_mix }}%, transparent);
+--{{ gr_prefix }}-filter: {{ gr_filter }};
+--{{ gr_prefix }}-edge: {{ gr_edge }};
+--{{ gr_prefix }}-fallback: color-mix(in srgb, {{ gr_color }} 88%, transparent);
