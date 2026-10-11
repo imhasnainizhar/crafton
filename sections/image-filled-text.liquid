@@ -1,0 +1,75 @@
+{%- comment -%}
+  Image Filled Text: a colour-scheme shell for Image filled text blocks, the
+  big letters filled with an image or video. The section only owns the
+  scheme, the Design System padding, gutter and width, and the gap between
+  stacked blocks; every text, fill and letter control lives on the block.
+{%- endcomment -%}
+
+<div class="ift-section color-{{ section.settings.color_scheme }}">
+  <div class="ift-section__inner">
+    {% content_for 'blocks' %}
+  </div>
+</div>
+
+{% stylesheet %}
+  .ift-section {
+    background-color: var(--color-base);
+    color: var(--color-text);
+    padding-block: var(--ds-section-padding-mobile);
+    padding-inline: var(--ds-layout-gutter-mobile);
+    overflow-x: clip;
+  }
+
+  .ift-section__inner {
+    display: flex;
+    flex-direction: column;
+    gap: var(--ds-layout-gap-mobile);
+    width: 100%;
+    max-width: var(--ds-section-width-mobile);
+    margin-inline: auto;
+  }
+
+  @media screen and (min-width: 768px) {
+    .ift-section {
+      padding-block: var(--ds-section-padding-desktop);
+      padding-inline: var(--ds-layout-gutter-desktop);
+    }
+
+    .ift-section__inner {
+      gap: var(--ds-layout-gap-desktop);
+      max-width: var(--ds-section-width-desktop);
+    }
+  }
+{% endstylesheet %}
+
+{% schema %}
+{
+  "name": "Image filled text",
+  "tag": "section",
+  "class": "shopify-section--image-filled-text",
+  "settings": [
+    {
+      "type": "color_scheme",
+      "id": "color_scheme",
+      "label": "Color scheme",
+      "default": "scheme_1"
+    }
+  ],
+  "blocks": [
+    {
+      "type": "image_filled_text"
+    }
+  ],
+  "presets": [
+    {
+      "name": "Image filled text",
+      "category": "Text & content",
+      "blocks": [
+        {
+          "type": "image_filled_text"
+        }
+      ]
+    }
+  ]
+}
+{% endschema %}

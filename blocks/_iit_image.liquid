@@ -1,0 +1,178 @@
+{%- comment -%}
+  Inline Image Text — Image (private). A small image that sits in the line of
+  text like a word: a pill, circle, rectangle or square, sized against the
+  section's text size so it scales with it. Rectangles and squares take
+  rounded or plain corners. Shows Shopify's sample image until one is chosen.
+{%- endcomment -%}
+
+{%- liquid
+  assign shape = block.settings.shape | default: 'pill'
+  assign corners = ''
+  if shape == 'rectangle' or shape == 'square'
+    assign corners = block.settings.corners | default: 'rounded' | prepend: ' iit-image--'
+  endif
+  assign iit_img = block.settings.image
+-%}
+
+{% style %}
+  .iit-image--{{ block.id }} {
+    --iit-image-size: {{ block.settings.size | default: 160 | divided_by: 100.0 }};
+    --iit-image-ratio: {{ block.settings.width_ratio | default: 185 | divided_by: 100.0 }};
+    --iit-image-mx: {{ block.settings.margin_x | default: 0 }}px;
+    --iit-image-my: {{ block.settings.margin_y | default: 0 }}px;
+  }
+{% endstyle %}
+
+<span
+  class="iit-image iit-image--{{ shape }}{{ corners }} iit-image--{{ block.id }}"
+  {{ block.shopify_attributes }}
+>
+  {%- if iit_img != blank -%}
+    {%- capture iit_position -%}object-position: {{ iit_img.presentation.focal_point | default: '50% 50%' }};{%- endcapture -%}
+    {{
+      iit_img
+      | image_url: width: 1200
+      | image_tag:
+        loading: 'lazy',
+        widths: '200, 300, 400, 600, 800, 1200',
+        sizes: '(min-width: 768px) 30vw, 50vw',
+        alt: iit_img.alt,
+        style: iit_position
+    }}
+  {%- else -%}
+    {{ 'lifestyle-2' | placeholder_svg_tag: 'iit-image__placeholder' }}
+  {%- endif -%}
+</span>{{ ' ' }}
+
+{% stylesheet %}
+  .iit-image {
+    --iit-image-h: calc(1em * var(--iit-image-size, 1.6));
+    box-sizing: border-box;
+    display: inline-block;
+    vertical-align: middle;
+    width: calc(var(--iit-image-h) * var(--iit-image-ratio, 1.85));
+    max-width: 100%;
+    height: var(--iit-image-h);
+    margin: var(--iit-image-my, 0px) var(--iit-image-mx, 0px);
+    overflow: hidden;
+    background-color: var(--color-border);
+    line-height: 0;
+  }
+
+  .iit-image--circle,
+  .iit-image--square {
+    width: var(--iit-image-h);
+  }
+
+  .iit-image--pill,
+  .iit-image--circle {
+    border-radius: 999px;
+  }
+
+  .iit-image--rounded {
+    border-radius: calc(var(--iit-image-h) * 0.2);
+  }
+
+  .iit-image img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .iit-image__placeholder {
+    display: block;
+    width: 100%;
+    height: 100%;
+    fill: var(--color-soft-text);
+  }
+{% endstylesheet %}
+
+{% schema %}
+{
+  "name": "Image",
+  "tag": null,
+  "settings": [
+    {
+      "type": "image_picker",
+      "id": "image",
+      "label": "Image"
+    },
+    {
+      "type": "select",
+      "id": "shape",
+      "label": "Shape",
+      "options": [
+        { "value": "pill", "label": "Pill" },
+        { "value": "circle", "label": "Circle" },
+        { "value": "rectangle", "label": "Rectangle" },
+        { "value": "square", "label": "Square" }
+      ],
+      "default": "pill"
+    },
+    {
+      "type": "select",
+      "id": "corners",
+      "label": "Corners",
+      "options": [
+        { "value": "rounded", "label": "Rounded" },
+        { "value": "plain", "label": "Plain" }
+      ],
+      "default": "rounded",
+      "visible_if": "{{ block.settings.shape == 'rectangle' or block.settings.shape == 'square' }}"
+    },
+    {
+      "type": "range",
+      "id": "size",
+      "label": "Height",
+      "info": "Compared with the text size, so the image grows with the text.",
+      "min": 60,
+      "max": 300,
+      "step": 10,
+      "unit": "%",
+      "default": 160
+    },
+    {
+      "type": "range",
+      "id": "width_ratio",
+      "label": "Width",
+      "info": "Compared with the image's height.",
+      "min": 120,
+      "max": 300,
+      "step": 5,
+      "unit": "%",
+      "default": 185,
+      "visible_if": "{{ block.settings.shape == 'pill' or block.settings.shape == 'rectangle' }}"
+    },
+    {
+      "type": "header",
+      "content": "Spacing"
+    },
+    {
+      "type": "range",
+      "id": "margin_x",
+      "label": "Space left and right",
+      "min": 0,
+      "max": 80,
+      "step": 2,
+      "unit": "px",
+      "default": 8
+    },
+    {
+      "type": "range",
+      "id": "margin_y",
+      "label": "Space above and below",
+      "min": 0,
+      "max": 60,
+      "step": 2,
+      "unit": "px",
+      "default": 4
+    }
+  ],
+  "presets": [
+    {
+      "name": "Image"
+    }
+  ]
+}
+{% endschema %}
