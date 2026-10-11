@@ -1,0 +1,86 @@
+{%- comment -%}
+  Review Profile Pic (private) — reviewer avatar image or placeholder glyph.
+  Composed inside a Group block alongside a nested Group that holds the name
+  and badge. Set that row Group's "Smallest item width" to 0 so the avatar
+  keeps its own size instead of claiming an equal share of the row.
+{%- endcomment -%}
+
+{% style %}
+  .review-profile-pic--{{ block.id }},
+  .review-profile-pic-placeholder--{{ block.id }} {
+    width: 48px;
+    height: 48px;
+    flex: 0 0 48px;
+    /* The avatar is intrinsically sized. A row parent (Group, Review Card
+       Profile) bounds its children with min-width to stop unbounded content
+       from blowing out; min-width beats width, so without these the circle
+       stretches into an oval. */
+    min-width: 48px;
+    max-width: 48px;
+    border-radius: 50%;
+    object-fit: cover;
+  }
+
+  .review-profile-pic-placeholder--{{ block.id }} {
+    display: grid;
+    place-items: center;
+    background: color-mix(in srgb, var(--color-accent) 48%, transparent);
+    color: var(--color-accent-contrast);
+  }
+{% endstyle %}
+
+{%- if block.settings.show_profile_image -%}
+  {%- if block.settings.profile_image != blank -%}
+    <img
+      src="{{ block.settings.profile_image | image_url: width: 96 }}"
+      alt="{{ block.settings.alt_text | escape }}"
+      class="review-profile-pic--{{ block.id }}"
+      width="48"
+      height="48"
+      loading="lazy"
+      {{ block.shopify_attributes }}
+    >
+  {%- else -%}
+    <div class="review-profile-pic-placeholder--{{ block.id }}" aria-hidden="true" {{ block.shopify_attributes }}>
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+        <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4-4-4-4-4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
+      </svg>
+    </div>
+  {%- endif -%}
+{%- endif -%}
+
+{% schema %}
+{
+  "name": "Review Profile Pic",
+  "tag": null,
+  "settings": [
+    {
+      "type": "header",
+      "content": "Profile Picture"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_profile_image",
+      "label": "Show profile picture",
+      "default": true
+    },
+    {
+      "type": "image_picker",
+      "id": "profile_image",
+      "label": "Profile Picture",
+      "visible_if": "{{ block.settings.show_profile_image }}"
+    },
+    {
+      "type": "text",
+      "id": "alt_text",
+      "label": "Alt text",
+      "visible_if": "{{ block.settings.show_profile_image }}"
+    }
+  ],
+  "presets": [
+    {
+      "name": "Review Profile Pic"
+    }
+  ]
+}
+{% endschema %}

@@ -1,0 +1,414 @@
+{%- comment -%}
+  Scrolling Masonry (private, `smr-`) — the layout block of Scrolling Masonry
+  Reviews. Review Cards render once into a source list (a CSS-columns masonry
+  before JS runs); <smr-masonry> then deals them into columns (or rows), loops
+  each lane with cloned copies and scrolls it in the chosen direction. The
+  edge fade is always on; only its depth and strength are settings.
+  Depends on: assets/scrolling-masonry-reviews.js (<smr-masonry>).
+{%- endcomment -%}
+
+{%- liquid
+  assign orientation = block.settings.orientation | default: 'vertical'
+  if orientation == 'horizontal'
+    assign direction = block.settings.direction_horizontal | default: 'left'
+    assign lanes_mobile = block.settings.rows_mobile | default: 2
+    assign lanes_desktop = block.settings.rows_desktop | default: 2
+  else
+    assign direction = block.settings.direction_vertical | default: 'up'
+    assign lanes_mobile = block.settings.columns_mobile | default: 1
+    assign lanes_desktop = block.settings.columns_desktop | default: 3
+  endif
+  assign fade_edge = 100 | minus: block.settings.fade_intensity
+-%}
+
+<script src="{{ 'scrolling-masonry-reviews.js' | asset_url }}" defer></script>
+
+{% style %}
+  .smr--{{ block.id }} {
+    --smr-lanes-mobile: {{ lanes_mobile }};
+    --smr-lanes-desktop: {{ lanes_desktop }};
+    --smr-height-mobile: {{ block.settings.height_mobile }}px;
+    --smr-height-desktop: {{ block.settings.height_desktop }}px;
+    --smr-card-width-mobile: {{ block.settings.card_width_mobile }}px;
+    --smr-card-width-desktop: {{ block.settings.card_width_desktop }}px;
+    --smr-fade: {{ block.settings.fade_depth }}%;
+    --smr-fade-edge: rgb(0 0 0 / {{ fade_edge }}%);
+  }
+{% endstyle %}
+
+<smr-masonry
+  class="smr smr--{{ block.id }} smr--{{ orientation }} smr--{{ direction }}"
+  data-smr-orientation="{{ orientation }}"
+  data-smr-speed="{{ block.settings.speed }}"
+  {{ block.shopify_attributes }}
+>
+  <div class="smr__viewport" data-smr-viewport>
+    <div class="smr__source" data-smr-source>
+      {% content_for 'blocks' %}
+    </div>
+  </div>
+</smr-masonry>
+
+{% stylesheet %}
+  .smr {
+    --smr-gap: var(--ds-item-gap-mobile);
+    --smr-lanes: var(--smr-lanes-mobile);
+    --smr-card-width: min(var(--smr-card-width-mobile), 82vw);
+    --smr-fade-dir: to bottom;
+    display: block;
+    width: 100%;
+    max-width: var(--ds-section-width-mobile, none);
+    margin-inline: auto;
+  }
+
+  .smr--horizontal {
+    --smr-fade-dir: to right;
+  }
+
+  .smr__viewport {
+    position: relative;
+    overflow: hidden;
+    -webkit-mask-image: linear-gradient(var(--smr-fade-dir), var(--smr-fade-edge) 0%, #000 var(--smr-fade), #000 calc(100% - var(--smr-fade)), var(--smr-fade-edge) 100%);
+    mask-image: linear-gradient(var(--smr-fade-dir), var(--smr-fade-edge) 0%, #000 var(--smr-fade), #000 calc(100% - var(--smr-fade)), var(--smr-fade-edge) 100%);
+  }
+
+  .smr--vertical .smr__viewport {
+    height: var(--smr-height-mobile);
+  }
+
+  .smr .swiper-slide {
+    height: auto;
+  }
+
+  .smr--vertical .smr__source {
+    column-count: var(--smr-lanes-count, var(--smr-lanes));
+    column-gap: var(--smr-gap);
+  }
+
+  .smr--vertical .smr__source > * {
+    break-inside: avoid;
+    margin-bottom: var(--smr-gap);
+  }
+
+  .smr--horizontal .smr__source {
+    display: flex;
+    gap: var(--smr-gap);
+  }
+
+  .smr--horizontal .smr__source > *,
+  .smr--horizontal .smr__group > * {
+    flex: 0 0 var(--smr-card-width);
+    width: var(--smr-card-width);
+  }
+
+  .smr.is-built .smr__source {
+    display: none;
+  }
+
+  .smr__lanes {
+    display: grid;
+    gap: var(--smr-gap);
+  }
+
+  .smr--vertical .smr__lanes {
+    grid-template-columns: repeat(var(--smr-lanes-count, 1), minmax(0, 1fr));
+    align-items: start;
+  }
+
+  .smr__lane {
+    min-width: 0;
+  }
+
+  .smr__track,
+  .smr__group {
+    display: flex;
+    gap: var(--smr-gap);
+  }
+
+  .smr--vertical .smr__track,
+  .smr--vertical .smr__group {
+    flex-direction: column;
+  }
+
+  .smr--horizontal .smr__track {
+    width: max-content;
+  }
+
+  .smr__group {
+    flex: 0 0 auto;
+  }
+
+  .smr.is-ready .smr__track {
+    animation: smr-scroll-y var(--smr-duration, 40s) linear var(--smr-delay, 0s) infinite;
+    will-change: transform;
+  }
+
+  .smr--horizontal.is-ready .smr__track {
+    animation-name: smr-scroll-x;
+  }
+
+  .smr--down.is-ready .smr__track,
+  .smr--right.is-ready .smr__track {
+    animation-direction: reverse;
+  }
+
+  .smr.is-paused .smr__track,
+  .smr.is-offscreen .smr__track,
+  .smr:focus-within .smr__track {
+    animation-play-state: paused;
+  }
+
+  @media (hover: hover) {
+    .smr__viewport:hover .smr__track {
+      animation-play-state: paused;
+    }
+  }
+
+  @keyframes smr-scroll-y {
+    from { transform: translate3d(0, 0, 0); }
+    to { transform: translate3d(0, calc(var(--smr-shift, 0px) * -1), 0); }
+  }
+
+  @keyframes smr-scroll-x {
+    from { transform: translate3d(0, 0, 0); }
+    to { transform: translate3d(calc(var(--smr-shift, 0px) * -1), 0, 0); }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .smr.is-ready .smr__track {
+      animation: none;
+    }
+
+    .smr__viewport {
+      overflow: auto;
+    }
+  }
+
+  @media (min-width: 768px) {
+    .smr {
+      --smr-gap: var(--ds-item-gap-desktop);
+      --smr-lanes: var(--smr-lanes-desktop);
+      --smr-card-width: var(--smr-card-width-desktop);
+      max-width: var(--ds-section-width-desktop, none);
+    }
+
+    .smr--vertical .smr__viewport {
+      height: var(--smr-height-desktop);
+    }
+  }
+{% endstylesheet %}
+
+{% schema %}
+{
+  "name": "Scrolling Masonry",
+  "tag": null,
+  "settings": [
+    {
+      "type": "header",
+      "content": "Layout"
+    },
+    {
+      "type": "select",
+      "id": "orientation",
+      "label": "Orientation",
+      "info": "Columns scroll up or down. Rows scroll sideways.",
+      "options": [
+        { "value": "vertical", "label": "Columns" },
+        { "value": "horizontal", "label": "Rows" }
+      ],
+      "default": "vertical"
+    },
+    {
+      "type": "select",
+      "id": "direction_vertical",
+      "label": "Scroll direction",
+      "options": [
+        { "value": "up", "label": "Bottom to top" },
+        { "value": "down", "label": "Top to bottom" }
+      ],
+      "default": "up",
+      "visible_if": "{{ block.settings.orientation != 'horizontal' }}"
+    },
+    {
+      "type": "select",
+      "id": "direction_horizontal",
+      "label": "Scroll direction",
+      "options": [
+        { "value": "left", "label": "Right to left" },
+        { "value": "right", "label": "Left to right" }
+      ],
+      "default": "left",
+      "visible_if": "{{ block.settings.orientation == 'horizontal' }}"
+    },
+    {
+      "type": "select",
+      "id": "columns_mobile",
+      "label": "Columns on mobile",
+      "options": [
+        { "value": "1", "label": "1" },
+        { "value": "2", "label": "2" }
+      ],
+      "default": "1",
+      "visible_if": "{{ block.settings.orientation != 'horizontal' }}"
+    },
+    {
+      "type": "range",
+      "id": "columns_desktop",
+      "label": "Columns on desktop",
+      "min": 2,
+      "max": 5,
+      "step": 1,
+      "default": 3,
+      "visible_if": "{{ block.settings.orientation != 'horizontal' }}"
+    },
+    {
+      "type": "range",
+      "id": "height_mobile",
+      "label": "Height on mobile",
+      "min": 360,
+      "max": 900,
+      "step": 20,
+      "unit": "px",
+      "default": 560,
+      "visible_if": "{{ block.settings.orientation != 'horizontal' }}"
+    },
+    {
+      "type": "range",
+      "id": "height_desktop",
+      "label": "Height on desktop",
+      "min": 400,
+      "max": 1000,
+      "step": 20,
+      "unit": "px",
+      "default": 720,
+      "visible_if": "{{ block.settings.orientation != 'horizontal' }}"
+    },
+    {
+      "type": "select",
+      "id": "rows_mobile",
+      "label": "Rows on mobile",
+      "options": [
+        { "value": "1", "label": "1" },
+        { "value": "2", "label": "2" },
+        { "value": "3", "label": "3" }
+      ],
+      "default": "2",
+      "visible_if": "{{ block.settings.orientation == 'horizontal' }}"
+    },
+    {
+      "type": "range",
+      "id": "rows_desktop",
+      "label": "Rows on desktop",
+      "min": 1,
+      "max": 4,
+      "step": 1,
+      "default": 2,
+      "visible_if": "{{ block.settings.orientation == 'horizontal' }}"
+    },
+    {
+      "type": "range",
+      "id": "card_width_mobile",
+      "label": "Card width on mobile",
+      "min": 220,
+      "max": 360,
+      "step": 10,
+      "unit": "px",
+      "default": 280,
+      "visible_if": "{{ block.settings.orientation == 'horizontal' }}"
+    },
+    {
+      "type": "range",
+      "id": "card_width_desktop",
+      "label": "Card width on desktop",
+      "min": 240,
+      "max": 480,
+      "step": 10,
+      "unit": "px",
+      "default": 340,
+      "visible_if": "{{ block.settings.orientation == 'horizontal' }}"
+    },
+    {
+      "type": "header",
+      "content": "Motion"
+    },
+    {
+      "type": "range",
+      "id": "speed",
+      "label": "Scroll speed",
+      "info": "Pixels per second. Scrolling pauses while a visitor hovers or focuses a card.",
+      "min": 10,
+      "max": 120,
+      "step": 5,
+      "unit": "px",
+      "default": 40
+    },
+    {
+      "type": "header",
+      "content": "Edge fade",
+      "info": "Cards always fade out at both ends of the scroll."
+    },
+    {
+      "type": "range",
+      "id": "fade_depth",
+      "label": "Fade depth",
+      "info": "How far the fade reaches in from each edge.",
+      "min": 5,
+      "max": 45,
+      "step": 1,
+      "unit": "%",
+      "default": 20
+    },
+    {
+      "type": "range",
+      "id": "fade_intensity",
+      "label": "Fade strength",
+      "info": "At 100%, cards disappear completely at the edge.",
+      "min": 20,
+      "max": 100,
+      "step": 5,
+      "unit": "%",
+      "default": 100
+    }
+  ],
+  "blocks": [
+    {
+      "type": "review_card"
+    }
+  ],
+  "presets": [
+    {
+      "name": "Scrolling Masonry",
+      "blocks": [
+        {
+          "type": "review_card",
+          "blocks": [
+            { "type": "_star_rating" },
+            { "type": "text", "settings": { "paragraph_text": "<p>Exactly what I hoped for. It arrived quickly and feels even better in person.</p>" } }
+          ]
+        },
+        {
+          "type": "review_card",
+          "blocks": [
+            { "type": "_star_rating" },
+            { "type": "text", "settings": { "paragraph_text": "<p>I have tried a lot of alternatives over the years. This is the first one I have reordered without thinking twice.</p>" } }
+          ]
+        },
+        {
+          "type": "review_card",
+          "blocks": [
+            { "type": "_star_rating" },
+            { "type": "text", "settings": { "paragraph_text": "<p>Thoughtful packaging, friendly support.</p>" } }
+          ]
+        },
+        {
+          "type": "review_card",
+          "blocks": [
+            { "type": "_star_rating" },
+            { "type": "text", "settings": { "paragraph_text": "<p>Bought one for myself and two more as gifts. Everyone asked where it was from.</p>" } }
+          ]
+        }
+      ]
+    }
+  ]
+}
+{% endschema %}

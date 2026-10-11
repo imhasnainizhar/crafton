@@ -148,3 +148,18 @@ Brought over with Elewind names (prefix chosen by the user there):
 `custom_font`, `font_size_mobile`, `font_size_desktop`, `color_scheme`, `text`,
 `font_weight`, `image`, `shape`, `corners`, `size`, `width_ratio`, `margin_x`,
 `margin_y`.
+
+## Scrolling Masonry Reviews (`smr-`) and Review Card — 2026-10-11
+
+Brought over with Elewind names (prefix chosen by the user there):
+`sections/scrolling-masonry-reviews.liquid`, private block `_smr_masonry`,
+`<smr-masonry>` (`assets/scrolling-masonry-reviews.js`). Classes `.smr-section`,
+`.smr-section__blocks`, `.smr`, `.smr--vertical|horizontal`,
+`.smr--up|down|left|right`, `.smr__viewport|source|lanes|lane|track|group`; hooks
+`data-smr-orientation|speed|viewport|source|track`; custom properties
+`--smr-lanes*`, `--smr-height-*`, `--smr-card-width*`, `--smr-gap`, `--smr-fade*`,
+`--smr-shift|duration|delay`. Review Card family with Elewind names: blocks
+`review_card`, `_group`, `_quote_icon`, `_star_rating`, `_review_card_product`,
+`_review_card_image`, `_review_profile_pic`, `video_badge`; snippet `quote-icon`;
+`<review-card>`, `<video-badge>`. Locale keys
+`theme.components.review_card.play_video`, `theme.components.star_rating.label`.

@@ -1,0 +1,72 @@
+{%- comment -%}
+  Review Card Product (private) — optional linked product reference for
+  blocks/review_card.liquid. Uses the selected product's featured media,
+  title, and storefront URL.
+{%- endcomment -%}
+
+{%- assign review_product = block.settings.product -%}
+
+{%- if review_product != blank -%}
+  {% style %}
+    .review-card-product--{{ block.id }} {
+      display: flex;
+      align-items: center;
+      gap: 0.625rem;
+      width: 100%;
+      color: var(--color-text);
+      text-decoration: none;
+    }
+    .review-card-product--{{ block.id }} .review-card-product__media {
+      width: 3rem;
+      height: 3rem;
+      flex: 0 0 3rem;
+      overflow: hidden;
+      border-radius: var(--ds-item-radius-mobile);
+      background: color-mix(in srgb, var(--color-text) 8%, transparent);
+    }
+    .review-card-product--{{ block.id }} .review-card-product__media img {
+      display: block;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    .review-card-product--{{ block.id }} .review-card-product__title {
+      font-family: var(--font-body-family);
+      font-size: var(--fs-body-sm);
+      line-height: 1.3;
+    }
+    @media (min-width: 768px) {
+      .review-card-product--{{ block.id }} .review-card-product__media {
+        border-radius: var(--ds-item-radius-desktop);
+      }
+    }
+  {% endstyle %}
+
+  <a class="review-card-product--{{ block.id }}" href="{{ review_product.url }}" {{ block.shopify_attributes }}>
+    {%- if review_product.featured_image != blank -%}
+      <span class="review-card-product__media">
+        {{ review_product.featured_image | image_url: width: 144 | image_tag: loading: 'lazy', widths: '72, 96, 144', alt: review_product.title }}
+      </span>
+    {%- endif -%}
+    <span class="review-card-product__title">{{ review_product.title | escape }}</span>
+  </a>
+{%- endif -%}
+
+{% schema %}
+{
+  "name": "Review Card Product",
+  "tag": null,
+  "settings": [
+    {
+      "type": "product",
+      "id": "product",
+      "label": "Product"
+    }
+  ],
+  "presets": [
+    {
+      "name": "Review Card Product"
+    }
+  ]
+}
+{% endschema %}

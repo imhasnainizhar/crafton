@@ -1,0 +1,149 @@
+{%- comment -%}
+  Star Rating — a private, reusable theme block. Renders a 0.5–5 star row with
+  half-star support. Shared by the text Review Card and the Video Review Card so
+  the star markup / colours live in exactly one place.
+
+  Its accent is resolved directly from this block's Accent setting, so it stays
+  reusable in any card or content composition without a parent dependency.
+  "Use custom star color" swaps the accent for a merchant-picked colour — the
+  one sanctioned exception, for rating yellow that no scheme accent carries.
+{%- endcomment -%}
+
+{%- liquid
+  assign rating = block.settings.rating | default: 5
+  assign size = block.settings.star_size | default: 14
+  assign gap = block.settings.star_gap | default: 2
+
+  assign star_color = 'var(--color-accent)'
+  if block.settings.use_custom_color and block.settings.custom_color != blank
+    assign star_color = block.settings.custom_color
+  endif
+-%}
+
+{% style %}
+  .star-rating--{{ block.id }} {
+    {% render 'accent-resolver', source: block.settings %}
+    display: flex;
+    justify-content: var(--align-x, flex-start);
+    width: fit-content;
+    gap: {{ gap }}px;
+    line-height: 0;
+  }
+  .star-rating--{{ block.id }} .star-rating__star {
+    width: {{ size }}px;
+    height: {{ size }}px;
+  }
+  .star-rating--{{ block.id }} .star-bg {
+    fill: color-mix(in srgb, var(--star-rating-accent) 25%, transparent);
+  }
+  .star-rating--{{ block.id }} .star-fg {
+    fill: var(--star-rating-accent);
+  }
+  .star-rating--{{ block.id }} .star-rating__star--half .star-fg {
+    clip-path: inset(0 50% 0 0);
+  }
+  .star-rating--{{ block.id }} .star-rating__star--empty .star-fg {
+    display: none;
+  }
+{% endstyle %}
+
+<div
+  class="star-rating--{{ block.id }}"
+  style="--star-rating-accent: {{ star_color }};"
+  role="img"
+  aria-label="{{ 'theme.components.star_rating.label' | t: rating: rating }}"
+  {{ block.shopify_attributes }}
+>
+  {%- for i in (1..5) -%}
+    {%- liquid
+      if rating >= i
+        assign star_state = 'full'
+      else
+        assign half_threshold = i | minus: 0.5
+        if rating >= half_threshold
+          assign star_state = 'half'
+        else
+          assign star_state = 'empty'
+        endif
+      endif
+    -%}
+    <svg class="star-rating__star star-rating__star--{{ star_state }}" viewBox="0 0 24 24" aria-hidden="true">
+      <path class="star-bg" d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/>
+      <path class="star-fg" d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/>
+    </svg>
+  {%- endfor -%}
+</div>
+
+{% schema %}
+{
+  "name": "Star Rating",
+  "tag": null,
+  "settings": [
+    {
+      "type": "header",
+      "content": "Rating",
+      "info": "A row of rating stars with adjustable value and size."
+    },
+    {
+      "type": "range",
+      "id": "rating",
+      "min": 0.5,
+      "max": 5,
+      "step": 0.5,
+      "label": "Star Rating",
+      "default": 5
+    },
+    {
+      "type": "range",
+      "id": "star_size",
+      "min": 8,
+      "max": 32,
+      "step": 1,
+      "unit": "px",
+      "label": "Star Size",
+      "default": 14
+    },
+    {
+      "type": "range",
+      "id": "star_gap",
+      "min": 0,
+      "max": 50,
+      "step": 2,
+      "unit": "px",
+      "label": "Gap Between Stars",
+      "default": 2
+    },
+    {
+      "type": "select",
+      "id": "accent_selected",
+      "label": "Accent",
+      "options": [
+        { "value": "neutral", "label": "Neutral" },
+        { "value": "soft", "label": "Soft" },
+        { "value": "strong", "label": "Strong" }
+      ],
+      "default": "neutral",
+      "visible_if": "{{ block.settings.use_custom_color == false }}"
+    },
+    {
+      "type": "checkbox",
+      "id": "use_custom_color",
+      "label": "Use custom star color",
+      "info": "Overrides the scheme accent, e.g. for rating yellow.",
+      "default": false
+    },
+    {
+      "type": "color",
+      "id": "custom_color",
+      "label": "Star color",
+      "default": "#FFB800",
+      "visible_if": "{{ block.settings.use_custom_color }}"
+    }
+  ],
+  "presets": [
+    {
+      "name": "Star Rating"
+    }
+  ]
+}
+{% endschema %}

@@ -1,0 +1,72 @@
+{%- comment -%}
+  Review Card Image (private) — optional review media for blocks/review_card.liquid.
+  The media surface uses the card-radius Design System tokens.
+{%- endcomment -%}
+
+{%- assign review_image = block.settings.image -%}
+
+{%- if review_image != blank -%}
+  {% style %}
+    .review-card-image--{{ block.id }} {
+      width: 100%;
+      margin: 0;
+      overflow: hidden;
+      border-radius: var(--ds-item-radius-mobile);
+    }
+    .review-card-image--{{ block.id }} img {
+      display: block;
+      width: 100%;
+      height: auto;
+    }
+    {%- unless block.settings.aspect_ratio == 'intrinsic' %}
+      .review-card-image--{{ block.id }} {
+        aspect-ratio: {{ block.settings.aspect_ratio }};
+      }
+      .review-card-image--{{ block.id }} img {
+        height: 100%;
+        object-fit: cover;
+      }
+    {%- endunless %}
+    @media (min-width: 768px) {
+      .review-card-image--{{ block.id }} {
+        border-radius: var(--ds-item-radius-desktop);
+      }
+    }
+  {% endstyle %}
+
+  <figure class="review-card-image--{{ block.id }}" {{ block.shopify_attributes }}>
+    {{ review_image | image_url: width: 1200 | image_tag: loading: 'lazy', widths: '320, 480, 640, 960, 1200', alt: review_image.alt }}
+  </figure>
+{%- endif -%}
+
+{% schema %}
+{
+  "name": "Review Card Image",
+  "tag": null,
+  "settings": [
+    {
+      "type": "image_picker",
+      "id": "image",
+      "label": "Image"
+    },
+    {
+      "type": "select",
+      "id": "aspect_ratio",
+      "label": "Aspect ratio",
+      "options": [
+        { "value": "intrinsic", "label": "Original" },
+        { "value": "1 / 1", "label": "Square (1:1)" },
+        { "value": "4 / 3", "label": "Landscape (4:3)" },
+        { "value": "3 / 4", "label": "Portrait (3:4)" },
+        { "value": "16 / 9", "label": "Wide (16:9)" }
+      ],
+      "default": "1 / 1"
+    }
+  ],
+  "presets": [
+    {
+      "name": "Review Card Image"
+    }
+  ]
+}
+{% endschema %}

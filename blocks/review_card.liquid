@@ -1,0 +1,886 @@
+{%- comment -%}
+  Review Card (from Elewind) — one testimonial card composed from Group, Quote
+  Icon, Star Rating, Heading, Text, Product, Image, Icon, Button, Accent Line
+  and Video Badge children. Media is None / Image / Video (poster + play
+  button, assets/review-card.js); content flows below the media or overlays it.
+  Carries .swiper-slide for carousel hosts; Scrolling Masonry removes it.
+  Depends on: snippets/alignments, space-token, background-role-token.
+{%- endcomment -%}
+
+{%- liquid
+  assign media_type = block.settings.media_type | default: 'video'
+  assign video_source = block.settings.video_source | default: 'upload'
+
+  assign has_video = false
+  if media_type == 'video'
+    if video_source == 'upload' and block.settings.video != blank
+      assign has_video = true
+    elsif video_source == 'link' and block.settings.video_url != blank
+      assign has_video = true
+    endif
+  endif
+
+  assign has_media = true
+  if media_type == 'none'
+    assign has_media = false
+  endif
+
+  assign ratio = block.settings.media_ratio | default: '4 / 5'
+
+  # Content can only overlay when there is media to overlay.
+  assign layout_mode = block.settings.layout_mode | default: 'flow'
+  unless has_media
+    assign layout_mode = 'flow'
+  endunless
+
+  assign height_mode = block.settings.height_mode | default: 'stretch'
+  assign overlay_style = block.settings.overlay_style | default: 'gradient_scrim'
+  assign overlay_opacity = block.settings.overlay_opacity | default: 40
+
+  # A link video source has no reliable mime type; infer the common ones so the
+  # browser does not have to sniff the whole file.
+  assign link_mime = ''
+  if block.settings.video_url contains '.mp4'
+    assign link_mime = 'video/mp4'
+  elsif block.settings.video_url contains '.webm'
+    assign link_mime = 'video/webm'
+  elsif block.settings.video_url contains '.ogv'
+    assign link_mime = 'video/ogg'
+  endif
+-%}
+
+{%- capture card_content -%}{% content_for 'blocks' %}{%- endcapture -%}
+
+{%- if has_video -%}
+  <script src="{{ 'review-card.js' | asset_url }}" defer="defer"></script>
+{%- endif -%}
+
+{% style %}
+  .review-card--{{ block.id }} {
+    {% render 'alignments', source: block.settings %}
+    position: relative;
+    box-sizing: border-box;
+    width: 100%;
+    height: auto;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    background-color: {% render 'background-role-token', key: block.settings.background_role %};
+    color: var(--color-text);
+    border-radius: var(--rc-card-radius, var(--ds-item-radius-mobile));
+    box-shadow: var(--rc-card-shadow, var(--ds-item-shadow-mobile));
+    overflow: hidden;
+    {% if block.settings.enable_border %}
+      border: var(--rc-card-border-width, var(--ds-item-border-width-mobile)) solid var(--color-border);
+    {% endif %}
+    align-self: {% if layout_mode == 'flow' and height_mode == 'stretch' %}stretch{% else %}flex-start{% endif %};
+  }
+
+  {%- if has_media -%}
+    .review-card--{{ block.id }} .review-card__media {
+      position: relative;
+      width: 100%;
+      aspect-ratio: {{ ratio }};
+      {% if layout_mode == 'overlay' %}
+        flex: 1 1 auto;
+        min-height: 0;
+      {% else %}
+        flex: 0 0 auto;
+      {% endif %}
+      overflow: hidden;
+      background-color: color-mix(in srgb, var(--color-text) 8%, transparent);
+      border-radius: inherit;
+      {% if layout_mode == 'flow' %}
+        border-bottom-left-radius: 0;
+        border-bottom-right-radius: 0;
+      {% endif %}
+    }
+
+    .review-card--{{ block.id }} .review-card__thumb,
+    .review-card--{{ block.id }} .review-card__video {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    .review-card--{{ block.id }} .review-card__video {
+      z-index: 1;
+    }
+
+    .review-card--{{ block.id }} .review-card__overlay {
+      position: absolute;
+      inset: 0;
+      z-index: 2;
+      pointer-events: none;
+      {% if overlay_style == 'gradient_scrim' %}
+        background: linear-gradient(
+          to top,
+          color-mix(in srgb, var(--color-shadow) {{ overlay_opacity }}%, transparent),
+          transparent
+        );
+      {% else %}
+        background: color-mix(in srgb, var(--color-shadow) {{ overlay_opacity }}%, transparent);
+      {% endif %}
+    }
+
+    .review-card--{{ block.id }} .placeholder-svg {
+      background-color: color-mix(in srgb, var(--color-accent-neutral-contrast) 8%, transparent);
+      color: color-mix(in srgb, var(--color-accent-neutral) 30%, transparent);
+      fill: currentColor;
+    }
+
+    .review-card--{{ block.id }} .review-card__play {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 5;
+      width: 64px;
+      height: 64px;
+      border: 1px solid var(--color-accent-border);
+      border-radius: 50%;
+      background: var(--color-accent);
+      color: var(--color-accent-contrast);
+      display: grid;
+      place-items: center;
+      cursor: pointer;
+      transition: transform 0.25s ease;
+    }
+
+    .review-card--{{ block.id }} .review-card__play:hover {
+      transform: translate(-50%, -50%) scale(1.06);
+    }
+
+    .review-card--{{ block.id }} .review-card__play svg {
+      width: 22px;
+      height: 22px;
+      fill: currentColor;
+      margin-left: 3px;
+    }
+
+    .review-card--{{ block.id }} .review-card__play[hidden] {
+      display: none;
+    }
+  {%- endif -%}
+
+  .review-card--{{ block.id }} .review-card__content {
+    display: flex;
+    flex: 1 1 auto;
+    min-width: 0;
+    box-sizing: border-box;
+    flex-direction: column;
+    align-items: var(--align-x-mobile, flex-start);
+    text-align: var(--text-align-mobile, left);
+    gap: {% render 'space-token', key: block.settings.content_gap %};
+    padding: {% render 'space-token', key: block.settings.card_padding %};
+  }
+
+  .review-card--{{ block.id }} .review-card__content--overlay {
+    position: absolute;
+    inset: 0;
+    z-index: 4;
+    justify-content: {% case block.settings.overlay_align_y %}{% when 'middle' %}center{% when 'bottom' %}flex-end{% else %}flex-start{% endcase %};
+    pointer-events: none;
+  }
+
+  .review-card--{{ block.id }} .review-card__content--overlay > * {
+    pointer-events: auto;
+  }
+
+  .review-card--{{ block.id }} .review-card__content--flow {
+    justify-content: {% if height_mode == 'stretch' %}{% if block.settings.align_y_mode == 'spread' %}{{ block.settings.spread | default: 'space-between' | replace: '_', '-' }}{% else %}{{ block.settings.align_y }}{% endif %}{% else %}flex-start{% endif %};
+  }
+
+  .review-card--{{ block.id }} .review-card__content > * {
+    min-width: 0;
+  }
+
+  @media screen and (min-width: 768px) {
+    .review-card--{{ block.id }} {
+      border-radius: var(--rc-card-radius, var(--ds-item-radius-desktop));
+      box-shadow: var(--rc-card-shadow, var(--ds-item-shadow-desktop));
+      {% if block.settings.enable_border %}
+        border-width: var(--rc-card-border-width, var(--ds-item-border-width-desktop));
+      {% endif %}
+    }
+
+    .review-card--{{ block.id }} .review-card__content {
+      align-items: var(--align-x-desktop, flex-start);
+      text-align: var(--text-align-desktop, left);
+    }
+  }
+{% endstyle %}
+
+<review-card class="review-card--{{ block.id }} swiper-slide" {{ block.shopify_attributes }}>
+  {%- if has_media -%}
+    <div class="review-card__media" data-video-scope>
+      {%- if has_video -%}
+        <video class="review-card__video" data-video-timed playsinline preload="metadata" hidden>
+          {%- if video_source == 'upload' -%}
+            {%- for source in block.settings.video.sources -%}
+              <source src="{{ source.url }}" type="{{ source.mime_type }}">
+            {%- endfor -%}
+          {%- else -%}
+            <source src="{{ block.settings.video_url }}"{% if link_mime != blank %} type="{{ link_mime }}"{% endif %}>
+          {%- endif -%}
+        </video>
+      {%- endif -%}
+
+      {%- liquid
+        assign poster = null
+        if block.settings.thumbnail != blank
+          assign poster = block.settings.thumbnail
+        elsif media_type == 'video' and video_source == 'upload' and block.settings.video.preview_image != blank
+          assign poster = block.settings.video.preview_image
+        endif
+      -%}
+
+      {%- if poster -%}
+        {{ poster
+          | image_url: width: 1100
+          | image_tag:
+            class: 'review-card__thumb',
+            loading: 'lazy',
+            widths: '375, 550, 750, 1100',
+            sizes: '(min-width: 768px) 30vw, 90vw',
+            alt: poster.alt }}
+      {%- else -%}
+        {{ 'lifestyle-1' | placeholder_svg_tag: 'review-card__thumb placeholder-svg' }}
+      {%- endif -%}
+
+      {%- if has_video -%}
+        <button type="button" class="review-card__play" aria-label="{{ 'theme.components.review_card.play_video' | t }}">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>
+        </button>
+      {%- endif -%}
+
+      {%- if layout_mode == 'overlay' -%}
+        {%- unless overlay_style == 'none' -%}
+          <div class="review-card__overlay" aria-hidden="true"></div>
+        {%- endunless -%}
+        <div class="review-card__content review-card__content--overlay">
+          {{ card_content }}
+        </div>
+      {%- endif -%}
+    </div>
+  {%- endif -%}
+
+  {%- if layout_mode == 'flow' -%}
+    <div class="review-card__content review-card__content--flow">
+      {{ card_content }}
+    </div>
+  {%- endif -%}
+</review-card>
+
+{% schema %}
+{
+  "name": "Review Card",
+  "tag": null,
+  "settings": [
+    {
+      "type": "header",
+      "content": "Media"
+    },
+    {
+      "type": "select",
+      "id": "media_type",
+      "label": "Media",
+      "info": "None makes this a text-only card. Image shows a still. Video adds a play control.",
+      "options": [
+        {
+          "value": "none",
+          "label": "None"
+        },
+        {
+          "value": "image",
+          "label": "Image"
+        },
+        {
+          "value": "video",
+          "label": "Video"
+        }
+      ],
+      "default": "none"
+    },
+    {
+      "type": "image_picker",
+      "id": "thumbnail",
+      "label": "Image",
+      "info": "Used as the poster frame for a video. Falls back to the video's own preview image.",
+      "visible_if": "{{ block.settings.media_type != 'none' }}"
+    },
+    {
+      "type": "select",
+      "id": "video_source",
+      "label": "Video source",
+      "options": [
+        {
+          "value": "upload",
+          "label": "Upload"
+        },
+        {
+          "value": "link",
+          "label": "Link"
+        }
+      ],
+      "visible_if": "{{ block.settings.media_type == 'video' }}",
+      "default": "upload"
+    },
+    {
+      "type": "video",
+      "id": "video",
+      "label": "Upload Video",
+      "visible_if": "{{ block.settings.media_type == 'video' and block.settings.video_source == 'upload' }}"
+    },
+    {
+      "type": "url",
+      "id": "video_url",
+      "label": "Video link",
+      "info": "A direct file URL (.mp4, .webm, .ogv). Not a YouTube or Vimeo page link.",
+      "visible_if": "{{ block.settings.media_type == 'video' and block.settings.video_source == 'link' }}"
+    },
+    {
+      "type": "select",
+      "id": "media_ratio",
+      "label": "Media aspect ratio",
+      "options": [
+        {
+          "value": "1 / 1",
+          "label": "Square (1:1)"
+        },
+        {
+          "value": "4 / 5",
+          "label": "Portrait (4:5)"
+        },
+        {
+          "value": "3 / 4",
+          "label": "Portrait (3:4)"
+        },
+        {
+          "value": "4 / 3",
+          "label": "Landscape (4:3)"
+        },
+        {
+          "value": "16 / 9",
+          "label": "Landscape (16:9)"
+        }
+      ],
+      "visible_if": "{{ block.settings.media_type != 'none' }}",
+      "default": "4 / 5"
+    },
+    {
+      "type": "header",
+      "content": "Layout & Alignment"
+    },
+    {
+      "type": "select",
+      "id": "layout_mode",
+      "label": "Content mode",
+      "info": "Flow places content below the media. Overlay places it on top of the media.",
+      "options": [
+        {
+          "value": "flow",
+          "label": "Flow"
+        },
+        {
+          "value": "overlay",
+          "label": "Overlay"
+        }
+      ],
+      "visible_if": "{{ block.settings.media_type != 'none' }}",
+      "default": "flow"
+    },
+    {
+      "type": "select",
+      "id": "height_mode",
+      "label": "Card Height",
+      "info": "Auto follows the card content size. Stretch matches the height of the biggest sibling card.",
+      "options": [
+        {
+          "value": "auto",
+          "label": "Auto"
+        },
+        {
+          "value": "stretch",
+          "label": "Stretch"
+        }
+      ],
+      "visible_if": "{{ block.settings.layout_mode == 'flow' or block.settings.media_type == 'none' }}",
+      "default": "stretch"
+    },
+    {
+      "type": "select",
+      "id": "align_y_mode",
+      "label": "Vertical placement",
+      "info": "Alignment pins the content to the top, middle or bottom. Spread pushes it apart to fill the card.",
+      "options": [
+        {
+          "value": "alignment",
+          "label": "Alignment"
+        },
+        {
+          "value": "spread",
+          "label": "Spread"
+        }
+      ],
+      "visible_if": "{{ block.settings.layout_mode != 'overlay' and block.settings.height_mode == 'stretch' }}",
+      "default": "alignment"
+    },
+    {
+      "type": "select",
+      "id": "align_y",
+      "label": "Vertical Alignment",
+      "options": [
+        {
+          "value": "flex-start",
+          "label": "Top"
+        },
+        {
+          "value": "center",
+          "label": "Center"
+        },
+        {
+          "value": "flex-end",
+          "label": "Bottom"
+        }
+      ],
+      "visible_if": "{{ block.settings.layout_mode != 'overlay' and block.settings.height_mode == 'stretch' and block.settings.align_y_mode == 'alignment' }}",
+      "default": "flex-start"
+    },
+    {
+      "type": "select",
+      "id": "spread",
+      "label": "Spread",
+      "options": [
+        {
+          "value": "space_between",
+          "label": "Space between"
+        },
+        {
+          "value": "space_around",
+          "label": "Space around"
+        }
+      ],
+      "visible_if": "{{ block.settings.layout_mode != 'overlay' and block.settings.height_mode == 'stretch' and block.settings.align_y_mode == 'spread' }}",
+      "default": "space_between"
+    },
+    {
+      "type": "select",
+      "id": "overlay_align_y",
+      "label": "Overlay vertical alignment",
+      "options": [
+        {
+          "value": "top",
+          "label": "Top"
+        },
+        {
+          "value": "middle",
+          "label": "Middle"
+        },
+        {
+          "value": "bottom",
+          "label": "Bottom"
+        }
+      ],
+      "visible_if": "{{ block.settings.media_type != 'none' and block.settings.layout_mode == 'overlay' }}",
+      "default": "bottom"
+    },
+    {
+      "type": "text_alignment",
+      "id": "align_x_mobile",
+      "label": "Horizontal Alignment (Mobile)",
+      "default": "left"
+    },
+    {
+      "type": "text_alignment",
+      "id": "align_x_desktop",
+      "label": "Horizontal Alignment (Desktop)",
+      "default": "left"
+    },
+    {
+      "type": "header",
+      "content": "Content Overlay",
+      "visible_if": "{{ block.settings.media_type == 'video' or block.settings.media_type == 'image' }}"
+    },
+    {
+      "type": "select",
+      "id": "overlay_style",
+      "label": "Overlay style",
+      "options": [
+        {
+          "value": "none",
+          "label": "None"
+        },
+        {
+          "value": "flat_tint",
+          "label": "Flat tint"
+        },
+        {
+          "value": "gradient_scrim",
+          "label": "Gradient scrim"
+        }
+      ],
+      "visible_if": "{{ block.settings.media_type != 'none' and block.settings.layout_mode == 'overlay' }}",
+      "default": "gradient_scrim"
+    },
+    {
+      "type": "range",
+      "id": "overlay_opacity",
+      "min": 0,
+      "max": 100,
+      "step": 5,
+      "unit": "%",
+      "label": "Overlay opacity",
+      "visible_if": "{{ block.settings.media_type != 'none' and block.settings.layout_mode == 'overlay' and block.settings.overlay_style != 'none' }}",
+      "default": 40
+    },
+    {
+      "type": "header",
+      "content": "Surface"
+    },
+    {
+      "type": "select",
+      "id": "background_role",
+      "label": "Card Surface",
+      "options": [
+        {
+          "value": "base",
+          "label": "Base"
+        },
+        {
+          "value": "surface",
+          "label": "Surface"
+        }
+      ],
+      "default": "surface"
+    },
+    {
+      "type": "checkbox",
+      "id": "enable_border",
+      "label": "Enable Border",
+      "info": "Applies Item Border Width from the Design System.",
+      "default": true
+    },
+    {
+      "type": "header",
+      "content": "Card Spacing"
+    },
+    {
+      "type": "select",
+      "id": "content_gap",
+      "label": "Gap Between Content",
+      "options": [
+        {
+          "value": "none",
+          "label": "None"
+        },
+        {
+          "value": "xs",
+          "label": "Extra small"
+        },
+        {
+          "value": "sm",
+          "label": "Small"
+        },
+        {
+          "value": "md",
+          "label": "Medium"
+        },
+        {
+          "value": "lg",
+          "label": "Large"
+        }
+      ],
+      "default": "sm"
+    },
+    {
+      "type": "select",
+      "id": "card_padding",
+      "label": "Card Padding",
+      "options": [
+        {
+          "value": "none",
+          "label": "None"
+        },
+        {
+          "value": "xs",
+          "label": "Extra small"
+        },
+        {
+          "value": "sm",
+          "label": "Small"
+        },
+        {
+          "value": "md",
+          "label": "Medium"
+        },
+        {
+          "value": "lg",
+          "label": "Large"
+        }
+      ],
+      "default": "sm"
+    }
+  ],
+  "blocks": [
+    {
+      "type": "_group"
+    },
+    {
+      "type": "_quote_icon"
+    },
+    {
+      "type": "_star_rating"
+    },
+    {
+      "type": "heading"
+    },
+    {
+      "type": "text"
+    },
+    {
+      "type": "_review_card_product"
+    },
+    {
+      "type": "image"
+    },
+    {
+      "type": "icon"
+    },
+    {
+      "type": "button"
+    },
+    {
+      "type": "_accent_line"
+    },
+    {
+      "type": "video_badge"
+    }
+  ],
+  "presets": [
+    {
+      "name": "Review Card: Profiled",
+      "settings": {
+        "media_type": "none",
+        "height_mode": "stretch",
+        "align_y_mode": "spread"
+      },
+      "blocks": {
+        "profile": {
+          "type": "_group",
+          "settings": {
+            "direction_mobile": "row",
+            "direction_desktop": "row",
+            "align_x_mobile": "left",
+            "align_x_desktop": "left",
+            "align_y_mode": "alignment",
+            "align_y_mobile": "center",
+            "align_y_desktop": "center",
+            "gap": "sm",
+            "wrap": false,
+            "row_item_min_width": 0,
+            "width_mode": "auto",
+            "width_auto": "full"
+          },
+          "blocks": {
+            "pic": {
+              "type": "_review_profile_pic"
+            },
+            "identity": {
+              "type": "_group",
+              "settings": {
+                "direction_mobile": "column",
+                "direction_desktop": "column",
+                "align_x_mobile": "left",
+                "align_x_desktop": "left",
+                "align_y_mode": "alignment",
+                "align_y_mobile": "center",
+                "align_y_desktop": "center",
+                "gap": "xs",
+                "row_item_min_width": 0,
+                "width_mode": "auto",
+                "width_auto": "fill"
+              },
+              "blocks": {
+                "name": {
+                  "type": "label",
+                  "settings": {
+                    "label_text": "Maya R."
+                  }
+                },
+                "badge": {
+                  "type": "_badge",
+                  "blocks": {
+                    "icon": {
+                      "type": "_verification_icon"
+                    },
+                    "label": {
+                      "type": "_badge_text",
+                      "settings": {
+                        "text": "Verified Buyer"
+                      }
+                    }
+                  },
+                  "block_order": [
+                    "icon",
+                    "label"
+                  ]
+                }
+              },
+              "block_order": [
+                "name",
+                "badge"
+              ]
+            }
+          },
+          "block_order": [
+            "pic",
+            "identity"
+          ]
+        },
+        "stars": {
+          "type": "_star_rating"
+        },
+        "review": {
+          "type": "text",
+          "settings": {
+            "paragraph_text": "<p>Absolutely love it. The quality exceeded my expectations and I use it every single day.</p>"
+          }
+        }
+      },
+      "block_order": [
+        "profile",
+        "stars",
+        "review"
+      ]
+    },
+    {
+      "name": "Review Card: Minimal",
+      "settings": {
+        "media_type": "none",
+        "height_mode": "stretch",
+        "align_x_mobile": "center",
+        "align_x_desktop": "center",
+        "background_role": "base",
+        "content_gap": "sm",
+        "card_padding": "sm"
+      },
+      "blocks": {
+        "quote": {
+          "type": "_quote_icon",
+          "settings": {
+            "quote_face": "robo",
+            "icon_size": "lg",
+            "quote_icon_opacity": 40,
+            "cookie_mode": "classic"
+          }
+        },
+        "para": {
+          "type": "text",
+          "settings": {
+            "paragraph_text": "<p>Worth every penny. It replaced two other things I owned and does the job better than both.</p>"
+          }
+        },
+        "line": {
+          "type": "_accent_line",
+          "settings": {
+            "width": 48,
+            "thickness": 1,
+            "alignment_inherit": true,
+            "spacing_top": 0.5,
+            "spacing_bottom": 0.5
+          }
+        },
+        "profile": {
+          "type": "_group",
+          "settings": {
+            "direction_mobile": "row",
+            "direction_desktop": "row",
+            "align_x_mobile": "center",
+            "align_x_desktop": "center",
+            "align_y_mode": "alignment",
+            "align_y_mobile": "center",
+            "align_y_desktop": "center",
+            "gap": "sm",
+            "wrap": false,
+            "row_item_min_width": 0,
+            "width_mode": "auto",
+            "width_auto": "full"
+          },
+          "blocks": {
+            "identity": {
+              "type": "_group",
+              "settings": {
+                "direction_mobile": "column",
+                "direction_desktop": "column",
+                "align_x_mobile": "center",
+                "align_x_desktop": "center",
+                "align_y_mode": "alignment",
+                "align_y_mobile": "center",
+                "align_y_desktop": "center",
+                "gap": "xs",
+                "row_item_min_width": 0,
+                "width_mode": "auto",
+                "width_auto": "fill"
+              },
+              "blocks": {
+                "name": {
+                  "type": "label",
+                  "settings": {
+                    "label_text": "Tomas B."
+                  }
+                }
+              },
+              "block_order": [
+                "name"
+              ]
+            }
+          },
+          "block_order": [
+            "identity"
+          ]
+        }
+      },
+      "block_order": [
+        "quote",
+        "para",
+        "line",
+        "profile"
+      ]
+    },
+    {
+      "name": "Review Card: Video",
+      "settings": {
+        "media_type": "video",
+        "layout_mode": "flow"
+      },
+      "blocks": {
+        "stars": {
+          "type": "_star_rating"
+        },
+        "heading": {
+          "type": "heading",
+          "settings": {
+            "heading_text": "Video review",
+            "heading_tag": "h6"
+          }
+        },
+        "paragraph": {
+          "type": "text",
+          "settings": {
+            "paragraph_text": "<p>Share a short customer testimonial.</p>"
+          }
+        }
+      },
+      "block_order": [
+        "stars",
+        "heading",
+        "paragraph"
+      ]
+    }
+  ]
+}
+{% endschema %}

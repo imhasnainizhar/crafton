@@ -126,6 +126,12 @@
       },
       "faq_item": {
         "placeholder_question": "Question"
+      },
+      "review_card": {
+        "play_video": "Play video review"
+      },
+      "star_rating": {
+        "label": "{{ rating }} out of 5 stars"
       }
     },
     "sections": {
