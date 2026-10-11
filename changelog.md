@@ -214,3 +214,25 @@ Elewind's sections, brought over unchanged except where noted.
   own margins and Shopify's sample image until one is chosen.
 - Files: `sections/inline-image-text.liquid`, `blocks/_iit_bold_text.liquid`,
   `blocks/_iit_italic_text.liquid`, `blocks/_iit_image.liquid`.
+
+## 2026-10-11 — Scrolling Masonry Reviews and Review Card
+
+- New section **Scrolling Masonry Reviews** (Testimonials), from Elewind unchanged: Rich
+  Content plus a private **Scrolling Masonry** block holding Review Cards. Cards are dealt
+  into a masonry of columns (1–2 on mobile, 2–5 on desktop) scrolling bottom to top or top
+  to bottom, or rows (1–3 / 1–4) scrolling right to left or left to right, each lane looping
+  at the same speed. The edge fade is always on and follows the orientation; merchants set
+  its depth and strength. Pauses on hover, focus, off-screen and editor selection; reduced
+  motion stops it.
+- Brought over the **Review Card** block with its children: Group, Quote Icon, Star Rating,
+  Review Card Product, Review Card Image, Review Profile Pic and Video Badge
+  (`snippets/quote-icon.liquid`, `assets/review-card.js`, `assets/video-badge.js`).
+  Product Dock is not part of Crafton, so Review Card and Group no longer accept it, and
+  Group accepts only blocks Crafton has. The play button and star rating labels now use
+  locale keys.
+- Files: `sections/scrolling-masonry-reviews.liquid`, `blocks/_smr_masonry.liquid`,
+  `assets/scrolling-masonry-reviews.js`, `blocks/review_card.liquid`, `blocks/_group.liquid`,
+  `blocks/_quote_icon.liquid`, `blocks/_star_rating.liquid`,
+  `blocks/_review_card_product.liquid`, `blocks/_review_card_image.liquid`,
+  `blocks/_review_profile_pic.liquid`, `blocks/video_badge.liquid`,
+  `snippets/quote-icon.liquid`, `assets/review-card.js`, `assets/video-badge.js`.

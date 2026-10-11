@@ -1,0 +1,1236 @@
+{%- comment -%}
+  Scrolling Masonry Reviews (`smr-`) â€” composition shell: color scheme,
+  background, vertical padding and Design Mode, around Rich Content and a
+  Scrolling Masonry block (blocks/_smr_masonry.liquid) that holds the Review
+  Cards and does the scrolling, masonry layout and edge fade.
+  The section owns the single gutter rail; its blocks add no inset.
+{%- endcomment -%}
+
+{% style %}
+  .smr-section--{{ section.id }} {
+    {% render 'section-design-mode', section_settings: section.settings %}
+    background-color: {% render 'background-role-token', key: section.settings.background_role %};
+  }
+{% endstyle %}
+
+{%- assign active_color_scheme = section.settings.color_scheme | default: 'scheme_1' -%}
+
+<div class="smr-section smr-section--{{ section.id }} color-{{ active_color_scheme }}">
+  <div class="smr-section__blocks">
+    {% content_for 'blocks' %}
+  </div>
+</div>
+
+{% stylesheet %}
+  .smr-section {
+    padding-block: var(--ds-section-padding-mobile);
+    padding-inline: 0;
+    overflow-x: clip;
+  }
+
+  .smr-section__blocks {
+    display: flex;
+    flex-direction: column;
+    gap: var(--ds-layout-gap-mobile);
+    padding-inline: var(--ds-layout-gutter-mobile);
+  }
+
+  .smr-section__blocks > * {
+    width: 100%;
+    min-width: 0;
+  }
+
+  @media (min-width: 768px) {
+    .smr-section {
+      padding-block: var(--ds-section-padding-desktop);
+    }
+
+    .smr-section__blocks {
+      gap: var(--ds-layout-gap-desktop);
+      padding-inline: var(--ds-layout-gutter-desktop);
+    }
+  }
+{% endstylesheet %}
+
+{% schema %}
+{
+  "name": "Scrolling Masonry Reviews",
+  "disabled_on": {
+    "groups": [
+      "header",
+      "footer"
+    ]
+  },
+  "settings": [
+    {
+      "type": "header",
+      "content": "Section",
+      "info": "Reviews that scroll on their own in a masonry wall. Add Rich Content for the introduction and Scrolling Masonry for the review cards."
+    },
+    {
+      "type": "color_scheme",
+      "id": "color_scheme",
+      "label": "Color Scheme",
+      "default": "scheme_1"
+    },
+    {
+      "type": "select",
+      "id": "background_role",
+      "label": "Background",
+      "options": [
+        {
+          "value": "base",
+          "label": "Base"
+        },
+        {
+          "value": "surface",
+          "label": "Surface"
+        }
+      ],
+      "default": "base"
+    },
+    {
+      "type": "header",
+      "content": "Design Mode"
+    },
+    {
+      "type": "select",
+      "id": "section_design_mode",
+      "label": "Section Design Mode",
+      "info": "Auto: inherit all theme settings. Blend: inherit theme settings and override section padding, layout and item gaps, item shadow, and borders. Custom: use this section's Design Mode and complete Design System values.",
+      "options": [
+        {
+          "value": "auto",
+          "label": "Auto"
+        },
+        {
+          "value": "blend",
+          "label": "Blend"
+        },
+        {
+          "value": "custom",
+          "label": "Custom"
+        }
+      ],
+      "default": "blend"
+    },
+    {
+      "type": "select",
+      "id": "design_mode_desktop",
+      "label": "Desktop Design Mode",
+      "options": [
+        {
+          "value": "modern",
+          "label": "Modern"
+        },
+        {
+          "value": "minimal",
+          "label": "Minimal"
+        }
+      ],
+      "default": "modern",
+      "visible_if": "{{ section.settings.section_design_mode == 'custom' }}"
+    },
+    {
+      "type": "select",
+      "id": "design_mode_mobile",
+      "label": "Mobile Design Mode",
+      "options": [
+        {
+          "value": "modern",
+          "label": "Modern"
+        },
+        {
+          "value": "minimal",
+          "label": "Minimal"
+        }
+      ],
+      "default": "modern",
+      "visible_if": "{{ section.settings.section_design_mode == 'custom' }}"
+    },
+    {
+      "type": "header",
+      "content": "Spacing",
+      "visible_if": "{{ section.settings.section_design_mode == 'custom' or section.settings.section_design_mode == 'blend' }}"
+    },
+    {
+      "type": "select",
+      "id": "design_section_padding_desktop",
+      "label": "Section padding (desktop)",
+      "options": [
+        {
+          "value": "none",
+          "label": "None"
+        },
+        {
+          "value": "xs",
+          "label": "Extra small"
+        },
+        {
+          "value": "sm",
+          "label": "Small"
+        },
+        {
+          "value": "md",
+          "label": "Medium"
+        },
+        {
+          "value": "lg",
+          "label": "Large"
+        },
+        {
+          "value": "xl",
+          "label": "Extra large"
+        },
+        {
+          "value": "2xl",
+          "label": "Maximum"
+        }
+      ],
+      "default": "xl",
+      "visible_if": "{{ section.settings.section_design_mode == 'custom' or section.settings.section_design_mode == 'blend' }}"
+    },
+    {
+      "type": "select",
+      "id": "design_section_padding_mobile",
+      "label": "Section padding (mobile)",
+      "options": [
+        {
+          "value": "none",
+          "label": "None"
+        },
+        {
+          "value": "xs",
+          "label": "Extra small"
+        },
+        {
+          "value": "sm",
+          "label": "Small"
+        },
+        {
+          "value": "md",
+          "label": "Medium"
+        },
+        {
+          "value": "lg",
+          "label": "Large"
+        },
+        {
+          "value": "xl",
+          "label": "Extra large"
+        },
+        {
+          "value": "2xl",
+          "label": "Maximum"
+        }
+      ],
+      "default": "lg",
+      "visible_if": "{{ section.settings.section_design_mode == 'custom' or section.settings.section_design_mode == 'blend' }}"
+    },
+    {
+      "type": "select",
+      "id": "design_layout_gap_desktop",
+      "label": "Layout Gap (Desktop)",
+      "options": [
+        {
+          "value": "none",
+          "label": "None"
+        },
+        {
+          "value": "xs",
+          "label": "Extra small"
+        },
+        {
+          "value": "sm",
+          "label": "Small"
+        },
+        {
+          "value": "md",
+          "label": "Medium"
+        },
+        {
+          "value": "lg",
+          "label": "Large"
+        },
+        {
+          "value": "xl",
+          "label": "Extra large"
+        }
+      ],
+      "default": "xl",
+      "visible_if": "{{ section.settings.section_design_mode == 'custom' or section.settings.section_design_mode == 'blend' }}"
+    },
+    {
+      "type": "select",
+      "id": "design_layout_gap_mobile",
+      "label": "Layout Gap (Mobile)",
+      "options": [
+        {
+          "value": "none",
+          "label": "None"
+        },
+        {
+          "value": "xs",
+          "label": "Extra small"
+        },
+        {
+          "value": "sm",
+          "label": "Small"
+        },
+        {
+          "value": "md",
+          "label": "Medium"
+        },
+        {
+          "value": "lg",
+          "label": "Large"
+        },
+        {
+          "value": "xl",
+          "label": "Extra large"
+        }
+      ],
+      "default": "md",
+      "visible_if": "{{ section.settings.section_design_mode == 'custom' or section.settings.section_design_mode == 'blend' }}"
+    },
+    {
+      "type": "header",
+      "content": "Layout",
+      "visible_if": "{{ section.settings.section_design_mode == 'custom' or section.settings.section_design_mode == 'blend' }}"
+    },
+    {
+      "type": "checkbox",
+      "id": "design_enable_minimal_gutter",
+      "label": "Enable gutter in Minimal mode",
+      "default": false,
+      "visible_if": "{{ section.settings.section_design_mode == 'custom' or section.settings.section_design_mode == 'blend' }}"
+    },
+    {
+      "type": "select",
+      "id": "design_gutter_desktop",
+      "label": "Gutter (desktop)",
+      "options": [
+        {
+          "value": "none",
+          "label": "None"
+        },
+        {
+          "value": "xs",
+          "label": "Extra small"
+        },
+        {
+          "value": "sm",
+          "label": "Small"
+        },
+        {
+          "value": "md",
+          "label": "Medium"
+        },
+        {
+          "value": "lg",
+          "label": "Large"
+        },
+        {
+          "value": "xl",
+          "label": "Extra large"
+        }
+      ],
+      "default": "lg",
+      "visible_if": "{{ section.settings.section_design_mode == 'custom' or section.settings.section_design_mode == 'blend' }}"
+    },
+    {
+      "type": "select",
+      "id": "design_gutter_mobile",
+      "label": "Gutter (mobile)",
+      "options": [
+        {
+          "value": "none",
+          "label": "None"
+        },
+        {
+          "value": "sm",
+          "label": "Small"
+        },
+        {
+          "value": "md",
+          "label": "Medium"
+        },
+        {
+          "value": "lg",
+          "label": "Large"
+        }
+      ],
+      "default": "md",
+      "visible_if": "{{ section.settings.section_design_mode == 'custom' or section.settings.section_design_mode == 'blend' }}"
+    },
+    {
+      "type": "range",
+      "id": "design_layout_radius_desktop",
+      "label": "Layout radius (desktop)",
+      "info": "Blend: this section's radius always applies, even when the theme is Minimal. Custom: Minimal Design Mode removes it.",
+      "min": 0,
+      "max": 80,
+      "step": 2,
+      "unit": "px",
+      "default": 24,
+      "visible_if": "{{ section.settings.section_design_mode == 'custom' or section.settings.section_design_mode == 'blend' }}"
+    },
+    {
+      "type": "range",
+      "id": "design_layout_radius_mobile",
+      "label": "Layout radius (mobile)",
+      "info": "Blend: this section's radius always applies, even when the theme is Minimal. Custom: Minimal Design Mode removes it.",
+      "min": 0,
+      "max": 60,
+      "step": 2,
+      "unit": "px",
+      "default": 16,
+      "visible_if": "{{ section.settings.section_design_mode == 'custom' or section.settings.section_design_mode == 'blend' }}"
+    },
+    {
+      "type": "header",
+      "content": "Section Width",
+      "info": "Independent of Design Mode — the width cap applies in both Modern and Minimal, in Blend as well as Custom, and only when enabled below."
+    },
+    {
+      "type": "checkbox",
+      "id": "design_enable_section_width",
+      "label": "Enable Section Width",
+      "default": false
+    },
+    {
+      "type": "select",
+      "id": "design_section_width_desktop",
+      "label": "Section Width (Desktop)",
+      "options": [
+        {
+          "value": "none",
+          "label": "None"
+        },
+        {
+          "value": "wide",
+          "label": "Wide"
+        },
+        {
+          "value": "max",
+          "label": "Maximum"
+        },
+        {
+          "value": "tv",
+          "label": "TV"
+        }
+      ],
+      "default": "tv",
+      "visible_if": "{{ section.settings.design_enable_section_width }}"
+    },
+    {
+      "type": "select",
+      "id": "design_section_width_mobile",
+      "label": "Section Width (Mobile)",
+      "options": [
+        {
+          "value": "none",
+          "label": "None"
+        },
+        {
+          "value": "wide",
+          "label": "Wide"
+        },
+        {
+          "value": "max",
+          "label": "Maximum"
+        }
+      ],
+      "default": "none",
+      "visible_if": "{{ section.settings.design_enable_section_width }}"
+    },
+    {
+      "type": "header",
+      "content": "Items Styling",
+      "visible_if": "{{ section.settings.section_design_mode == 'custom' or section.settings.section_design_mode == 'blend' }}"
+    },
+    {
+      "type": "checkbox",
+      "id": "design_enable_minimal_items_gap",
+      "label": "Enable gap in Minimal mode",
+      "default": false,
+      "visible_if": "{{ section.settings.section_design_mode == 'custom' or section.settings.section_design_mode == 'blend' }}"
+    },
+    {
+      "type": "range",
+      "id": "design_items_gap_desktop",
+      "label": "Items Gap (Desktop)",
+      "min": 0,
+      "max": 60,
+      "step": 2,
+      "unit": "px",
+      "default": 24,
+      "visible_if": "{{ section.settings.section_design_mode == 'custom' or section.settings.section_design_mode == 'blend' }}"
+    },
+    {
+      "type": "range",
+      "id": "design_items_gap_mobile",
+      "label": "Items Gap (Mobile)",
+      "min": 0,
+      "max": 40,
+      "step": 2,
+      "unit": "px",
+      "default": 16,
+      "visible_if": "{{ section.settings.section_design_mode == 'custom' or section.settings.section_design_mode == 'blend' }}"
+    },
+    {
+      "type": "range",
+      "id": "design_item_radius_desktop",
+      "label": "Item radius (desktop)",
+      "info": "Blend: this section's radius always applies, even when the theme is Minimal. Custom: Minimal Design Mode removes it.",
+      "min": 0,
+      "max": 50,
+      "step": 2,
+      "unit": "px",
+      "default": 12,
+      "visible_if": "{{ section.settings.section_design_mode == 'custom' or section.settings.section_design_mode == 'blend' }}"
+    },
+    {
+      "type": "range",
+      "id": "design_item_radius_mobile",
+      "label": "Item radius (mobile)",
+      "info": "Blend: this section's radius always applies, even when the theme is Minimal. Custom: Minimal Design Mode removes it.",
+      "min": 0,
+      "max": 50,
+      "step": 2,
+      "unit": "px",
+      "default": 12,
+      "visible_if": "{{ section.settings.section_design_mode == 'custom' or section.settings.section_design_mode == 'blend' }}"
+    },
+    {
+      "type": "select",
+      "id": "design_item_shadow",
+      "label": "Item shadow",
+      "options": [
+        {
+          "value": "none",
+          "label": "None"
+        },
+        {
+          "value": "sm",
+          "label": "Small"
+        },
+        {
+          "value": "md",
+          "label": "Medium"
+        },
+        {
+          "value": "lg",
+          "label": "Large"
+        }
+      ],
+      "default": "md",
+      "visible_if": "{{ section.settings.section_design_mode == 'custom' or section.settings.section_design_mode == 'blend' }}"
+    },
+    {
+      "type": "range",
+      "id": "design_item_border_width",
+      "label": "Item border width",
+      "min": 0,
+      "max": 10,
+      "step": 1,
+      "unit": "px",
+      "default": 1,
+      "visible_if": "{{ section.settings.section_design_mode == 'custom' or section.settings.section_design_mode == 'blend' }}"
+    },
+    {
+      "type": "range",
+      "id": "design_layout_border_width",
+      "label": "Layout border width",
+      "min": 0,
+      "max": 10,
+      "step": 1,
+      "unit": "px",
+      "default": 1,
+      "visible_if": "{{ section.settings.section_design_mode == 'custom' or section.settings.section_design_mode == 'blend' }}"
+    }
+  ],
+  "blocks": [
+    {
+      "type": "rich_content"
+    },
+    {
+      "type": "_smr_masonry"
+    }
+  ],
+  "presets": [
+    {
+      "name": "Scrolling Masonry Reviews",
+      "category": "Testimonials",
+      "blocks": [
+        {
+          "type": "rich_content",
+          "settings": {
+            "align_x_mobile": "center",
+            "align_x_desktop": "center",
+            "content_width": "640",
+            "gap": "sm",
+            "padding_vertical": "none"
+          },
+          "blocks": [
+            {
+              "type": "subtitle",
+              "settings": {
+                "text": "LOVED BY CUSTOMERS"
+              }
+            },
+            {
+              "type": "heading",
+              "settings": {
+                "heading_text": "Kind words, on repeat",
+                "heading_tag": "h2"
+              }
+            }
+          ]
+        },
+        {
+          "type": "_smr_masonry",
+          "settings": {
+            "orientation": "vertical",
+            "direction_vertical": "up",
+            "columns_mobile": "1",
+            "columns_desktop": 3
+          },
+          "blocks": [
+            {
+              "type": "review_card",
+              "blocks": [
+                {
+                  "type": "_star_rating"
+                },
+                {
+                  "type": "text",
+                  "settings": {
+                    "paragraph_text": "<p>My skin feels calmer and looks brighter. It has become the easiest part of my morning routine.</p>"
+                  }
+                },
+                {
+                  "type": "_group",
+                  "settings": {
+                    "direction_mobile": "row",
+                    "direction_desktop": "row",
+                    "align_x_mobile": "left",
+                    "align_x_desktop": "left",
+                    "align_y_mode": "alignment",
+                    "align_y_mobile": "center",
+                    "align_y_desktop": "center",
+                    "gap": "sm",
+                    "wrap": false,
+                    "row_item_min_width": 0,
+                    "width_mode": "auto",
+                    "width_auto": "hug"
+                  },
+                  "blocks": [
+                    {
+                      "type": "_review_profile_pic"
+                    },
+                    {
+                      "type": "label",
+                      "settings": {
+                        "label_text": "Maya R."
+                      }
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "review_card",
+              "blocks": [
+                {
+                  "type": "_star_rating"
+                },
+                {
+                  "type": "text",
+                  "settings": {
+                    "paragraph_text": "<p>Arrived in two days, beautifully packed.</p>"
+                  }
+                },
+                {
+                  "type": "_group",
+                  "settings": {
+                    "direction_mobile": "row",
+                    "direction_desktop": "row",
+                    "align_x_mobile": "left",
+                    "align_x_desktop": "left",
+                    "align_y_mode": "alignment",
+                    "align_y_mobile": "center",
+                    "align_y_desktop": "center",
+                    "gap": "sm",
+                    "wrap": false,
+                    "row_item_min_width": 0,
+                    "width_mode": "auto",
+                    "width_auto": "hug"
+                  },
+                  "blocks": [
+                    {
+                      "type": "_review_profile_pic"
+                    },
+                    {
+                      "type": "label",
+                      "settings": {
+                        "label_text": "Daniel K."
+                      }
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "review_card",
+              "blocks": [
+                {
+                  "type": "_star_rating"
+                },
+                {
+                  "type": "text",
+                  "settings": {
+                    "paragraph_text": "<p>I was sceptical about the price, but the quality speaks for itself. Six months in and it still looks brand new. I have already ordered a second one for my sister.</p>"
+                  }
+                },
+                {
+                  "type": "_group",
+                  "settings": {
+                    "direction_mobile": "row",
+                    "direction_desktop": "row",
+                    "align_x_mobile": "left",
+                    "align_x_desktop": "left",
+                    "align_y_mode": "alignment",
+                    "align_y_mobile": "center",
+                    "align_y_desktop": "center",
+                    "gap": "sm",
+                    "wrap": false,
+                    "row_item_min_width": 0,
+                    "width_mode": "auto",
+                    "width_auto": "hug"
+                  },
+                  "blocks": [
+                    {
+                      "type": "_review_profile_pic"
+                    },
+                    {
+                      "type": "label",
+                      "settings": {
+                        "label_text": "Priya S."
+                      }
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "review_card",
+              "blocks": [
+                {
+                  "type": "_star_rating"
+                },
+                {
+                  "type": "text",
+                  "settings": {
+                    "paragraph_text": "<p>Customer service answered within the hour and sorted my size swap without any fuss.</p>"
+                  }
+                },
+                {
+                  "type": "_group",
+                  "settings": {
+                    "direction_mobile": "row",
+                    "direction_desktop": "row",
+                    "align_x_mobile": "left",
+                    "align_x_desktop": "left",
+                    "align_y_mode": "alignment",
+                    "align_y_mobile": "center",
+                    "align_y_desktop": "center",
+                    "gap": "sm",
+                    "wrap": false,
+                    "row_item_min_width": 0,
+                    "width_mode": "auto",
+                    "width_auto": "hug"
+                  },
+                  "blocks": [
+                    {
+                      "type": "_review_profile_pic"
+                    },
+                    {
+                      "type": "label",
+                      "settings": {
+                        "label_text": "Tom W."
+                      }
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "review_card",
+              "blocks": [
+                {
+                  "type": "_star_rating"
+                },
+                {
+                  "type": "text",
+                  "settings": {
+                    "paragraph_text": "<p>Simple, well made and exactly as pictured.</p>"
+                  }
+                },
+                {
+                  "type": "_group",
+                  "settings": {
+                    "direction_mobile": "row",
+                    "direction_desktop": "row",
+                    "align_x_mobile": "left",
+                    "align_x_desktop": "left",
+                    "align_y_mode": "alignment",
+                    "align_y_mobile": "center",
+                    "align_y_desktop": "center",
+                    "gap": "sm",
+                    "wrap": false,
+                    "row_item_min_width": 0,
+                    "width_mode": "auto",
+                    "width_auto": "hug"
+                  },
+                  "blocks": [
+                    {
+                      "type": "_review_profile_pic"
+                    },
+                    {
+                      "type": "label",
+                      "settings": {
+                        "label_text": "Lena M."
+                      }
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "review_card",
+              "blocks": [
+                {
+                  "type": "_star_rating"
+                },
+                {
+                  "type": "text",
+                  "settings": {
+                    "paragraph_text": "<p>The details are what sold me: the stitching, the weight, the little card in the box. It feels like a small studio made it just for me.</p>"
+                  }
+                },
+                {
+                  "type": "_group",
+                  "settings": {
+                    "direction_mobile": "row",
+                    "direction_desktop": "row",
+                    "align_x_mobile": "left",
+                    "align_x_desktop": "left",
+                    "align_y_mode": "alignment",
+                    "align_y_mobile": "center",
+                    "align_y_desktop": "center",
+                    "gap": "sm",
+                    "wrap": false,
+                    "row_item_min_width": 0,
+                    "width_mode": "auto",
+                    "width_auto": "hug"
+                  },
+                  "blocks": [
+                    {
+                      "type": "_review_profile_pic"
+                    },
+                    {
+                      "type": "label",
+                      "settings": {
+                        "label_text": "Jordan P."
+                      }
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "review_card",
+              "blocks": [
+                {
+                  "type": "_star_rating"
+                },
+                {
+                  "type": "text",
+                  "settings": {
+                    "paragraph_text": "<p>Third order this year. Consistently great.</p>"
+                  }
+                },
+                {
+                  "type": "_group",
+                  "settings": {
+                    "direction_mobile": "row",
+                    "direction_desktop": "row",
+                    "align_x_mobile": "left",
+                    "align_x_desktop": "left",
+                    "align_y_mode": "alignment",
+                    "align_y_mobile": "center",
+                    "align_y_desktop": "center",
+                    "gap": "sm",
+                    "wrap": false,
+                    "row_item_min_width": 0,
+                    "width_mode": "auto",
+                    "width_auto": "hug"
+                  },
+                  "blocks": [
+                    {
+                      "type": "_review_profile_pic"
+                    },
+                    {
+                      "type": "label",
+                      "settings": {
+                        "label_text": "Aisha B."
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Scrolling Masonry Reviews: Rows",
+      "category": "Testimonials",
+      "blocks": [
+        {
+          "type": "rich_content",
+          "settings": {
+            "align_x_mobile": "center",
+            "align_x_desktop": "center",
+            "content_width": "640",
+            "gap": "sm",
+            "padding_vertical": "none"
+          },
+          "blocks": [
+            {
+              "type": "subtitle",
+              "settings": {
+                "text": "LOVED BY CUSTOMERS"
+              }
+            },
+            {
+              "type": "heading",
+              "settings": {
+                "heading_text": "Kind words, on repeat",
+                "heading_tag": "h2"
+              }
+            }
+          ]
+        },
+        {
+          "type": "_smr_masonry",
+          "settings": {
+            "orientation": "horizontal",
+            "direction_horizontal": "left",
+            "rows_mobile": "2",
+            "rows_desktop": 2
+          },
+          "blocks": [
+            {
+              "type": "review_card",
+              "blocks": [
+                {
+                  "type": "_star_rating"
+                },
+                {
+                  "type": "text",
+                  "settings": {
+                    "paragraph_text": "<p>My skin feels calmer and looks brighter. It has become the easiest part of my morning routine.</p>"
+                  }
+                },
+                {
+                  "type": "_group",
+                  "settings": {
+                    "direction_mobile": "row",
+                    "direction_desktop": "row",
+                    "align_x_mobile": "left",
+                    "align_x_desktop": "left",
+                    "align_y_mode": "alignment",
+                    "align_y_mobile": "center",
+                    "align_y_desktop": "center",
+                    "gap": "sm",
+                    "wrap": false,
+                    "row_item_min_width": 0,
+                    "width_mode": "auto",
+                    "width_auto": "hug"
+                  },
+                  "blocks": [
+                    {
+                      "type": "_review_profile_pic"
+                    },
+                    {
+                      "type": "label",
+                      "settings": {
+                        "label_text": "Maya R."
+                      }
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "review_card",
+              "blocks": [
+                {
+                  "type": "_star_rating"
+                },
+                {
+                  "type": "text",
+                  "settings": {
+                    "paragraph_text": "<p>Arrived in two days, beautifully packed.</p>"
+                  }
+                },
+                {
+                  "type": "_group",
+                  "settings": {
+                    "direction_mobile": "row",
+                    "direction_desktop": "row",
+                    "align_x_mobile": "left",
+                    "align_x_desktop": "left",
+                    "align_y_mode": "alignment",
+                    "align_y_mobile": "center",
+                    "align_y_desktop": "center",
+                    "gap": "sm",
+                    "wrap": false,
+                    "row_item_min_width": 0,
+                    "width_mode": "auto",
+                    "width_auto": "hug"
+                  },
+                  "blocks": [
+                    {
+                      "type": "_review_profile_pic"
+                    },
+                    {
+                      "type": "label",
+                      "settings": {
+                        "label_text": "Daniel K."
+                      }
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "review_card",
+              "blocks": [
+                {
+                  "type": "_star_rating"
+                },
+                {
+                  "type": "text",
+                  "settings": {
+                    "paragraph_text": "<p>I was sceptical about the price, but the quality speaks for itself. Six months in and it still looks brand new. I have already ordered a second one for my sister.</p>"
+                  }
+                },
+                {
+                  "type": "_group",
+                  "settings": {
+                    "direction_mobile": "row",
+                    "direction_desktop": "row",
+                    "align_x_mobile": "left",
+                    "align_x_desktop": "left",
+                    "align_y_mode": "alignment",
+                    "align_y_mobile": "center",
+                    "align_y_desktop": "center",
+                    "gap": "sm",
+                    "wrap": false,
+                    "row_item_min_width": 0,
+                    "width_mode": "auto",
+                    "width_auto": "hug"
+                  },
+                  "blocks": [
+                    {
+                      "type": "_review_profile_pic"
+                    },
+                    {
+                      "type": "label",
+                      "settings": {
+                        "label_text": "Priya S."
+                      }
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "review_card",
+              "blocks": [
+                {
+                  "type": "_star_rating"
+                },
+                {
+                  "type": "text",
+                  "settings": {
+                    "paragraph_text": "<p>Customer service answered within the hour and sorted my size swap without any fuss.</p>"
+                  }
+                },
+                {
+                  "type": "_group",
+                  "settings": {
+                    "direction_mobile": "row",
+                    "direction_desktop": "row",
+                    "align_x_mobile": "left",
+                    "align_x_desktop": "left",
+                    "align_y_mode": "alignment",
+                    "align_y_mobile": "center",
+                    "align_y_desktop": "center",
+                    "gap": "sm",
+                    "wrap": false,
+                    "row_item_min_width": 0,
+                    "width_mode": "auto",
+                    "width_auto": "hug"
+                  },
+                  "blocks": [
+                    {
+                      "type": "_review_profile_pic"
+                    },
+                    {
+                      "type": "label",
+                      "settings": {
+                        "label_text": "Tom W."
+                      }
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "review_card",
+              "blocks": [
+                {
+                  "type": "_star_rating"
+                },
+                {
+                  "type": "text",
+                  "settings": {
+                    "paragraph_text": "<p>Simple, well made and exactly as pictured.</p>"
+                  }
+                },
+                {
+                  "type": "_group",
+                  "settings": {
+                    "direction_mobile": "row",
+                    "direction_desktop": "row",
+                    "align_x_mobile": "left",
+                    "align_x_desktop": "left",
+                    "align_y_mode": "alignment",
+                    "align_y_mobile": "center",
+                    "align_y_desktop": "center",
+                    "gap": "sm",
+                    "wrap": false,
+                    "row_item_min_width": 0,
+                    "width_mode": "auto",
+                    "width_auto": "hug"
+                  },
+                  "blocks": [
+                    {
+                      "type": "_review_profile_pic"
+                    },
+                    {
+                      "type": "label",
+                      "settings": {
+                        "label_text": "Lena M."
+                      }
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "review_card",
+              "blocks": [
+                {
+                  "type": "_star_rating"
+                },
+                {
+                  "type": "text",
+                  "settings": {
+                    "paragraph_text": "<p>The details are what sold me: the stitching, the weight, the little card in the box. It feels like a small studio made it just for me.</p>"
+                  }
+                },
+                {
+                  "type": "_group",
+                  "settings": {
+                    "direction_mobile": "row",
+                    "direction_desktop": "row",
+                    "align_x_mobile": "left",
+                    "align_x_desktop": "left",
+                    "align_y_mode": "alignment",
+                    "align_y_mobile": "center",
+                    "align_y_desktop": "center",
+                    "gap": "sm",
+                    "wrap": false,
+                    "row_item_min_width": 0,
+                    "width_mode": "auto",
+                    "width_auto": "hug"
+                  },
+                  "blocks": [
+                    {
+                      "type": "_review_profile_pic"
+                    },
+                    {
+                      "type": "label",
+                      "settings": {
+                        "label_text": "Jordan P."
+                      }
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "review_card",
+              "blocks": [
+                {
+                  "type": "_star_rating"
+                },
+                {
+                  "type": "text",
+                  "settings": {
+                    "paragraph_text": "<p>Third order this year. Consistently great.</p>"
+                  }
+                },
+                {
+                  "type": "_group",
+                  "settings": {
+                    "direction_mobile": "row",
+                    "direction_desktop": "row",
+                    "align_x_mobile": "left",
+                    "align_x_desktop": "left",
+                    "align_y_mode": "alignment",
+                    "align_y_mobile": "center",
+                    "align_y_desktop": "center",
+                    "gap": "sm",
+                    "wrap": false,
+                    "row_item_min_width": 0,
+                    "width_mode": "auto",
+                    "width_auto": "hug"
+                  },
+                  "blocks": [
+                    {
+                      "type": "_review_profile_pic"
+                    },
+                    {
+                      "type": "label",
+                      "settings": {
+                        "label_text": "Aisha B."
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
+{% endschema %}

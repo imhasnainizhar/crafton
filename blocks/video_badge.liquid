@@ -1,0 +1,159 @@
+{%- comment -%}
+  Video Badge — public theme block showing a video's remaining time. Extracted
+  from the former Video Review Card, where the badge was welded into the card
+  and could not be reused or removed.
+
+  It carries NO alignment or position settings: it sits in the parent card's
+  content flow and the card (or a Group) places it, per AGENTS.md:55.
+
+  BINDING CONTRACT (see assets/video-badge.js)
+  A block that owns a video marks its media wrapper [data-video-scope] and the
+  <video> itself [data-video-timed]. <video-badge> then resolves its source in
+  this order:
+    1. this.closest('[data-video-scope]') -> video[data-video-timed] inside it
+    2. the previous element sibling, if it is or contains such a video
+    3. the next element sibling, likewise
+  When nothing resolves the badge removes itself, so a badge dropped on a card
+  with no video renders nothing. (The old card showed a permanent "0:00" here.)
+
+  Depends on snippets/accent-resolver.liquid for the Accent badge roles and
+  follows the shared badge_* setting family — see CODE-NAMING-CONVENTIONS.md
+  "Badge and comparison-slide composition".
+{%- endcomment -%}
+
+<script src="{{ 'video-badge.js' | asset_url }}" defer="defer"></script>
+
+{% style %}
+  .video-badge--{{ block.id }} {
+    {% render 'accent-resolver', source: block.settings %}
+    display: inline-block;
+    box-sizing: border-box;
+    width: fit-content;
+    padding: 3px 8px;
+    border-radius: {% if block.settings.cookie_radius_style != 'custom' %}999px{% else %}{{ block.settings.cookie_border_radius | default: 8 }}px{% endif %};
+    font-family: var(--font-body-family);
+    font-size: var(--fs-caption);
+    line-height: 1.4;
+    {% if block.settings.badge_style == 'custom' %}
+      background-color: color-mix(
+        in srgb,
+        {{ block.settings.badge_background }} {{ block.settings.badge_background_opacity }}%,
+        transparent
+      );
+      color: {{ block.settings.badge_text }};
+    {% else %}
+      background-color: var(--color-accent);
+      color: var(--color-accent-contrast);
+    {% endif %}
+  }
+{% endstyle %}
+
+<video-badge class="video-badge--{{ block.id }}" {{ block.shopify_attributes }}>0:00</video-badge>
+
+{% schema %}
+{
+  "name": "Video Badge",
+  "tag": null,
+  "settings": [
+    {
+      "type": "header",
+      "content": "Video Badge",
+      "info": "Counts down the remaining time of the nearest video. Binds automatically to the parent card's video, or to an adjacent one. Place it with the parent Card or Group."
+    },
+    {
+      "type": "select",
+      "id": "badge_style",
+      "label": "Badge style",
+      "options": [
+        {
+          "value": "accent",
+          "label": "Accent"
+        },
+        {
+          "value": "custom",
+          "label": "Custom"
+        }
+      ],
+      "default": "accent"
+    },
+    {
+      "type": "select",
+      "id": "accent_selected",
+      "label": "Accent",
+      "options": [
+        {
+          "value": "neutral",
+          "label": "Neutral"
+        },
+        {
+          "value": "soft",
+          "label": "Soft"
+        },
+        {
+          "value": "strong",
+          "label": "Strong"
+        }
+      ],
+      "visible_if": "{{ block.settings.badge_style == 'accent' }}",
+      "default": "neutral"
+    },
+    {
+      "type": "color",
+      "id": "badge_background",
+      "label": "Custom background",
+      "visible_if": "{{ block.settings.badge_style == 'custom' }}",
+      "default": "#000000"
+    },
+    {
+      "type": "range",
+      "id": "badge_background_opacity",
+      "min": 0,
+      "max": 100,
+      "step": 5,
+      "unit": "%",
+      "label": "Background opacity",
+      "visible_if": "{{ block.settings.badge_style == 'custom' }}",
+      "default": 60
+    },
+    {
+      "type": "color",
+      "id": "badge_text",
+      "label": "Custom text",
+      "visible_if": "{{ block.settings.badge_style == 'custom' }}",
+      "default": "#ffffff"
+    },
+    {
+      "type": "select",
+      "id": "cookie_radius_style",
+      "label": "Border Radius",
+      "options": [
+        {
+          "value": "rounded",
+          "label": "Rounded"
+        },
+        {
+          "value": "custom",
+          "label": "Custom"
+        }
+      ],
+      "default": "rounded"
+    },
+    {
+      "type": "range",
+      "id": "cookie_border_radius",
+      "min": 0,
+      "max": 40,
+      "step": 2,
+      "unit": "px",
+      "label": "Corner Radius",
+      "visible_if": "{{ block.settings.cookie_radius_style == 'custom' }}",
+      "default": 8
+    }
+  ],
+  "presets": [
+    {
+      "name": "Video Badge"
+    }
+  ]
+}
+{% endschema %}

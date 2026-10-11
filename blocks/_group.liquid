@@ -1,0 +1,698 @@
+{%- comment -%}
+  Group — an invisible flex wrapper. Its only job is to arrange the blocks
+  nested inside it in a row or column, with independent mobile and desktop
+  direction, alignment, gap and width.
+
+  It is pure layout: no padding, no gutter, no surface, no card presentation.
+  A gutter-aware inset, background, border or radius belongs to the card or section
+  around it, never here. Alignment is resolved
+  through snippets/alignments.liquid; gap through snippets/space-token.liquid.
+{%- endcomment -%}
+
+{%- liquid
+  # Height. Auto is the natural content height. Stretch matches the tallest
+  # sibling on the flex line (the card contract's Auto/Stretch pair). Fill
+  # Parent additionally takes the parent's full height, which only resolves
+  # when the parent already has one.
+  assign height_mode = block.settings.height_mode | default: 'auto'
+
+  # Vertical placement is one choice with two shapes: Alignment pins the items
+  # to one end (or the middle), Spread pushes them apart. Spread overrides the
+  # main-axis alignment, so it is emitted after the direction block in each
+  # breakpoint.
+  assign distribute_css = blank
+  if block.settings.align_y_mode == 'spread'
+    assign spread = block.settings.spread | default: 'space_between'
+    if spread == 'space_around'
+      assign distribute_css = 'space-around'
+    else
+      assign distribute_css = 'space-between'
+    endif
+  endif
+
+  capture gap_css
+    render 'space-token', key: block.settings.gap
+  endcapture
+
+  assign row_item_min = block.settings.row_item_min_width | default: 240
+
+  # Width sizing. The merchant picks Auto (Hug / Fill) or Custom (Fixed /
+  # Percentage); those two selects resolve here into one internal key so the
+  # CSS below stays a single switch. Raw flex values are never exposed.
+  assign width_key = 'fill'
+  if block.settings.width_mode == 'custom'
+    assign width_key = block.settings.width_custom | default: 'percent'
+  else
+    assign width_key = block.settings.width_auto | default: 'fill'
+  endif
+
+  # Percentage widths subtract a share of the parent's gap (--gap-size,
+  # inherited) so e.g. two 50% Groups still fit on one line.
+  assign pw = block.settings.percent_width | plus: 0
+  assign gap_factor = 100 | minus: pw | divided_by: 100.0
+-%}
+
+{%- comment -%}
+  Direction decides which axis each alignment drives: in a row the horizontal
+  alignment is the main axis (justify-content) and the vertical one is the
+  cross axis (align-items); in a column they swap. Emitted once for the mobile
+  base and once for the desktop override (mobile-first, single 768px
+  breakpoint), so a Group can be a column on mobile and a row on desktop with
+  correct alignment in both.
+{%- endcomment -%}
+{%- capture layout_css_mobile -%}
+  --align-x: var(--align-x-mobile, center);
+  --align-y: var(--align-y-mobile, flex-start);
+  --text-align: var(--text-align-mobile, center);
+  text-align: var(--text-align);
+  flex-direction: {{ block.settings.direction_mobile }};
+  {%- if block.settings.direction_mobile == 'row' -%}
+    flex-wrap: {% if block.settings.wrap %}wrap{% else %}nowrap{% endif %};
+    justify-content: var(--align-x);
+    align-items: var(--align-y);
+  {%- else -%}
+    align-items: var(--align-x);
+    justify-content: var(--align-y);
+  {%- endif -%}
+  {%- unless distribute_css == blank -%}
+    justify-content: {{ distribute_css }};
+  {%- endunless -%}
+{%- endcapture -%}
+{%- capture layout_css_desktop -%}
+  --align-x: var(--align-x-desktop, center);
+  --align-y: var(--align-y-desktop, flex-start);
+  --text-align: var(--text-align-desktop, center);
+  text-align: var(--text-align);
+  flex-direction: {{ block.settings.direction_desktop }};
+  {%- if block.settings.direction_desktop == 'row' -%}
+    flex-wrap: {% if block.settings.wrap %}wrap{% else %}nowrap{% endif %};
+    justify-content: var(--align-x);
+    align-items: var(--align-y);
+  {%- else -%}
+    align-items: var(--align-x);
+    justify-content: var(--align-y);
+  {%- endif -%}
+  {%- unless distribute_css == blank -%}
+    justify-content: {{ distribute_css }};
+  {%- endunless -%}
+{%- endcapture -%}
+
+{% style %}
+  /* Flex group. Mobile-first base + single 768px desktop override. */
+  .group--{{ block.id }} {
+    {% render 'alignments', source: block.settings %}
+    display: flex;
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+    {%- comment -%}
+      SIZING CONTRACT — read this before touching Width or Height below.
+
+      `flex` and `align-self` are axis-RELATIVE: they follow the parent's
+      direction, not the page's. In a row parent the main axis is the width and
+      `align-self` is the height; in a column parent they swap. So a Width
+      setting that emits the `flex` shorthand silently becomes a Height setting
+      whenever this Group is nested in a column — which is every Rich Content
+      stack. That is exactly how Width Fill (`flex: 1 1 0%`) used to eat all the
+      available height while Height Auto sat there emitting nothing, and how
+      Width Hug (`flex: 0 0 auto`) appeared to "fix" the height.
+
+      The two axes are separated by staying physical:
+
+      1. `flex-grow: 0` and `flex-basis: auto` are constant, so the main size —
+         whichever axis that turns out to be — is read from `width` / `height`
+         as authored rather than from a flex value that means different things
+         in different parents.
+      2. Every width and every height below is a REAL value, never `auto`.
+         `align-items` / `align-self: stretch` only applies to a cross size of
+         `auto`, so a non-auto value on both axes makes this Group immune to
+         the parent's stretch in either direction. `fit-content` is what `auto`
+         should have been here: same content sizing, but it cannot be stretched.
+      3. `flex-shrink` is the one flex longhand still used. It is main-axis too,
+         but it is benign on either: on the width it holds or yields a row
+         share, on the height it only ever refuses to shrink below content.
+
+      The result is that Width and Height each own one property and never write
+      to each other, whichever way the parent happens to be pointing.
+    {%- endcomment -%}
+    flex-grow: 0;
+    flex-basis: auto;
+
+    {% case height_mode %}
+      {% when 'stretch' %}
+        {%- comment -%}
+          Match the tallest sibling on the flex line. `height: auto` is
+          deliberate — it is the one case that OPTS IN to the parent's stretch,
+          which is what "as tall as my siblings" means. It only has siblings to
+          match in a row parent; in a column parent it degrades to the content
+          height, and the non-auto width above still blocks the stretch from
+          landing on the width instead.
+        {%- endcomment -%}
+        align-self: stretch;
+        height: auto;
+      {% when 'fill_parent' %}
+        {%- comment -%}
+          Take the parent's full height. `align-self: stretch` fills a row
+          parent; `min-height: 100%` fills a column or block parent that has a
+          real height, and is inert against an auto-height one. No `height:
+          100%` — a percentage height opts the box out of stretch and then
+          resolves to auto against a content-sized parent, collapsing it (the
+          same trap Rich Content's panel was in).
+        {%- endcomment -%}
+        align-self: stretch;
+        height: auto;
+        min-height: 100%;
+      {% else %}
+        {%- comment -%}
+          Auto: the natural content height, in every parent. `fit-content`
+          rather than `auto` so the parent's stretch cannot inflate it.
+        {%- endcomment -%}
+        height: fit-content;
+    {% endcase %}
+    --row-item-min: {{ row_item_min }}px;
+    {%- comment -%}
+      Space between items is the merchant's explicit choice, emitted as-is.
+
+      It used to be multiplied by `--layout-gap-container-mobile`, which
+      design-system-vars set to 0 in Minimal mode — so `calc(var(--space-sm) *
+      0)` silently flattened the gap to 0px and the select did nothing at all
+      in Minimal, with no hint in the editor as to why. That factor no longer
+      exists; it was deleted with the alias layer on 2026-09-04. Minimal container /
+      grid / carousel gap factors are a REMOVED convention (see
+      docs/theme-styles.md, "Removed conventions"); spacing is meant to come
+      from the resolved token contract, and Minimal flattens surfaces —
+      padding, radius, borders — not a spacing value a merchant typed in.
+    {%- endcomment -%}
+    gap: {{ gap_css }};
+    --gap-size: {{ gap_css }};
+    {{ layout_css_mobile }}
+  }
+
+  .group--{{ block.id }} > * {
+    min-width: 0;
+    box-sizing: border-box;
+  }
+
+  {%- comment -%}
+    Width: sizes this Group inside a row parent. Emitted after the parent's
+    `> *` rules at equal specificity, so these win; the explicit min-width: 0
+    defeats the parent's min-width: var(--row-item-min). Inside a
+    column-desktop parent Group the forced width: 100% !important still wins
+    there — widths are meaningful in row contexts.
+  {%- endcomment -%}
+  {%- comment -%}
+    Per the sizing contract above, every branch writes `width` and at most
+    `flex-shrink`. None of them touch `flex-grow`, `flex-basis` or
+    `align-self`, so none of them can move the height in a column parent.
+  {%- endcomment -%}
+  {% case width_key %}
+    {% when 'hug' %}
+      .group--{{ block.id }} {
+        width: fit-content;
+        max-width: 100%;
+        flex-shrink: 1;
+        min-width: 0;
+      }
+    {% when 'fill' %}
+      {%- comment -%}
+        Share the line. A 100% basis that every sibling also asks for cannot
+        fit, so the row shrinks them to equal parts — the same result the old
+        `flex: 1 1 0%` gave, without spending flex-grow on an axis that may
+        turn out to be the height.
+      {%- endcomment -%}
+      .group--{{ block.id }} {
+        width: 100%;
+        flex-shrink: 1;
+        min-width: 0;
+      }
+    {% when 'full' %}
+      {%- comment -%}
+        Full takes the whole width of whatever wraps this Group. In a wrapping
+        row it claims a line of its own: at 100% wide and unshrinkable it has
+        no room to share with a sibling.
+      {%- endcomment -%}
+      .group--{{ block.id }} {
+        width: 100%;
+        flex-shrink: 0;
+        min-width: 0;
+      }
+    {% when 'fixed' %}
+      .group--{{ block.id }} {
+        width: {{ block.settings.fixed_width }}px;
+        max-width: 100%;
+        flex-shrink: 0;
+        min-width: 0;
+      }
+    {% when 'percent' %}
+      .group--{{ block.id }} {
+        width: calc({{ pw }}% - var(--gap-size, 0px) * {{ gap_factor }});
+        flex-shrink: 0;
+        min-width: 0;
+      }
+  {% endcase %}
+
+  {%- comment -%}
+    Row children default to flex: 0 1 auto, which sizes them by their own
+    intrinsic content width rather than a share of available space. Any
+    unconstrained content that reads its own width back from its ancestor
+    (e.g. a Swiper carousel set to width:100%) can then create a growth
+    feedback loop. Bound row children the same way _layout.liquid does,
+    unless a child declares its own explicit flex-basis (e.g. Rich Media's
+    row_width), which still wins since it's set directly on that element.
+  {%- endcomment -%}
+  {% if block.settings.direction_mobile == 'row' %}
+    .group--{{ block.id }} > * {
+      {% if row_item_min > 0 %}
+        flex: 1 1 var(--row-item-min);
+        min-width: var(--row-item-min);
+      {% else %}
+        flex: 0 1 auto;
+        min-width: 0;
+      {% endif %}
+    }
+  {% endif %}
+
+  @media screen and (min-width: 768px) {
+    .group--{{ block.id }} {
+      {%- comment -%}
+        No gap override here. The two breakpoints only ever differed by the
+        Minimal factor that is now gone; the space token itself is a clamp, so
+        it already scales with the viewport on its own.
+      {%- endcomment -%}
+      {{ layout_css_desktop }}
+    }
+
+    {% if block.settings.direction_desktop == 'row' %}
+      .group--{{ block.id }} > * {
+        {% if row_item_min > 0 %}
+          flex: 1 1 var(--row-item-min);
+          min-width: var(--row-item-min);
+        {% else %}
+          flex: 0 1 auto;
+          min-width: 0;
+        {% endif %}
+      }
+    {% endif %}
+    {% if block.settings.direction_desktop != 'row' %}
+      {%- comment -%}
+        A child may declare its own row-only width hint (e.g. Rich Media's
+        row_width flex-basis, which is scoped to this same breakpoint and has
+        no way to know its parent Group actually resolved to column here).
+        Force full width so "column direction" is a hard invariant of this
+        Group regardless of what a child assumes about its context.
+      {%- endcomment -%}
+      .group--{{ block.id }} > * {
+        flex: 0 1 auto;
+        min-width: 0;
+        width: 100% !important;
+      }
+    {% endif %}
+  }
+{% endstyle %}
+
+<div class="group--{{ block.id }}" {{ block.shopify_attributes }}>
+  {% content_for 'blocks' %}
+</div>
+
+{% schema %}
+{
+  "name": "Group",
+  "tag": null,
+  "settings": [
+    {
+      "type": "header",
+      "content": "Direction",
+      "info": "Group stacks the blocks inside it in a row or a column. It is invisible — it adds no background, border or padding of its own. Nest Groups to build a layout; use Container when you need a padded, visible surface."
+    },
+    {
+      "type": "select",
+      "id": "direction_mobile",
+      "label": "Mobile Direction",
+      "options": [
+        {
+          "value": "row",
+          "label": "Row (side by side)"
+        },
+        {
+          "value": "column",
+          "label": "Column (stacked)"
+        }
+      ],
+      "default": "column"
+    },
+    {
+      "type": "select",
+      "id": "direction_desktop",
+      "label": "Desktop Direction",
+      "options": [
+        {
+          "value": "row",
+          "label": "Row (side by side)"
+        },
+        {
+          "value": "column",
+          "label": "Column (stacked)"
+        }
+      ],
+      "default": "row"
+    },
+    {
+      "type": "checkbox",
+      "id": "wrap",
+      "label": "Let items wrap",
+      "info": "Row only: items drop onto a new line instead of squeezing.",
+      "default": true
+    },
+    {
+      "type": "range",
+      "id": "row_item_min_width",
+      "min": 0,
+      "max": 480,
+      "step": 20,
+      "unit": "px",
+      "label": "Smallest item width",
+      "info": "Row only: items wrap once they get narrower than this, and share the row equally. Set 0 to let each item keep its own size — use 0 for rows mixing a small fixed item (an avatar, an icon) with a flexible one.",
+      "default": 240
+    },
+    {
+      "type": "header",
+      "content": "Alignment",
+      "info": "Both alignments apply in either direction — in a row they position items across and down, in a column along and across."
+    },
+    {
+      "type": "text_alignment",
+      "id": "align_x_mobile",
+      "label": "Horizontal Alignment (Mobile)",
+      "default": "center"
+    },
+    {
+      "type": "text_alignment",
+      "id": "align_x_desktop",
+      "label": "Horizontal Alignment (Desktop)",
+      "default": "center"
+    },
+    {
+      "type": "select",
+      "id": "align_y_mode",
+      "label": "Vertical placement",
+      "info": "Alignment pins items to the top, middle or bottom. Spread pushes them apart — use it to hold one group at the top and another at the bottom. Spread needs a Height other than Auto in a column.",
+      "options": [
+        {
+          "value": "alignment",
+          "label": "Alignment"
+        },
+        {
+          "value": "spread",
+          "label": "Spread"
+        }
+      ],
+      "default": "alignment"
+    },
+    {
+      "type": "select",
+      "id": "spread",
+      "label": "Spread",
+      "options": [
+        {
+          "value": "space_between",
+          "label": "Space between"
+        },
+        {
+          "value": "space_around",
+          "label": "Space around"
+        }
+      ],
+      "default": "space_between",
+      "visible_if": "{{ block.settings.align_y_mode == 'spread' }}"
+    },
+    {
+      "type": "select",
+      "id": "align_y_mobile",
+      "label": "Vertical Alignment (Mobile)",
+      "visible_if": "{{ block.settings.align_y_mode == 'alignment' }}",
+      "options": [
+        {
+          "value": "top",
+          "label": "Top"
+        },
+        {
+          "value": "center",
+          "label": "Middle"
+        },
+        {
+          "value": "bottom",
+          "label": "Bottom"
+        }
+      ],
+      "default": "center"
+    },
+    {
+      "type": "select",
+      "id": "align_y_desktop",
+      "label": "Vertical Alignment (Desktop)",
+      "visible_if": "{{ block.settings.align_y_mode == 'alignment' }}",
+      "options": [
+        {
+          "value": "top",
+          "label": "Top"
+        },
+        {
+          "value": "center",
+          "label": "Middle"
+        },
+        {
+          "value": "bottom",
+          "label": "Bottom"
+        }
+      ],
+      "default": "center"
+    },
+    {
+      "type": "header",
+      "content": "Size"
+    },
+    {
+      "type": "select",
+      "id": "gap",
+      "label": "Space between items",
+      "options": [
+        {
+          "value": "none",
+          "label": "None"
+        },
+        {
+          "value": "xs",
+          "label": "XS"
+        },
+        {
+          "value": "sm",
+          "label": "SM"
+        },
+        {
+          "value": "md",
+          "label": "MD"
+        },
+        {
+          "value": "lg",
+          "label": "LG"
+        },
+        {
+          "value": "xl",
+          "label": "XL"
+        },
+        {
+          "value": "2xl",
+          "label": "2XL"
+        }
+      ],
+      "default": "sm"
+    },
+    {
+      "type": "select",
+      "id": "width_mode",
+      "label": "Width",
+      "info": "Auto lets the content decide. Custom sets an exact width. Applies when this Group sits beside something in a row — in a column it is always full width on desktop.",
+      "options": [
+        {
+          "value": "auto",
+          "label": "Auto"
+        },
+        {
+          "value": "custom",
+          "label": "Custom"
+        }
+      ],
+      "default": "auto"
+    },
+    {
+      "type": "select",
+      "id": "width_auto",
+      "label": "Auto Width",
+      "info": "Fill takes the space left over beside its siblings. Hug shrinks to the content. Full takes the whole width of whatever wraps this Group — in a row that puts it on its own line.",
+      "options": [
+        {
+          "value": "fill",
+          "label": "Fill available space"
+        },
+        {
+          "value": "hug",
+          "label": "Hug content"
+        },
+        {
+          "value": "full",
+          "label": "Full width (own line)"
+        }
+      ],
+      "default": "fill",
+      "visible_if": "{{ block.settings.width_mode == 'auto' }}"
+    },
+    {
+      "type": "select",
+      "id": "width_custom",
+      "label": "Custom Width",
+      "options": [
+        {
+          "value": "percent",
+          "label": "Percentage"
+        },
+        {
+          "value": "fixed",
+          "label": "Fixed"
+        }
+      ],
+      "default": "percent",
+      "visible_if": "{{ block.settings.width_mode == 'custom' }}"
+    },
+    {
+      "type": "select",
+      "id": "percent_width",
+      "label": "Percentage",
+      "info": "Share of the row this Group takes. 100% fills the line on its own.",
+      "options": [
+        {
+          "value": "25",
+          "label": "25%"
+        },
+        {
+          "value": "33",
+          "label": "33%"
+        },
+        {
+          "value": "50",
+          "label": "50%"
+        },
+        {
+          "value": "66",
+          "label": "66%"
+        },
+        {
+          "value": "75",
+          "label": "75%"
+        },
+        {
+          "value": "100",
+          "label": "100%"
+        }
+      ],
+      "default": "50",
+      "visible_if": "{{ block.settings.width_mode == 'custom' and block.settings.width_custom == 'percent' }}"
+    },
+    {
+      "type": "range",
+      "id": "fixed_width",
+      "min": 120,
+      "max": 800,
+      "step": 10,
+      "unit": "px",
+      "label": "Fixed width",
+      "default": 320,
+      "visible_if": "{{ block.settings.width_mode == 'custom' and block.settings.width_custom == 'fixed' }}"
+    },
+    {
+      "type": "select",
+      "id": "height_mode",
+      "label": "Height",
+      "info": "Auto follows the content. Stretch matches the tallest thing beside it. Fill Parent takes the parent's full height — only works when the parent already has one.",
+      "options": [
+        {
+          "value": "auto",
+          "label": "Auto"
+        },
+        {
+          "value": "stretch",
+          "label": "Stretch"
+        },
+        {
+          "value": "fill_parent",
+          "label": "Fill Parent"
+        }
+      ],
+      "default": "auto"
+    }
+  ],
+  "blocks": [
+    {
+      "type": "_group"
+    },
+    {
+      "type": "_block_items_grid"
+    },
+    {
+      "type": "rich_content"
+    },
+    {
+      "type": "icon"
+    },
+    {
+      "type": "email_signup"
+    },
+    {
+      "type": "text"
+    },
+    {
+      "type": "_review_profile_pic"
+    },
+    {
+      "type": "label"
+    },
+    {
+      "type": "caption"
+    },
+    {
+      "type": "_star_rating"
+    },
+    {
+      "type": "_badge"
+    },
+    {
+      "type": "heading"
+    },
+    {
+      "type": "subtitle"
+    },
+    {
+      "type": "button"
+    },
+    {
+      "type": "_accent_line"
+    },
+    {
+      "type": "_review_card_product"
+    },
+    {
+      "type": "_quote_icon"
+    },
+    {
+      "type": "_review_card_image"
+    },
+    {
+      "type": "video_badge"
+    }
+  ],
+  "presets": [
+    {
+      "name": "Group"
+    }
+  ]
+}
+{% endschema %}

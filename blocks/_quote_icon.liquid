@@ -1,0 +1,185 @@
+{%- comment -%}
+  Quote Icon (private) — decorative opening quotation mark with a compact size
+  scale for Review Card compositions. Rendering is delegated to
+  snippets/quote-icon.liquid; its render contract and shared schema fragment
+  are documented at the top of that snippet.
+{%- endcomment -%}
+
+<div class="quote-icon-block--{{ block.id }}" {{ block.shopify_attributes }}>
+  {% render 'quote-icon', id: block.id, settings: block.settings %}
+</div>
+
+{% schema %}
+{
+  "name": "Quote Icon",
+  "tag": null,
+  "settings": [
+    {
+      "type": "header",
+      "content": "Sizing"
+    },
+    {
+      "type": "select",
+      "id": "icon_size",
+      "label": "Icon size",
+      "options": [
+        {
+          "value": "sm",
+          "label": "Small (16px)"
+        },
+        {
+          "value": "md",
+          "label": "Medium (24px)"
+        },
+        {
+          "value": "lg",
+          "label": "Large (32px)"
+        },
+        {
+          "value": "xl",
+          "label": "Extra large (40px)"
+        }
+      ],
+      "default": "md"
+    },
+    {
+      "type": "select",
+      "id": "quote_face",
+      "label": "Quote face",
+      "options": [
+        {
+          "value": "natural",
+          "label": "Natural"
+        },
+        {
+          "value": "robo",
+          "label": "Classic"
+        }
+      ],
+      "default": "natural"
+    },
+    {
+      "type": "select",
+      "id": "cookie_mode",
+      "label": "Mode",
+      "options": [
+        {
+          "value": "classic",
+          "label": "Classic"
+        },
+        {
+          "value": "cookie",
+          "label": "Cookie"
+        }
+      ],
+      "default": "classic"
+    },
+    {
+      "type": "range",
+      "id": "quote_icon_opacity",
+      "label": "Icon opacity",
+      "min": 0,
+      "max": 100,
+      "step": 5,
+      "unit": "%",
+      "default": 40
+    },
+    {
+      "type": "range",
+      "id": "quote_icon_padding",
+      "label": "Pill padding (vertical)",
+      "min": 0,
+      "max": 24,
+      "step": 2,
+      "unit": "px",
+      "default": 8,
+      "visible_if": "{{ block.settings.cookie_mode == 'cookie' }}"
+    },
+    {
+      "type": "range",
+      "id": "quote_icon_padding_inline",
+      "label": "Pill padding (horizontal)",
+      "min": 0,
+      "max": 40,
+      "step": 2,
+      "unit": "px",
+      "default": 8,
+      "visible_if": "{{ block.settings.cookie_mode == 'cookie' }}"
+    },
+    {
+      "type": "select",
+      "id": "cookie_radius_style",
+      "label": "Pill corners",
+      "options": [
+        {
+          "value": "rounded",
+          "label": "Rounded"
+        },
+        {
+          "value": "custom",
+          "label": "Custom"
+        }
+      ],
+      "default": "rounded",
+      "visible_if": "{{ block.settings.cookie_mode == 'cookie' }}"
+    },
+    {
+      "type": "range",
+      "id": "cookie_border_radius",
+      "label": "Custom pill radius",
+      "min": 0,
+      "max": 50,
+      "step": 2,
+      "unit": "px",
+      "default": 8,
+      "visible_if": "{{ block.settings.cookie_mode == 'cookie' and block.settings.cookie_radius_style == 'custom' }}"
+    },
+    {
+      "type": "select",
+      "id": "accent_selected",
+      "label": "Accent",
+      "options": [
+        {
+          "value": "neutral",
+          "label": "Neutral"
+        },
+        {
+          "value": "soft",
+          "label": "Soft"
+        },
+        {
+          "value": "strong",
+          "label": "Strong"
+        }
+      ],
+      "default": "neutral"
+    },
+    {
+      "type": "select",
+      "id": "accent_contrast",
+      "label": "Accent Contrast",
+      "info": "Filled paints the pill with the accent color; Subtle leaves the pill transparent.",
+      "options": [
+        {
+          "value": "subtle",
+          "label": "Subtle"
+        },
+        {
+          "value": "filled",
+          "label": "Filled"
+        }
+      ],
+      "default": "filled",
+      "visible_if": "{{ block.settings.cookie_mode == 'cookie' }}"
+    }
+  ],
+  "presets": [
+    {
+      "name": "Quote Icon",
+      "settings": {
+        "icon_size": "md"
+      }
+    }
+  ]
+}
+{% endschema %}
