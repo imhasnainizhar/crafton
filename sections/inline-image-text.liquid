@@ -1,0 +1,208 @@
+{%- comment -%}
+  Inline Image Text (`iit-`): one flowing sentence built from private blocks —
+  bold text, italic text and small images (pill, circle, rectangle, square) —
+  that sit inline and wrap like words. The section owns the font (theme body
+  text by default), the size that grows linearly from mobile to desktop, the
+  alignment and the scheme; images scale with that text size.
+  Depends on: snippets/fluid-clamp.liquid, blocks/_iit_bold_text.liquid,
+  blocks/_iit_italic_text.liquid, blocks/_iit_image.liquid.
+{%- endcomment -%}
+
+{%- liquid
+  assign s = section.settings
+  case s.font_source
+    when 'heading'
+      assign iit_font = settings.type_heading_font
+      assign iit_family = 'var(--font-heading-family)'
+    when 'custom'
+      assign iit_font = s.custom_font
+      assign iit_family = iit_font.family | append: ', ' | append: iit_font.fallback_families
+    else
+      assign iit_font = settings.type_body_font
+      assign iit_family = 'var(--font-body-family)'
+  endcase
+-%}
+
+{% style %}
+  {%- for step in (4..8) -%}
+    {%- assign iit_weight = step | times: 100 | append: '' -%}
+    {%- assign iit_face = iit_font | font_modify: 'weight', iit_weight -%}
+    {%- if iit_face %}
+      {{ iit_face | font_face: font_display: 'swap' }}
+      {%- assign iit_face_italic = iit_face | font_modify: 'style', 'italic' -%}
+      {%- if iit_face_italic %}
+        {{ iit_face_italic | font_face: font_display: 'swap' }}
+      {%- endif %}
+    {%- endif %}
+  {%- endfor %}
+
+  .iit--{{ section.id }} {
+    --iit-family: {{ iit_family }};
+    --iit-size: {% render 'fluid-clamp', min: s.font_size_mobile, max: s.font_size_desktop %};
+    --iit-align: {{ s.alignment | default: 'center' }};
+  }
+{% endstyle %}
+
+<div class="iit iit--{{ section.id }} color-{{ s.color_scheme }}">
+  <div class="iit__inner">
+    <p class="iit__flow">
+      {%- content_for 'blocks' -%}
+    </p>
+  </div>
+</div>
+
+{% stylesheet %}
+  .iit {
+    background-color: var(--color-base);
+    color: var(--color-text);
+    padding-block: var(--ds-section-padding-mobile);
+    padding-inline: var(--ds-layout-gutter-mobile);
+    overflow-x: clip;
+  }
+
+  .iit__inner {
+    width: 100%;
+    max-width: var(--ds-section-width-mobile);
+    margin-inline: auto;
+  }
+
+  .iit__flow {
+    margin: 0;
+    font-family: var(--iit-family, var(--font-body-family));
+    font-size: var(--iit-size);
+    font-weight: 400;
+    line-height: 1.2;
+    text-align: var(--iit-align, center);
+    overflow-wrap: break-word;
+  }
+
+  .iit-text {
+    font: inherit;
+    font-weight: var(--iit-weight, 400);
+  }
+
+  @media screen and (min-width: 768px) {
+    .iit {
+      padding-block: var(--ds-section-padding-desktop);
+      padding-inline: var(--ds-layout-gutter-desktop);
+    }
+
+    .iit__inner {
+      max-width: var(--ds-section-width-desktop);
+    }
+  }
+{% endstylesheet %}
+
+{% schema %}
+{
+  "name": "Inline image text",
+  "tag": "section",
+  "class": "shopify-section--inline-image-text",
+  "disabled_on": {
+    "groups": ["header", "footer"]
+  },
+  "settings": [
+    {
+      "type": "text_alignment",
+      "id": "alignment",
+      "label": "Alignment",
+      "default": "center"
+    },
+    {
+      "type": "header",
+      "content": "Text"
+    },
+    {
+      "type": "select",
+      "id": "font_source",
+      "label": "Font",
+      "options": [
+        { "value": "body", "label": "Theme body text" },
+        { "value": "heading", "label": "Theme heading" },
+        { "value": "custom", "label": "Custom" }
+      ],
+      "default": "body"
+    },
+    {
+      "type": "font_picker",
+      "id": "custom_font",
+      "label": "Custom font",
+      "default": "work_sans_n4",
+      "visible_if": "{{ section.settings.font_source == 'custom' }}"
+    },
+    {
+      "type": "range",
+      "id": "font_size_mobile",
+      "label": "Size on mobile",
+      "info": "The text, and the images with it, grow smoothly from this size on phones to the desktop size on wide screens.",
+      "min": 16,
+      "max": 80,
+      "step": 1,
+      "unit": "px",
+      "default": 32
+    },
+    {
+      "type": "range",
+      "id": "font_size_desktop",
+      "label": "Size on desktop",
+      "min": 20,
+      "max": 160,
+      "step": 2,
+      "unit": "px",
+      "default": 72
+    },
+    {
+      "type": "header",
+      "content": "Colors"
+    },
+    {
+      "type": "color_scheme",
+      "id": "color_scheme",
+      "label": "Color scheme",
+      "default": "scheme_1"
+    }
+  ],
+  "blocks": [
+    { "type": "_iit_bold_text" },
+    { "type": "_iit_italic_text" },
+    { "type": "_iit_image" }
+  ],
+  "presets": [
+    {
+      "name": "Inline image text",
+      "category": "Text & content",
+      "blocks": {
+        "text_1": {
+          "type": "_iit_bold_text",
+          "settings": { "text": "Make you look", "font_weight": "500" }
+        },
+        "image_1": {
+          "type": "_iit_image",
+          "settings": { "shape": "pill" }
+        },
+        "text_2": {
+          "type": "_iit_bold_text",
+          "settings": { "text": "and", "font_weight": "500" }
+        },
+        "text_3": {
+          "type": "_iit_italic_text",
+          "settings": { "text": "feel glowy" }
+        },
+        "image_2": {
+          "type": "_iit_image",
+          "settings": { "shape": "pill" }
+        },
+        "text_4": {
+          "type": "_iit_bold_text",
+          "settings": { "text": "and healthy", "font_weight": "500" }
+        },
+        "image_3": {
+          "type": "_iit_image",
+          "settings": { "shape": "pill" }
+        }
+      },
+      "block_order": ["text_1", "image_1", "text_2", "text_3", "image_2", "text_4", "image_3"]
+    }
+  ]
+}
+{% endschema %}

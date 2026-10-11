@@ -202,3 +202,15 @@ Elewind's sections, brought over unchanged except where noted.
   `assets/image-filled-text.js` (`<image-filled-text>`), playing only while on screen.
 - Files: `blocks/image_filled_text.liquid`, `sections/image-filled-text.liquid`,
   `assets/image-filled-text.js`.
+
+## 2026-10-11 — Inline image text
+
+- New section **Inline image text** (Text & content), from Elewind unchanged: one flowing
+  sentence built from private **Bold text**, **Italic text** and **Image** blocks that sit
+  inline and wrap like words. The section picks the font (theme body text by default, theme
+  heading or custom), a size that grows linearly from mobile to desktop and clamps
+  (`snippets/fluid-clamp.liquid`), the alignment and the colour scheme. Images are pill,
+  circle, rectangle or square (rounded or plain corners), sized against the text, with their
+  own margins and Shopify's sample image until one is chosen.
+- Files: `sections/inline-image-text.liquid`, `blocks/_iit_bold_text.liquid`,
+  `blocks/_iit_italic_text.liquid`, `blocks/_iit_image.liquid`.

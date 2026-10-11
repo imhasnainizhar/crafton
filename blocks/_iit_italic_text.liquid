@@ -1,0 +1,54 @@
+{%- comment -%}
+  Inline Image Text — Italic text (private). A run of words in the section's
+  font and size, set in italics at the chosen thickness. Renders an inline span
+  followed by a space so the next block flows on like the next word.
+{%- endcomment -%}
+
+{% style %}
+  .iit-text--{{ block.id }} {
+    --iit-weight: {{ block.settings.font_weight | default: '400' }};
+  }
+{% endstyle %}
+
+<span class="iit-text iit-text--italic iit-text--{{ block.id }}" {{ block.shopify_attributes }}>
+  {{- block.settings.text | strip | escape -}}
+</span>{{ ' ' }}
+
+{% stylesheet %}
+  .iit-text--italic {
+    font-style: italic;
+  }
+{% endstylesheet %}
+
+{% schema %}
+{
+  "name": "Italic text",
+  "tag": null,
+  "settings": [
+    {
+      "type": "text",
+      "id": "text",
+      "label": "Text",
+      "default": "feel glowy"
+    },
+    {
+      "type": "select",
+      "id": "font_weight",
+      "label": "Thickness",
+      "info": "A font without this thickness uses its closest one.",
+      "options": [
+        { "value": "400", "label": "Regular" },
+        { "value": "500", "label": "Medium" },
+        { "value": "600", "label": "Semi-bold" },
+        { "value": "700", "label": "Bold" }
+      ],
+      "default": "400"
+    }
+  ],
+  "presets": [
+    {
+      "name": "Italic text"
+    }
+  ]
+}
+{% endschema %}
